@@ -1,0 +1,1 @@
+- [R3F headless WebGL](r3f-headless-webgl.md) — screenshot env has no GPU; WebGL-context errors there are not bugs, verify R3F via typecheck + logs.

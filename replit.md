@@ -1,6 +1,6 @@
-# [Project name]
+# Galaxy
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+An immersive 3D website that visualizes the lifetime scientific work of Dr. Mahendra S. Rao as an explorable galaxy — research domains as suns, papers as orbiting planets, co-authors as moons. Built as a Father's Day gift.
 
 ## Run & Operate
 
@@ -22,15 +22,24 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/galaxy/` — the Galaxy web app (React + Vite + React Three Fiber). Served at `/`.
+- `artifacts/galaxy/src/data/galaxyData.json` — the baked-in data snapshot (source of truth for the visualization).
+- `artifacts/galaxy/src/data/galaxy.ts` — typed accessors over the snapshot.
+- `artifacts/galaxy/scripts/fetch-galaxy.mjs` — one-time script that regenerates the snapshot from OpenAlex.
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- Data comes from **OpenAlex** (free, no API key), not Google Scholar (which has no public API).
+- The full dataset is **fetched once at build time and baked into a static JSON file** — no backend, no database, no runtime API calls. Keeps the gift fast and reliable.
+- Research domains ("suns") are derived automatically from OpenAlex's topic hierarchy at the subfield level, with long-tail subfields collapsed into a "Cross-Disciplinary" sun (target ~6–12 suns).
+- 3D rendering via React Three Fiber + drei + postprocessing.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- A single immersive 3D page: research domains are suns, papers are orbiting planets (size = citations, orbit distance = topic relevance), co-authors are moons.
+- Two navigation modes: a spaceship fly-through and a god/planetarium orbit view with adjustable axis.
+- Click planets/suns for paper and domain details; a stats layer summarizes the whole corpus.
+- To regenerate the data snapshot: `node artifacts/galaxy/scripts/fetch-galaxy.mjs > artifacts/galaxy/src/data/galaxyData.json`
 
 ## User preferences
 
