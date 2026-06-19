@@ -4,6 +4,7 @@ import { IntroSequence } from "./IntroSequence";
 import { DetailPanel } from "./DetailPanel";
 import { CommandBar } from "./CommandBar";
 import { FilterBar } from "./FilterBar";
+import { FilteredPapersPanel } from "./FilteredPapersPanel";
 import { galaxyData } from "@/data/galaxy";
 
 export function Overlay() {
@@ -18,6 +19,8 @@ export function Overlay() {
           <Header />
 
           <FilterBar />
+
+          <FilteredPapersPanel />
 
           <AnimatePresence>
             {hoveredObject && (

@@ -169,3 +169,9 @@ export function searchGalaxy(query: string, limit = 8): SearchResult[] {
 export function countMatchingPapers(f: Filters): number {
   return galaxyData.papers.filter((p) => paperMatchesFilters(p, f)).length;
 }
+
+export function getMatchingPapers(f: Filters): Paper[] {
+  return galaxyData.papers
+    .filter((p) => paperMatchesFilters(p, f))
+    .sort((a, b) => b.citations - a.citations);
+}
