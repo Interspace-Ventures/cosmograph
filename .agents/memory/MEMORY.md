@@ -1,1 +1,2 @@
-- [R3F headless WebGL](r3f-headless-webgl.md) — screenshot env has no GPU; WebGL-context errors there are not bugs, verify R3F via typecheck + logs.
+- [Galaxy visual language](galaxy-visual-language.md) — Structured Liquidity applies to 2D UI only; 3D scene stays photoreal with per-domain stellar colors; orbits must read as real planetary systems, not belts.
+- [R3F headless WebGL](r3f-headless-webgl.md) — screenshot sandbox has no GPU so WebGL context fails; this is expected, verify via typecheck + browser logs, not screenshots.

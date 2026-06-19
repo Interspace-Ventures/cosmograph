@@ -11,25 +11,25 @@ export function DetailPanel() {
 
   return (
     <motion.div
-      initial={{ opacity: 0, x: 20 }}
+      initial={{ opacity: 0, x: 16 }}
       animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: 20 }}
-      className="glass-panel rounded-xl flex flex-col"
+      exit={{ opacity: 0, x: 16 }}
+      className="glass-panel flex flex-col"
     >
-      <div className="flex justify-between items-start p-4 border-b border-white/10">
-        <div className="text-xs uppercase tracking-wider text-muted-foreground font-display">
-          {selectedObject.type === 'sun' ? 'Domain Database' : 'Paper Database'}
+      <div className="flex justify-between items-center p-4 border-b-2 border-edge">
+        <div className="font-mono text-[10px] uppercase tracking-widest text-ink-dim">
+          {selectedObject.type === "sun" ? "Domain" : "Paper"}
         </div>
-        <button 
+        <button
           onClick={() => setSelectedObject(null)}
-          className="text-white/50 hover:text-white transition-colors"
+          className="text-ink-dim hover:text-ink transition-colors"
         >
           <X size={16} />
         </button>
       </div>
 
-      <div className="p-6">
-        {selectedObject.type === 'sun' ? (
+      <div className="p-5">
+        {selectedObject.type === "sun" ? (
           <DomainDetail id={selectedObject.id} />
         ) : (
           <PlanetDetail id={selectedObject.id} />
@@ -41,42 +41,37 @@ export function DetailPanel() {
 
 function DomainDetail({ id }: { id: string }) {
   const domain = getDomain(id);
-  const colorStr = getDomainColorStr(galaxyData.domains.findIndex(d => d.id === id));
-  
-  if (!domain) return <div>Domain not found</div>;
+  const colorStr = getDomainColorStr(galaxyData.domains.findIndex((d) => d.id === id));
+
+  if (!domain) return <div className="text-ink-dim">Domain not found</div>;
 
   const papers = papersByDomain[id] || [];
   const topPapers = [...papers].sort((a, b) => b.citations - a.citations).slice(0, 8);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
-        <h2 className="text-2xl font-display font-bold text-white mb-2 leading-tight" style={{ color: colorStr }}>
-          {domain.name}
-        </h2>
-        <p className="text-muted-foreground text-sm">{domain.field}</p>
+        <div className="flex items-center gap-2 mb-2">
+          <span className="h-3 w-3 border-2 border-edge" style={{ background: colorStr }} />
+          <h2 className="text-xl font-display font-extrabold leading-tight text-ink">{domain.name}</h2>
+        </div>
+        <p className="text-ink-dim text-sm">{domain.field}</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="bg-white/5 rounded-lg p-3">
-          <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Total Papers</div>
-          <div className="text-xl font-mono text-white">{domain.paperCount}</div>
-        </div>
-        <div className="bg-white/5 rounded-lg p-3">
-          <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Citations</div>
-          <div className="text-xl font-mono text-white">{domain.totalCitations.toLocaleString()}</div>
-        </div>
+      <div className="grid grid-cols-2 gap-3">
+        <Metric label="Papers" value={String(domain.paperCount)} />
+        <Metric label="Citations" value={domain.totalCitations.toLocaleString()} />
       </div>
 
-      <div className="mt-6">
-        <div className="text-xs text-muted-foreground uppercase tracking-wider mb-3">Top Papers</div>
+      <div>
+        <div className="font-mono text-[10px] uppercase tracking-widest text-ink-dim mb-3">Top Papers</div>
         <div className="space-y-2">
-          {topPapers.map(p => (
-            <div key={p.id} className="bg-white/5 rounded-lg p-3 text-sm">
-              <div className="text-white/90 line-clamp-2 leading-snug mb-2">{p.title}</div>
-              <div className="flex gap-2 text-xs">
-                <span className="text-primary font-mono">{p.citations} citations</span>
-                {p.year && <span className="text-muted-foreground font-mono">{p.year}</span>}
+          {topPapers.map((p) => (
+            <div key={p.id} className="bg-white/5 border-2 border-edge p-3 text-sm">
+              <div className="text-ink line-clamp-2 leading-snug mb-2">{p.title}</div>
+              <div className="flex gap-3 font-mono text-[11px]">
+                <span className="text-accent">{p.citations} citations</span>
+                {p.year && <span className="text-ink-dim">{p.year}</span>}
               </div>
             </div>
           ))}
@@ -87,48 +82,42 @@ function DomainDetail({ id }: { id: string }) {
 }
 
 function PlanetDetail({ id }: { id: string }) {
-  const paper = galaxyData.papers.find(p => p.id === id);
-  if (!paper) return <div>Paper not found</div>;
+  const paper = galaxyData.papers.find((p) => p.id === id);
+  if (!paper) return <div className="text-ink-dim">Paper not found</div>;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
-        <h2 className="text-lg font-bold text-white leading-snug mb-3">
-          {paper.title}
-        </h2>
-        
-        <div className="flex flex-wrap gap-2 text-xs">
+        <h2 className="text-base font-display font-bold leading-snug mb-3 text-ink">{paper.title}</h2>
+
+        <div className="flex flex-wrap gap-2 font-mono text-[11px]">
           {paper.year && (
-            <span className="px-2 py-1 bg-white/10 rounded-md text-white/80 font-mono">
-              {paper.year}
-            </span>
+            <span className="px-2 py-1 bg-white/8 border-2 border-edge text-ink">{paper.year}</span>
           )}
-          <span className="px-2 py-1 bg-primary/20 text-primary border border-primary/30 rounded-md font-mono">
-            {paper.citations.toLocaleString()} Citations
+          <span className="px-2 py-1 bg-accent text-accent-foreground border-2 border-edge">
+            {paper.citations.toLocaleString()} citations
           </span>
           {paper.type && (
-            <span className="px-2 py-1 bg-white/5 rounded-md text-muted-foreground">
-              {paper.type}
-            </span>
+            <span className="px-2 py-1 bg-white/5 border-2 border-edge text-ink-dim">{paper.type}</span>
           )}
         </div>
       </div>
 
       {paper.venue && (
         <div className="text-sm">
-          <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Venue</div>
-          <div className="text-white/80">{paper.venue}</div>
+          <div className="font-mono text-[10px] uppercase tracking-widest text-ink-dim mb-1">Venue</div>
+          <div className="text-ink">{paper.venue}</div>
         </div>
       )}
 
       {paper.coAuthors.length > 0 && (
         <div className="text-sm">
-          <div className="text-xs text-muted-foreground uppercase tracking-wider mb-2">
+          <div className="font-mono text-[10px] uppercase tracking-widest text-ink-dim mb-2">
             Co-authors ({paper.coAuthorCount})
           </div>
-          <div className="flex flex-wrap gap-1 max-h-48 overflow-y-auto custom-scrollbar pr-2 pb-2">
+          <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto custom-scrollbar pr-1 pb-1">
             {paper.coAuthors.map((author, i) => (
-              <span key={i} className="px-2 py-1 bg-white/5 border border-white/10 rounded-md text-xs text-white/70">
+              <span key={i} className="px-2 py-1 bg-white/5 border-2 border-edge text-[11px] text-ink-dim">
                 {author}
               </span>
             ))}
@@ -137,16 +126,25 @@ function PlanetDetail({ id }: { id: string }) {
       )}
 
       {paper.url && (
-        <a 
+        <a
           href={paper.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center justify-center gap-2 w-full py-3 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors text-sm uppercase tracking-wider font-display"
+          className="glass-panel glass-panel-interactive flex items-center justify-center gap-2 w-full py-3 bg-accent text-accent-foreground font-display text-xs uppercase tracking-widest"
         >
           <span>View Source</span>
           <ExternalLink size={14} />
         </a>
       )}
+    </div>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="bg-white/5 border-2 border-edge p-3">
+      <div className="font-mono text-[10px] uppercase tracking-widest text-ink-dim mb-1">{label}</div>
+      <div className="font-mono text-lg text-ink">{value}</div>
     </div>
   );
 }

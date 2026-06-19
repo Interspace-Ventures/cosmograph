@@ -1,24 +1,31 @@
-import * as THREE from 'three';
+import * as THREE from "three";
 
-const domainColors = [
-  '#00f0ff', // Cyan
-  '#ff0055', // Magenta
-  '#7000ff', // Purple
-  '#00ff66', // Emerald
-  '#ffbb00', // Gold
-  '#ff3300', // Orange
-  '#0066ff', // Green-blue
-  '#cc00ff', // Violet
-  '#ff00aa', // Pink
-  '#00aaff', // Light blue
-  '#aaff00', // Yellow-green
-  '#ff5500', // Red-orange
+// Realistic stellar colors by temperature class (blue-white -> white -> yellow -> orange -> red).
+// Used to tint each domain's "sun" so domains stay distinguishable while looking like real stars.
+const stellarColors = [
+  "#bcd2ff", // blue-white (O/B)
+  "#dfe9ff", // white-blue (A)
+  "#ffffff", // white (A/F)
+  "#fff6e8", // yellow-white (F/G)
+  "#ffe9b8", // warm yellow (G)
+  "#ffd98a", // golden (G/K)
+  "#ffc06a", // amber (K)
+  "#ffac5a", // orange (K)
+  "#ff9d6b", // orange-red (K/M)
+  "#ff8a5c", // red-orange (M)
+  "#d8c4ff", // exotic violet-white
+  "#aee1ff", // pale cyan-white
 ];
 
-export function getDomainColor(index: number): THREE.Color {
-  return new THREE.Color(domainColors[index % domainColors.length]);
+export function getStellarColor(index: number): THREE.Color {
+  return new THREE.Color(stellarColors[index % stellarColors.length]);
 }
 
+export function getStellarColorStr(index: number): string {
+  return stellarColors[index % stellarColors.length];
+}
+
+// Kept for UI accents that reference a domain's star color (e.g. a small dot/label).
 export function getDomainColorStr(index: number): string {
-  return domainColors[index % domainColors.length];
+  return stellarColors[index % stellarColors.length];
 }

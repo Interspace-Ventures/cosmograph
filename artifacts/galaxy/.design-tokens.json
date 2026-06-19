@@ -1,0 +1,141 @@
+{
+  "$description": "Structured Liquidity design tokens. W3C Design Tokens Community Group format. Each token carries its CSS custom-property name in $extensions.cssVar so an agent can apply it directly to :root.",
+  "color": {
+    "$type": "color",
+    "accent": {
+      "$value": "#a388ee",
+      "$description": "The single semantic accent. Use exactly one accent for emphasis.",
+      "$extensions": { "cssVar": "--accent" }
+    },
+    "accentInk": {
+      "$value": "#000000",
+      "$description": "Readable ink for text/icons sitting on the accent fill. Flip to white when the accent is dark (luminance-derived).",
+      "$extensions": { "cssVar": "--accent-ink" }
+    },
+    "bg": {
+      "$value": "#272933",
+      "$description": "Page background (dark mode).",
+      "$extensions": { "cssVar": "--bg" }
+    },
+    "bg2": {
+      "$value": "#1f2028",
+      "$description": "Raised surface / menu background (dark mode).",
+      "$extensions": { "cssVar": "--bg-2" }
+    },
+    "ink": {
+      "$value": "#e6e6e6",
+      "$description": "Primary foreground text (dark mode).",
+      "$extensions": { "cssVar": "--ink" }
+    },
+    "inkDim": {
+      "$value": "#9da0ab",
+      "$description": "Secondary / muted text (dark mode).",
+      "$extensions": { "cssVar": "--ink-dim" }
+    },
+    "edge": {
+      "$value": "#000000",
+      "$description": "Border color. Black in both modes. The CSS token --edge holds rgb channels ('0 0 0') for use as rgb(var(--edge)).",
+      "$extensions": { "cssVar": "--edge", "cssValue": "0 0 0" }
+    },
+    "hardShadow": {
+      "$value": "#000000",
+      "$description": "Color of the flat offset shadow.",
+      "$extensions": { "cssVar": "--hard-shadow" }
+    },
+    "negative": {
+      "$value": "#3c3f4b",
+      "$description": "Destructive / negative surface. Neutral gray, never red.",
+      "$extensions": { "cssVar": "--neg" }
+    },
+    "negativeInk": {
+      "$value": "#f0f0f2",
+      "$description": "Text on the negative surface.",
+      "$extensions": { "cssVar": "--neg-ink" }
+    }
+  },
+  "glass": {
+    "blur": {
+      "$type": "dimension",
+      "$value": "18px",
+      "$description": "backdrop-filter blur radius for liquid glass surfaces.",
+      "$extensions": { "cssVar": "--glass-blur" }
+    },
+    "tint": {
+      "$type": "color",
+      "$value": "#ffffff",
+      "$description": "Glass fill tint. The CSS token --glass-tint holds rgb channels ('255 255 255') for rgba(var(--glass-tint), var(--glass-alpha)).",
+      "$extensions": { "cssVar": "--glass-tint", "cssValue": "255 255 255" }
+    },
+    "alpha": {
+      "$type": "number",
+      "$value": 0.07,
+      "$description": "Glass fill opacity (dark mode). Light mode raises this to 0.55.",
+      "$extensions": { "cssVar": "--glass-alpha" }
+    }
+  },
+  "border": {
+    "width": {
+      "$type": "dimension",
+      "$value": "2px",
+      "$description": "Load-bearing border weight. Solid, never decorative.",
+      "$extensions": { "cssVar": "--border-w" }
+    }
+  },
+  "radius": {
+    "base": {
+      "$type": "dimension",
+      "$value": "0px",
+      "$description": "Corner radius. Square by default; raise deliberately.",
+      "$extensions": { "cssVar": "--radius" }
+    }
+  },
+  "shadow": {
+    "flat": {
+      "$type": "shadow",
+      "$value": {
+        "offsetX": "7px",
+        "offsetY": "7px",
+        "blur": "0px",
+        "spread": "0px",
+        "color": "#000000"
+      },
+      "$description": "The flat offset shadow. Blur is always 0, structural, never soft. Offset is driven by --hard-x / --hard-y.",
+      "$extensions": { "cssVar": "--hard-x / --hard-y", "css": "var(--hard-x) var(--hard-y) 0 0 var(--hard-shadow)" }
+    }
+  },
+  "fontFamily": {
+    "$type": "fontFamily",
+    "display": {
+      "$value": ["Archivo", "Helvetica Neue", "system-ui", "sans-serif"],
+      "$description": "Headings, buttons, brand. Heavy and tight. Controlled live by the page tweaker.",
+      "$extensions": { "cssVar": "--display" }
+    },
+    "body": {
+      "$value": ["Outfit", "Helvetica Neue", "system-ui", "sans-serif"],
+      "$description": "Paragraph / reading copy. Humanist and legible.",
+      "$extensions": { "cssVar": "--body" }
+    },
+    "mono": {
+      "$value": ["Space Mono", "ui-monospace", "SFMono-Regular", "monospace"],
+      "$description": "Labels, captions, data, eyebrows. Never long paragraphs.",
+      "$extensions": { "cssVar": "--mono" }
+    }
+  },
+  "mode": {
+    "light": {
+      "$description": "Overrides applied when <html data-mode=\"light\">. Apply these values on top of the defaults above.",
+      "color": {
+        "$type": "color",
+        "bg": { "$value": "#dfe5f2", "$extensions": { "cssVar": "--bg" } },
+        "bg2": { "$value": "#ffffff", "$extensions": { "cssVar": "--bg-2" } },
+        "ink": { "$value": "#000000", "$extensions": { "cssVar": "--ink" } },
+        "inkDim": { "$value": "#5b5f6b", "$extensions": { "cssVar": "--ink-dim" } },
+        "negative": { "$value": "#16171c", "$extensions": { "cssVar": "--neg" } },
+        "negativeInk": { "$value": "#ffffff", "$extensions": { "cssVar": "--neg-ink" } }
+      },
+      "glass": {
+        "alpha": { "$type": "number", "$value": 0.55, "$extensions": { "cssVar": "--glass-alpha" } }
+      }
+    }
+  }
+}
