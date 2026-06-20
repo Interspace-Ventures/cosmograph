@@ -4,7 +4,7 @@ import { useAppState } from "@/lib/store";
 import { useGithubStars, formatStars } from "@/lib/useGithubStars";
 
 export function Footer() {
-  const { setInfoOpen, setChangelogOpen } = useAppState();
+  const { setChangelogOpen } = useAppState();
   const { stars, url } = useGithubStars();
 
   return (
@@ -58,13 +58,6 @@ export function Footer() {
             </span>
           )}
         </a>
-        <span className="text-ink-dim/30">·</span>
-        <button
-          onClick={() => setInfoOpen(true)}
-          className="pointer-events-auto uppercase tracking-widest transition-colors hover:text-ink"
-        >
-          About
-        </button>
       </div>
     </footer>
   );

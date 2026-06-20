@@ -12,7 +12,9 @@ import { ChangelogDrawer } from "./ChangelogDrawer";
 import { galaxyData } from "@/data/galaxy";
 import { presence } from "@/lib/presence";
 import { useSyncExternalStore } from "react";
-import { Compass, Rewind, Info, Orbit } from "lucide-react";
+import { Compass, Rewind, Info, Orbit, Github, Star } from "lucide-react";
+import { SITE } from "@/config/site";
+import { useGithubStars, formatStars } from "@/lib/useGithubStars";
 
 export function Overlay() {
   const { introFinished, selectedObject, hoveredObject, searchActive, tourActive } = useAppState();
@@ -104,6 +106,7 @@ function Header() {
         <LivePresence />
       </div>
       <div className="flex items-center gap-2">
+        <GitHubLink />
         <button
           onClick={replayIntro}
           className="glass-panel glass-panel-interactive flex items-center gap-2 px-4 py-2 text-xs font-display uppercase tracking-wider text-ink pointer-events-auto"
@@ -134,6 +137,30 @@ function LivePresence() {
       </span>
       <span className="text-ink">{count}</span> galacticon{count === 1 ? "" : "s"} streaming now
     </div>
+  );
+}
+
+function GitHubLink() {
+  const { stars, url } = useGithubStars();
+
+  return (
+    <a
+      href={url ?? SITE.github.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="View source on GitHub"
+      title="View source on GitHub"
+      className="glass-panel glass-panel-interactive flex items-center gap-2 px-4 py-2 text-xs font-display uppercase tracking-wider text-ink pointer-events-auto"
+    >
+      <Github size={14} />
+      GitHub
+      {stars !== null && (
+        <span className="inline-flex items-center gap-0.5 text-accent">
+          <Star size={11} className="fill-current" />
+          {formatStars(stars)}
+        </span>
+      )}
+    </a>
   );
 }
 
