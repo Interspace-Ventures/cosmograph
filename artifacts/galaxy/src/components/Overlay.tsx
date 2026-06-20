@@ -118,7 +118,7 @@ const LEGEND = [
   {
     icon: Sun,
     title: "Suns are research domains",
-    body: "Each sun is a field Dr. Rao has worked in. The larger the sun, the more papers he published in that domain.",
+    body: "Each sun is a research field represented in this body of work. The larger the sun, the more papers published in that domain.",
   },
   {
     icon: Globe2,

@@ -1,8 +1,28 @@
 // One-time OpenAlex fetch -> baked static snapshot for the Galaxy app.
-// Author: Mahendra S. Rao (A5111365293)
-const AUTHOR_ID = "A5111365293";
-const MAILTO = "galaxy-gift@example.com";
+//
+// Generate the galaxy for ANY scientist — this app ships with no hardcoded
+// identity; everything the UI shows comes from the snapshot this script writes.
+//
+// Usage (writes JSON to stdout — redirect into the data file):
+//   node scripts/fetch-galaxy.mjs --name "Ada Lovelace"   > src/data/galaxyData.json
+//   node scripts/fetch-galaxy.mjs --id A5111365293         > src/data/galaxyData.json
+// You can also use env vars: GALAXY_AUTHOR_NAME or GALAXY_AUTHOR_ID.
+// Set a contact email with --mailto you@example.com (OpenAlex etiquette).
 const BASE = "https://api.openalex.org";
+
+function parseArgs(argv) {
+  const out = {};
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a === "--name") out.name = argv[++i];
+    else if (a === "--id" || a === "--author") out.id = argv[++i];
+    else if (a === "--mailto") out.mailto = argv[++i];
+  }
+  return out;
+}
+
+const args = parseArgs(process.argv.slice(2));
+const MAILTO = args.mailto || process.env.GALAXY_MAILTO || "galaxy-gift@example.com";
 
 async function getJSON(url) {
   const res = await fetch(url, { headers: { "User-Agent": `galaxy-app (mailto:${MAILTO})` } });
@@ -10,7 +30,49 @@ async function getJSON(url) {
   return res.json();
 }
 
+// Resolve an OpenAlex author id from an explicit id or a name search.
+async function resolveAuthorId() {
+  const id = args.id || process.env.GALAXY_AUTHOR_ID;
+  if (id) return id.replace("https://openalex.org/", "");
+
+  const name = args.name || process.env.GALAXY_AUTHOR_NAME;
+  if (!name) {
+    throw new Error(
+      "No scientist specified.\n" +
+        '  Pass --name "Full Name" or --id <OpenAlexAuthorId>.\n' +
+        "  e.g. node scripts/fetch-galaxy.mjs --name \"Mahendra S. Rao\" > src/data/galaxyData.json"
+    );
+  }
+
+  const search = await getJSON(
+    `${BASE}/authors?search=${encodeURIComponent(name)}&per-page=5&mailto=${MAILTO}`
+  );
+  const hit = search.results?.[0];
+  if (!hit) throw new Error(`No OpenAlex author found for "${name}".`);
+  const rid = hit.id.replace("https://openalex.org/", "");
+  process.stderr.write(
+    `Matched "${name}" -> ${hit.display_name} (${rid}), ${hit.works_count} works` +
+      (hit.last_known_institutions?.[0]?.display_name
+        ? `, ${hit.last_known_institutions[0].display_name}`
+        : "") +
+      "\n"
+  );
+  if (search.results.length > 1) {
+    process.stderr.write(
+      "  Other matches: " +
+        search.results
+          .slice(1)
+          .map((r) => `${r.display_name} (${r.id.replace("https://openalex.org/", "")})`)
+          .join(", ") +
+        "\n  If this isn't the right person, re-run with --id <correct OpenAlex id>.\n"
+    );
+  }
+  return rid;
+}
+
 async function main() {
+  const AUTHOR_ID = await resolveAuthorId();
+
   // 1. Author summary
   const author = await getJSON(`${BASE}/authors/${AUTHOR_ID}?mailto=${MAILTO}`);
 
@@ -159,6 +221,7 @@ async function main() {
   const data = {
     author: {
       name: author.display_name,
+      openAlexId: AUTHOR_ID,
       institution:
         (author.last_known_institutions || [])[0]?.display_name ||
         author.affiliations?.[0]?.institution?.display_name ||

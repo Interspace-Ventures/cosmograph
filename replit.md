@@ -1,6 +1,14 @@
 # Galactic
 
-An immersive 3D website (galactic.dad) that visualizes the lifetime scientific work of Dr. Mahendra S. Rao as an explorable galaxy — research domains as suns, papers as orbiting planets, co-authors as moons. Built as a Father's Day gift. (Internal package/slug remains `galaxy`.)
+An immersive 3D website (galactic.dad) that visualizes the lifetime scientific work of any researcher as an explorable galaxy — research domains as suns, papers as orbiting planets, co-authors as moons. Originally built as a Father's Day gift for Dr. Mahendra S. Rao, it is now a reusable, open-source template: point it at any scientist (a dad, a mom, a mentor, yourself) and regenerate the data snapshot. The app ships with **no hardcoded identity** — everything the UI shows comes from the generated snapshot. (Internal package/slug remains `galaxy`.)
+
+## Make it for your own scientist
+
+1. Regenerate the snapshot for the person you want (by name or OpenAlex author ID):
+   - `pnpm --filter @workspace/galaxy run fetch:galaxy -- --name "Ada Lovelace" > artifacts/galaxy/src/data/galaxyData.json`
+   - or `... -- --id A5111365293 > artifacts/galaxy/src/data/galaxyData.json`
+   - Tip: name search prints the top OpenAlex matches to stderr; if it picks the wrong person, re-run with the correct `--id`.
+2. That's it — restart the `galaxy` workflow. The title, stats, domains, papers, and co-authors all redraw from the new snapshot.
 
 ## Run & Operate
 
@@ -39,7 +47,7 @@ An immersive 3D website (galactic.dad) that visualizes the lifetime scientific w
 - A single immersive 3D page: research domains are suns, papers are orbiting planets (size = citations, orbit distance = topic relevance), co-authors are moons.
 - Two navigation modes: a spaceship fly-through and a god/planetarium orbit view with adjustable axis.
 - Click planets/suns for paper and domain details; a stats layer summarizes the whole corpus.
-- To regenerate the data snapshot: `node artifacts/galaxy/scripts/fetch-galaxy.mjs > artifacts/galaxy/src/data/galaxyData.json`
+- To regenerate the data snapshot for a different scientist, see "Make it for your own scientist" at the top of this file. The script takes `--name "Full Name"` or `--id <OpenAlexAuthorId>` (or `GALAXY_AUTHOR_NAME` / `GALAXY_AUTHOR_ID` env vars) and writes JSON to stdout.
 
 ## User preferences
 

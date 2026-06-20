@@ -34,6 +34,7 @@ export interface CountByYear {
 
 export interface AuthorInfo {
   name: string;
+  openAlexId?: string | null;
   institution: string | null;
   hIndex: number | null;
   i10Index: number | null;
