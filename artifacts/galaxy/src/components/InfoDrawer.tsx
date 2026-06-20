@@ -52,7 +52,7 @@ export function InfoDrawer() {
             </button>
 
             <span className="font-mono text-[10px] uppercase tracking-widest text-accent">
-              About this project
+              About this Venture
             </span>
             <h2
               id="info-drawer-title"
@@ -81,6 +81,13 @@ export function InfoDrawer() {
                 a mentor, or yourself — and it rebuilds the entire galaxy from public data on{" "}
                 <span className="text-ink">OpenAlex</span>. No identity is hardcoded; everything you
                 see is generated from a single data snapshot.
+              </p>
+              <p>
+                Built frontend-only with <span className="text-ink">React</span>,{" "}
+                <span className="text-ink">Three.js</span> &{" "}
+                <span className="text-ink">React Three Fiber</span>. Bibliographic data comes from
+                OpenAlex — {galaxyData.papers.length.toLocaleString()} papers across{" "}
+                {galaxyData.domains.length} domains.
               </p>
             </div>
 
@@ -179,11 +186,6 @@ export function InfoDrawer() {
             </div>
 
             <p className="mt-8 border-t-2 border-edge pt-4 font-mono text-[11px] leading-relaxed text-ink-dim">
-              Built frontend-only with React, Three.js & React Three Fiber. Bibliographic data from
-              OpenAlex — {galaxyData.papers.length.toLocaleString()} papers across{" "}
-              {galaxyData.domains.length} domains.
-            </p>
-            <p className="mt-3 font-mono text-[11px] leading-relaxed text-ink-dim">
               Live presence is anonymous and ephemeral: while you explore, only your camera position
               is shared so others can see your wisp and the headcount. Nothing is stored, and it all
               vanishes the moment you leave.
