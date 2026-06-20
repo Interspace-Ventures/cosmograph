@@ -7,7 +7,7 @@ import { FilteredPapersPanel } from "./FilteredPapersPanel";
 import { TourOverlay } from "./TourOverlay";
 import { FlyHud } from "./FlyHud";
 import { galaxyData } from "@/data/galaxy";
-import { Compass, Rewind, RotateCcw } from "lucide-react";
+import { Compass, Rewind } from "lucide-react";
 
 export function Overlay() {
   const { introFinished, selectedObject, hoveredObject, searchActive, tourActive } = useAppState();
@@ -80,7 +80,7 @@ export function Overlay() {
 }
 
 function Header() {
-  const { startTour, replayIntro, forgetIntro } = useAppState();
+  const { startTour, replayIntro } = useAppState();
 
   return (
     <div className="absolute top-0 left-0 right-0 p-6 flex items-start justify-between">
@@ -91,14 +91,6 @@ function Header() {
         </p>
       </div>
       <div className="flex items-center gap-2">
-        <button
-          onClick={forgetIntro}
-          title="Always show the intro on future visits (clears the saved preference)"
-          className="glass-panel glass-panel-interactive flex items-center gap-2 px-4 py-2 text-xs font-display uppercase tracking-wider text-ink pointer-events-auto"
-        >
-          <RotateCcw size={14} />
-          Always Show Intro
-        </button>
         <button
           onClick={replayIntro}
           className="glass-panel glass-panel-interactive flex items-center gap-2 px-4 py-2 text-xs font-display uppercase tracking-wider text-ink pointer-events-auto"
