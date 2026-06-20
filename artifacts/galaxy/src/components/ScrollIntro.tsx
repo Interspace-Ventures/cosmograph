@@ -234,11 +234,6 @@ export function ScrollIntro() {
               >
                 {reduced ? "Enter the Galaxy" : "Ad Astra"}
               </button>
-              {!reduced && (
-                <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-ink-dim/70">
-                  Then scroll to fly
-                </p>
-              )}
             </motion.div>
           </motion.div>
         )}
@@ -309,11 +304,14 @@ export function ScrollIntro() {
             <p className="mb-3 font-display text-xs uppercase tracking-[0.35em] text-accent md:text-sm">
               You have arrived
             </p>
-            <h2 className="mb-2 font-title text-5xl font-medium italic tracking-tight text-ink md:text-7xl">
-              The galaxy of
+            <h2 className="mb-3 font-title text-6xl font-medium italic tracking-tight text-ink md:text-8xl">
+              Galactic
             </h2>
-            <p className="mb-12 font-mono text-base uppercase tracking-[0.25em] text-ink-dim md:text-lg">
-              {galaxyData.author.name}
+            <p className="font-display text-base font-semibold uppercase tracking-[0.3em] text-accent md:text-xl">
+              A Journey of Scientific Exploration
+            </p>
+            <p className="mb-12 mt-2 font-mono text-base uppercase tracking-[0.25em] text-ink-dim md:text-lg">
+              by {galaxyData.author.name}
             </p>
             <div className="pointer-events-auto flex flex-col items-center gap-4 sm:flex-row">
               <button

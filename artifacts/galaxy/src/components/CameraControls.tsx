@@ -249,7 +249,7 @@ export function CameraController() {
       direction.current.normalize();
 
       if (keys.current.forward || keys.current.backward) velocity.current.z -= direction.current.z * speed;
-      if (keys.current.left || keys.current.right) velocity.current.x -= direction.current.x * speed;
+      if (keys.current.left || keys.current.right) velocity.current.x += direction.current.x * speed;
 
       state.camera.translateZ(velocity.current.z);
       state.camera.translateX(velocity.current.x);
@@ -269,9 +269,16 @@ export function CameraController() {
       enabled={introFinished && !tourActive}
       enableDamping
       dampingFactor={0.05}
+      enablePan
       maxDistance={9000}
       minDistance={12}
       maxPolarAngle={Math.PI / 1.4}
+      mouseButtons={{
+        LEFT: THREE.MOUSE.PAN,
+        MIDDLE: THREE.MOUSE.DOLLY,
+        RIGHT: THREE.MOUSE.ROTATE,
+      }}
+      touches={{ ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_ROTATE }}
     />
   );
 }
