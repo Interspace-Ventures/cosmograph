@@ -97,7 +97,9 @@ galaxyData.domains.forEach((d, i) => {
   const y = (rng() - 0.5) * radius * 0.1;
   domainPositions[d.id] = new THREE.Vector3(x, y, z);
 
-  const sunRadius = Math.max(7, Math.sqrt(d.totalCitations) * 0.22);
+  // Sun size encodes the breadth of the body of work in that domain — i.e. how
+  // many papers orbit it — rather than citation count.
+  const sunRadius = Math.max(8, Math.sqrt(d.paperCount) * 2.6);
   sunRadii[d.id] = sunRadius;
 
   const papers = [...(papersByDomain[d.id] || [])].sort((a, b) => b.relevance - a.relevance);
