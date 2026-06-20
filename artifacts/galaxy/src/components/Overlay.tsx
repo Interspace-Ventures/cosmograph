@@ -7,9 +7,9 @@ import { FilteredPapersPanel } from "./FilteredPapersPanel";
 import { TourOverlay } from "./TourOverlay";
 import { FlyHud } from "./FlyHud";
 import { Footer } from "./Footer";
+import { InfoDrawer } from "./InfoDrawer";
 import { galaxyData } from "@/data/galaxy";
-import { Compass, Rewind, Info, X, Sun, Globe2, Moon, Orbit, Network } from "lucide-react";
-import { useState, useEffect } from "react";
+import { Compass, Rewind, Info } from "lucide-react";
 
 export function Overlay() {
   const { introFinished, selectedObject, hoveredObject, searchActive, tourActive } = useAppState();
@@ -76,6 +76,7 @@ export function Overlay() {
             </>
           )}
           <TourOverlay />
+          <InfoDrawer />
         </>
       )}
     </div>
@@ -116,113 +117,17 @@ function Header() {
   );
 }
 
-const LEGEND = [
-  {
-    icon: Sun,
-    title: "Suns are research domains",
-    body: "Each sun is a research field represented in this body of work. The larger the sun, the more papers published in that domain.",
-  },
-  {
-    icon: Globe2,
-    title: "Planets are papers",
-    body: "Every planet orbiting a sun is a single published paper. The larger the planet, the more times it has been cited.",
-  },
-  {
-    icon: Moon,
-    title: "Moons are co-authors",
-    body: "Select a paper and its moons appear — the collaborators who co-authored it.",
-  },
-  {
-    icon: Orbit,
-    title: "Orbits show relevance",
-    body: "A planet's distance from its sun reflects how central the paper is to that domain.",
-  },
-  {
-    icon: Network,
-    title: "Nearby suns are related",
-    body: "Solar systems are grouped by broad research field, so suns clustered together belong to the same area of science — while distant clusters are different fields entirely.",
-  },
-];
-
 function InfoButton() {
-  const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
+  const { setInfoOpen } = useAppState();
 
   return (
-    <>
-      <button
-        onClick={() => setOpen(true)}
-        aria-label="About this visualization"
-        title="About this visualization"
-        className="glass-panel glass-panel-interactive flex items-center justify-center p-2 text-ink pointer-events-auto"
-      >
-        <Info size={16} />
-      </button>
-
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 flex items-center justify-center p-6 pointer-events-auto"
-          >
-            <div
-              className="absolute inset-0 bg-black/65 backdrop-blur-sm"
-              onClick={() => setOpen(false)}
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.96, y: 12 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96, y: 12 }}
-              transition={{ type: "spring", stiffness: 320, damping: 28 }}
-              className="relative glass-panel w-full max-w-lg p-7 max-h-[calc(100vh-3rem)] overflow-y-auto custom-scrollbar"
-            >
-              <button
-                onClick={() => setOpen(false)}
-                aria-label="Close"
-                className="absolute top-4 right-4 text-ink-dim hover:text-ink transition-colors"
-              >
-                <X size={18} />
-              </button>
-
-              <span className="font-mono text-[10px] uppercase tracking-widest text-accent">
-                How to read this galaxy
-              </span>
-              <h2 className="text-2xl font-title font-bold tracking-tight text-ink mt-1 mb-5">
-                A lifetime of work, mapped to the stars
-              </h2>
-
-              <div className="space-y-4">
-                {LEGEND.map(({ icon: Icon, title, body }) => (
-                  <div key={title} className="flex items-start gap-3.5">
-                    <div className="mt-0.5 shrink-0 grid place-items-center w-9 h-9 border-2 border-edge bg-white/5 text-accent">
-                      <Icon size={16} />
-                    </div>
-                    <div>
-                      <div className="text-sm font-display font-semibold text-ink">{title}</div>
-                      <p className="text-[13px] leading-relaxed text-ink-dim mt-0.5">{body}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <p className="mt-6 pt-4 border-t-2 border-edge font-mono text-[11px] text-ink-dim leading-relaxed">
-                Built from {galaxyData.papers.length.toLocaleString()} papers across{" "}
-                {galaxyData.domains.length} domains. Bibliographic data sourced from OpenAlex.
-              </p>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </>
+    <button
+      onClick={() => setInfoOpen(true)}
+      aria-label="About this visualization"
+      title="About this visualization"
+      className="glass-panel glass-panel-interactive flex items-center justify-center p-2 text-ink pointer-events-auto"
+    >
+      <Info size={16} />
+    </button>
   );
 }

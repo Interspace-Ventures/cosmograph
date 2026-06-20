@@ -87,6 +87,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     introProgressRef.current = 0;
     setIntroStarted(false);
     setIntroFinishedState(false);
+    setInfoOpen(false);
   }, []);
 
   const forgetIntro = useCallback(() => {
@@ -94,6 +95,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     introProgressRef.current = 0;
     setIntroStarted(false);
     setIntroFinishedState(false);
+    setInfoOpen(false);
   }, []);
   const [cameraMode, setCameraMode] = useState<CameraMode>('god');
   const [selectedObject, setSelectedObject] = useState<SelectedObject>(null);
