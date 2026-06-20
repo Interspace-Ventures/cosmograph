@@ -98,7 +98,7 @@ export function ScrollIntro() {
 
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
-      targetRef.current = clamp(targetRef.current + e.deltaY / 4200, 0, 1);
+      targetRef.current = clamp(targetRef.current - e.deltaY / 4200, 0, 1);
     };
 
     let lastY = 0;
