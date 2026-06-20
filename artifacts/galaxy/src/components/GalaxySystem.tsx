@@ -81,25 +81,86 @@ export const planetRefs: Record<string, THREE.Object3D> = {};
 export const sunRefs: Record<string, THREE.Object3D> = {};
 
 // ----- precompute galaxy distribution + planetary orbits ONCE (deterministic) -----
-const ARMS = 3;
-const RING_STEP = 470;
-const INNER_GALAXY = 380;
+// Domains are grouped into clusters by their broad research field, so two suns
+// being near each other genuinely means "related science". Clusters are packed
+// by each system's FULL orbital footprint (sun + the radius its planets orbit
+// out to), not just sun size, so no two systems overlap and the map stays
+// legible — like a word cloud built from solar systems.
+type Dom = (typeof galaxyData.domains)[number];
 
-galaxyData.domains.forEach((d, i) => {
-  const rng = mulberry32(hashString(d.id));
-  const arm = i % ARMS;
-  const ring = Math.floor(i / ARMS);
-  const radius = INNER_GALAXY + ring * RING_STEP + (rng() - 0.5) * 130;
-  const armBase = arm * ((Math.PI * 2) / ARMS);
-  const angle = armBase + radius * 0.0017 + (rng() - 0.5) * 0.55;
-  const x = Math.cos(angle) * radius;
-  const z = Math.sin(angle) * radius;
-  const y = (rng() - 0.5) * radius * 0.1;
-  domainPositions[d.id] = new THREE.Vector3(x, y, z);
+const GAP_IN = 55; // padding between systems inside one field cluster
+const GAP_CL = 130; // padding between field clusters
 
+const sunRadiusFor = (paperCount: number) => Math.max(8, Math.sqrt(paperCount) * 2.6);
+// Full radius a domain's system occupies: sun + outermost planet orbit + margin.
+const domainSpan = (d: Dom) => {
+  const n = papersByDomain[d.id]?.length ?? d.paperCount;
+  const innerR = sunRadiusFor(d.paperCount) + 14;
+  const targetOuter = innerR + 50 + 13 * Math.sqrt(Math.max(1, n));
+  return targetOuter + 25;
+};
+
+// Group domains by field.
+const fieldGroups = new Map<string, Dom[]>();
+for (const d of galaxyData.domains) {
+  const arr = fieldGroups.get(d.field) ?? [];
+  arr.push(d);
+  fieldGroups.set(d.field, arr);
+}
+
+// Build each field cluster: largest system at its centre, the rest ringed around
+// it, spaced so no two orbital systems touch.
+const clusters = [...fieldGroups.entries()].map(([field, domsRaw]) => {
+  const doms = [...domsRaw].sort((a, b) => domainSpan(b) - domainSpan(a));
+  const spans = doms.map(domainSpan);
+  const locals: Array<{ d: Dom; lx: number; lz: number }> = [{ d: doms[0], lx: 0, lz: 0 }];
+  let footprint = spans[0];
+  if (doms.length > 1) {
+    const others = spans.slice(1);
+    const maxRo = Math.max(...others);
+    const m = others.length;
+    const rho1 = spans[0] + maxRo + GAP_IN; // clear the centre system
+    const rho2 = m > 1 ? (maxRo + GAP_IN / 2) / Math.sin(Math.PI / m) : 0; // clear neighbours
+    const rho = Math.max(rho1, rho2);
+    for (let k = 0; k < m; k++) {
+      const a = (k * 2 * Math.PI) / m + 0.4;
+      locals.push({ d: doms[k + 1], lx: Math.cos(a) * rho, lz: Math.sin(a) * rho });
+    }
+    footprint = rho + maxRo;
+  }
+  return { field, locals, footprint };
+});
+
+// Largest cluster anchors the galactic core; remaining clusters ring around it,
+// spaced so clusters don't overlap either.
+clusters.sort((a, b) => b.footprint - a.footprint);
+const clusterCenters: Array<[number, number]> = [[0, 0]];
+const ringClusters = clusters.slice(1);
+if (ringClusters.length > 0) {
+  const maxOuterFp = Math.max(...ringClusters.map((c) => c.footprint));
+  const M = ringClusters.length;
+  const RR1 = clusters[0].footprint + maxOuterFp + GAP_CL; // clear the core cluster
+  const RR2 = M > 1 ? (maxOuterFp + GAP_CL / 2) / Math.sin(Math.PI / M) : 0; // clear neighbours
+  const RR = Math.max(RR1, RR2);
+  for (let j = 0; j < M; j++) {
+    const a = (j * 2 * Math.PI) / M + 0.7;
+    clusterCenters.push([Math.cos(a) * RR, Math.sin(a) * RR]);
+  }
+}
+
+clusters.forEach((c, ci) => {
+  const [cx, cz] = clusterCenters[ci];
+  for (const { d, lx, lz } of c.locals) {
+    const rng = mulberry32(hashString(d.id));
+    const y = (rng() - 0.5) * 60; // gentle vertical scatter for depth
+    domainPositions[d.id] = new THREE.Vector3(cx + lx, y, cz + lz);
+  }
+});
+
+galaxyData.domains.forEach((d) => {
   // Sun size encodes the breadth of the body of work in that domain — i.e. how
   // many papers orbit it — rather than citation count.
-  const sunRadius = Math.max(8, Math.sqrt(d.paperCount) * 2.6);
+  const sunRadius = sunRadiusFor(d.paperCount);
   sunRadii[d.id] = sunRadius;
 
   const papers = [...(papersByDomain[d.id] || [])].sort((a, b) => b.relevance - a.relevance);

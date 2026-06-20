@@ -7,7 +7,7 @@ import { FilteredPapersPanel } from "./FilteredPapersPanel";
 import { TourOverlay } from "./TourOverlay";
 import { FlyHud } from "./FlyHud";
 import { galaxyData } from "@/data/galaxy";
-import { Compass, Rewind, Info, X, Sun, Globe2, Moon, Orbit } from "lucide-react";
+import { Compass, Rewind, Info, X, Sun, Globe2, Moon, Orbit, Network } from "lucide-react";
 import { useState, useEffect } from "react";
 
 export function Overlay() {
@@ -132,6 +132,11 @@ const LEGEND = [
     icon: Orbit,
     title: "Orbits show relevance",
     body: "A planet's distance from its sun reflects how central the paper is to that domain.",
+  },
+  {
+    icon: Network,
+    title: "Nearby suns are related",
+    body: "Solar systems are grouped by broad research field, so suns clustered together belong to the same area of science — while distant clusters are different fields entirely.",
   },
 ];
 
