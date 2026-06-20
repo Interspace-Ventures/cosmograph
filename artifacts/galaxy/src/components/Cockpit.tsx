@@ -10,7 +10,13 @@ interface WarpLine {
   hue: string;
 }
 
-export function Cockpit({ warpRef }: { warpRef: RefObject<HTMLDivElement | null> }) {
+export function Cockpit({
+  warpRef,
+  className = "z-40",
+}: {
+  warpRef: RefObject<HTMLDivElement | null>;
+  className?: string;
+}) {
   const lines = useMemo<WarpLine[]>(
     () =>
       Array.from({ length: 60 }).map((_, i) => ({
@@ -24,7 +30,7 @@ export function Cockpit({ warpRef }: { warpRef: RefObject<HTMLDivElement | null>
   );
 
   return (
-    <div className="absolute inset-0 z-40 overflow-hidden pointer-events-none font-mono">
+    <div className={`absolute inset-0 overflow-hidden pointer-events-none font-mono ${className}`}>
       {/* Warp streaks emanating from the vanishing point */}
       <div
         ref={warpRef}

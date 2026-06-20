@@ -1,12 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Move3d } from "lucide-react";
 import { useAppState } from "@/lib/store";
+import { Cockpit } from "./Cockpit";
 
 export function FlyHud() {
   const { cameraMode, tourActive, introFinished } = useAppState();
   const active = introFinished && !tourActive && cameraMode === "spaceship";
   const [showHint, setShowHint] = useState(false);
+  const warpRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!active) return;
@@ -19,16 +21,9 @@ export function FlyHud() {
 
   return (
     <>
-      <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
-        <div className="relative h-8 w-8 opacity-70">
-          <div className="absolute inset-0 rounded-full border border-accent/40" />
-          <div className="absolute left-1/2 top-1/2 h-1 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent" />
-          <div className="absolute left-1/2 top-0 h-2 w-px -translate-x-1/2 bg-accent/50" />
-          <div className="absolute left-1/2 bottom-0 h-2 w-px -translate-x-1/2 bg-accent/50" />
-          <div className="absolute top-1/2 left-0 h-px w-2 -translate-y-1/2 bg-accent/50" />
-          <div className="absolute top-1/2 right-0 h-px w-2 -translate-y-1/2 bg-accent/50" />
-        </div>
-      </div>
+      {/* Cockpit canopy sits behind the interactive UI (-z-10) but above the
+          3D canvas, framing the fly view with its reticle, vignette and console. */}
+      <Cockpit warpRef={warpRef} className="-z-10" />
 
       <AnimatePresence>
         {showHint && (
