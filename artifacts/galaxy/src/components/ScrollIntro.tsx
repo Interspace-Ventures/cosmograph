@@ -191,6 +191,14 @@ export function ScrollIntro() {
             exit={{ opacity: 0 }}
             transition={{ duration: 1.4 }}
           >
+            <motion.p
+              className="mb-3 font-mono text-xs uppercase tracking-[0.4em] text-ink-dim md:text-sm"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 1.4, ease: "easeOut" }}
+            >
+              Welcome to
+            </motion.p>
             <motion.h1
               className="mb-4 font-title text-7xl font-medium italic tracking-tight text-ink md:text-9xl"
               initial={{ opacity: 0, y: 20, filter: "blur(10px)" }}
@@ -209,7 +217,7 @@ export function ScrollIntro() {
                 A Journey of Scientific Exploration
               </p>
               <p className="font-mono text-base tracking-widest text-ink-dim md:text-xl">
-                {galaxyData.author.name}
+                by {galaxyData.author.name}
               </p>
             </motion.div>
 
