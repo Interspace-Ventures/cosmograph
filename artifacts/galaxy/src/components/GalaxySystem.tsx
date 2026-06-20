@@ -21,6 +21,8 @@ const PLANET_TEXTURES = [
 ];
 const EARTH_IDX = 2;
 const SATURN_IDX = 5;
+const URANUS_IDX = 6;
+const NEPTUNE_IDX = 7;
 // Rocky bodies get fake relief by reusing the colour map as a bump map.
 const ROCKY = new Set([0, 1, 3, 8]);
 // Gas giants stay smooth (atmospheric banding, no terrain).
@@ -60,6 +62,72 @@ function glowTexture(): THREE.Texture | null {
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   _glowTex = t;
+  return t;
+}
+
+// Real Uranus/Neptune photos are nearly featureless, so the shipped maps read as
+// flat untextured spheres. We synthesize banded gas-giant detail deterministically
+// on a canvas (no GLSL, headless-safe) so every planet visibly reads as textured.
+function gasGiantTexture(palette: string[], seed: number): THREE.Texture | null {
+  if (typeof document === "undefined") return null;
+  const w = 1024;
+  const h = 512;
+  const c = document.createElement("canvas");
+  c.width = w;
+  c.height = h;
+  const ctx = c.getContext("2d");
+  if (!ctx) return null;
+  const rng = mulberry32(seed);
+
+  // Base vertical gradient through the palette.
+  const g = ctx.createLinearGradient(0, 0, 0, h);
+  palette.forEach((col, i) => g.addColorStop(i / (palette.length - 1), col));
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, w, h);
+
+  // Wavy latitudinal bands (alternating lighten/darken) for atmospheric flow.
+  const nBands = 28;
+  for (let b = 0; b < nBands; b++) {
+    const yc = (b / nBands) * h + (rng() - 0.5) * 6;
+    const bh = (h / nBands) * (0.55 + rng() * 1.0);
+    const lighten = rng() > 0.5;
+    ctx.globalAlpha = 0.12 + rng() * 0.2;
+    ctx.fillStyle = lighten ? "rgb(255,255,255)" : "rgb(0,0,0)";
+    const amp = 3 + rng() * 9;
+    const freq = 1 + rng() * 3;
+    const phase = rng() * Math.PI * 2;
+    ctx.beginPath();
+    for (let x = 0; x <= w; x += 8) {
+      const yy = yc + Math.sin((x / w) * Math.PI * 2 * freq + phase) * amp;
+      x === 0 ? ctx.moveTo(x, yy) : ctx.lineTo(x, yy);
+    }
+    for (let x = w; x >= 0; x -= 8) {
+      const yy = yc + bh + Math.sin((x / w) * Math.PI * 2 * freq + phase + 1.3) * amp;
+      ctx.lineTo(x, yy);
+    }
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // A few oval storms for life.
+  const storms = 3 + Math.floor(rng() * 3);
+  for (let s = 0; s < storms; s++) {
+    const sx = rng() * w;
+    const sy = h * (0.28 + rng() * 0.44);
+    const rx = 16 + rng() * 42;
+    const ry = 7 + rng() * 15;
+    ctx.globalAlpha = 0.2 + rng() * 0.22;
+    ctx.fillStyle = rng() > 0.5 ? "rgba(255,255,255,0.85)" : "rgba(0,0,0,0.5)";
+    ctx.beginPath();
+    ctx.ellipse(sx, sy, rx, ry, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = THREE.RepeatWrapping;
+  t.anisotropy = 4;
   return t;
 }
 
@@ -218,6 +286,17 @@ export function GalaxySystem() {
     if (extra.earthNormal) extra.earthNormal.colorSpace = THREE.NoColorSpace;
   }, [planetTex, extra]);
 
+  // Swap the near-blank Uranus/Neptune maps for richly banded procedural ones so
+  // every planet shows surface detail (the shipped photos are nearly featureless).
+  const planetTexFinal = useMemo(() => {
+    const arr = [...planetTex];
+    const uranus = gasGiantTexture(["#d6f0f4", "#a9dde6", "#dcf2f5", "#9ed3dd", "#c2eaef"], 71);
+    const neptune = gasGiantTexture(["#4f7ce4", "#2f5bc4", "#5d88ec", "#23459e", "#3e6cd6"], 131);
+    if (uranus) arr[URANUS_IDX] = uranus;
+    if (neptune) arr[NEPTUNE_IDX] = neptune;
+    return arr;
+  }, [planetTex]);
+
   useFrame((state) => {
     const time = state.clock.elapsedTime;
     for (const id in planetRefs) {
@@ -242,7 +321,7 @@ export function GalaxySystem() {
           position={domainPositions[domain.id]}
           sunRadius={sunRadii[domain.id]}
           sunTex={extra.sun}
-          planetTex={planetTex}
+          planetTex={planetTexFinal}
           earthNormalTex={extra.earthNormal}
           earthCloudsTex={extra.earthClouds}
           moonTex={extra.moon}
@@ -530,9 +609,9 @@ const PlanetSystem = React.memo(function PlanetSystem({
           map={tex}
           normalMap={isEarth ? earthNormalTex : undefined}
           normalScale={isEarth ? new THREE.Vector2(0.85, 0.85) : undefined}
-          bumpMap={isRocky ? tex : undefined}
-          bumpScale={isRocky ? 0.04 : 0}
-          roughness={isGas ? 0.55 : 0.92}
+          bumpMap={isRocky || isGas ? tex : undefined}
+          bumpScale={isGas ? 0.05 : isRocky ? 0.04 : 0}
+          roughness={isGas ? 0.72 : 0.92}
           metalness={0.0}
           emissive={color}
           emissiveIntensity={highlighted ? 0.5 : 0.05}
