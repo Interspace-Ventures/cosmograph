@@ -12,6 +12,12 @@ import { tourStops } from "@/lib/tour";
 const HOME_POS = new THREE.Vector3(0, 430, 1120);
 export const INTRO_START = new THREE.Vector3(0, 2600, 13000);
 
+// Where the spaceship "dives" to when entering Fly mode: low in the galactic
+// plane, just outside the core, so the perspective flips from a distant god
+// view to being immersed among the stars looking inward.
+const FLY_START = new THREE.Vector3(0, 70, 780);
+const FLY_ENTER_DUR = 1.4;
+
 function easeInOutCubic(t: number): number {
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 }
@@ -48,9 +54,8 @@ export function CameraController() {
     }
   }, [introFinished]);
 
-  const keys = useRef({ forward: false, backward: false, left: false, right: false });
+  const keys = useRef({ forward: false, backward: false, left: false, right: false, up: false, down: false });
   const velocity = useRef(new THREE.Vector3());
-  const direction = useRef(new THREE.Vector3());
 
   // Drag-to-look orientation for fly mode (no pointer lock, cursor stays visible).
   const yaw = useRef(0);
@@ -58,13 +63,27 @@ export function CameraController() {
   const dragging = useRef(false);
   const last = useRef({ x: 0, y: 0 });
 
-  // Seed look angles from the current camera orientation when entering fly mode.
+  // Cinematic dive-in: when entering Fly mode, remember where we came from and
+  // animate down into the galactic plane to a first-person spaceship vantage.
+  const flyEntering = useRef(false);
+  const flyElapsed = useRef(0);
+  const flyFromPos = useRef(new THREE.Vector3());
+  const flyFromQuat = useRef(new THREE.Quaternion());
+  const flyTargetQuat = useRef(new THREE.Quaternion());
+  const roll = useRef(0);
+
   useEffect(() => {
     if (cameraMode !== "spaceship") return;
-    const e = new THREE.Euler().setFromQuaternion(camera.quaternion, "YXZ");
-    yaw.current = e.y;
-    pitch.current = e.x;
+    flyEntering.current = true;
+    flyElapsed.current = 0;
+    flyFromPos.current.copy(camera.position);
+    flyFromQuat.current.copy(camera.quaternion);
+    // Target orientation: look from the dive vantage toward the galactic core.
+    const m = new THREE.Matrix4().lookAt(FLY_START, new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 1, 0));
+    flyTargetQuat.current.setFromRotationMatrix(m);
     velocity.current.set(0, 0, 0);
+    roll.current = 0;
+    keys.current = { forward: false, backward: false, left: false, right: false, up: false, down: false };
   }, [cameraMode, camera]);
 
   useEffect(() => {
@@ -83,6 +102,11 @@ export function CameraController() {
         case "KeyS": keys.current.backward = true; break;
         case "ArrowRight":
         case "KeyD": keys.current.right = true; break;
+        case "KeyE":
+        case "Space": keys.current.up = true; e.preventDefault(); break;
+        case "KeyQ":
+        case "ShiftLeft":
+        case "ShiftRight": keys.current.down = true; break;
       }
     };
     const handleKeyUp = (e: KeyboardEvent) => {
@@ -96,13 +120,25 @@ export function CameraController() {
         case "KeyS": keys.current.backward = false; break;
         case "ArrowRight":
         case "KeyD": keys.current.right = false; break;
+        case "KeyE":
+        case "Space": keys.current.up = false; break;
+        case "KeyQ":
+        case "ShiftLeft":
+        case "ShiftRight": keys.current.down = false; break;
       }
+    };
+    // Release all thrust if the window loses focus mid-press (otherwise a key
+    // held during an alt-tab would be stuck on).
+    const releaseAll = () => {
+      keys.current = { forward: false, backward: false, left: false, right: false, up: false, down: false };
     };
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("keyup", handleKeyUp);
+    window.addEventListener("blur", releaseAll);
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
+      window.removeEventListener("blur", releaseAll);
     };
   }, [cameraMode]);
 
@@ -240,24 +276,50 @@ export function CameraController() {
       }
       if (orbit) orbit.update();
     } else if (cameraMode === "spaceship") {
-      // Apply drag-look orientation.
+      // Cinematic dive-in: sweep from the prior view down into the plane before
+      // handing control to the player.
+      if (flyEntering.current) {
+        flyElapsed.current += delta;
+        const t = THREE.MathUtils.clamp(flyElapsed.current / FLY_ENTER_DUR, 0, 1);
+        const e = easeInOutCubic(t);
+        state.camera.position.copy(flyFromPos.current).lerp(FLY_START, e);
+        state.camera.quaternion.copy(flyFromQuat.current).slerp(flyTargetQuat.current, e);
+        if (t >= 1) {
+          flyEntering.current = false;
+          const eu = new THREE.Euler().setFromQuaternion(state.camera.quaternion, "YXZ");
+          yaw.current = eu.y;
+          pitch.current = eu.x;
+        }
+        return;
+      }
+
+      // Bank slightly into strafes for a spaceship feel, then apply look angles.
+      const strafe = Number(keys.current.right) - Number(keys.current.left);
+      roll.current = THREE.MathUtils.lerp(roll.current, -strafe * 0.22, Math.min(1, delta * 4));
       state.camera.quaternion.setFromEuler(
-        new THREE.Euler(pitch.current, yaw.current, 0, "YXZ"),
+        new THREE.Euler(pitch.current, yaw.current, roll.current, "YXZ"),
       );
 
-      const speed = 600.0 * delta;
+      // Momentum-based 6DOF flight. Forward/strafe follow the look direction;
+      // vertical uses world up so ascend/descend stay intuitive while pitched.
+      const accel = 1300 * delta;
+      const maxSpeed = 760;
 
-      direction.current.z = Number(keys.current.forward) - Number(keys.current.backward);
-      direction.current.x = Number(keys.current.right) - Number(keys.current.left);
-      direction.current.normalize();
+      const move = new THREE.Vector3(
+        Number(keys.current.right) - Number(keys.current.left),
+        0,
+        Number(keys.current.backward) - Number(keys.current.forward),
+      );
+      if (move.lengthSq() > 0) {
+        move.normalize().applyQuaternion(state.camera.quaternion);
+        velocity.current.addScaledVector(move, accel);
+      }
+      const vertical = Number(keys.current.up) - Number(keys.current.down);
+      if (vertical !== 0) velocity.current.y += vertical * accel;
 
-      if (keys.current.forward || keys.current.backward) velocity.current.z -= direction.current.z * speed;
-      if (keys.current.left || keys.current.right) velocity.current.x += direction.current.x * speed;
-
-      state.camera.translateZ(velocity.current.z);
-      state.camera.translateX(velocity.current.x);
-
-      velocity.current.multiplyScalar(0.9);
+      if (velocity.current.length() > maxSpeed) velocity.current.setLength(maxSpeed);
+      state.camera.position.addScaledVector(velocity.current, delta);
+      velocity.current.multiplyScalar(1 - Math.min(1, delta * 2.4));
     }
   });
 
