@@ -221,7 +221,8 @@ export function ScrollIntro() {
             >
               <button
                 onClick={() => (reduced ? finishExplore() : setIntroStarted(true))}
-                className="glass-panel glass-panel-interactive bg-accent px-10 py-3.5 font-display text-sm uppercase tracking-[0.25em] text-accent-foreground"
+                style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
+                className="glass-panel glass-panel-interactive px-10 py-3.5 font-display text-sm font-semibold uppercase tracking-[0.25em]"
               >
                 {reduced ? "Enter the Galaxy" : "Ad Astra"}
               </button>
@@ -309,7 +310,8 @@ export function ScrollIntro() {
             <div className="pointer-events-auto flex flex-col items-center gap-4 sm:flex-row">
               <button
                 onClick={finishExplore}
-                className="glass-panel glass-panel-interactive bg-accent px-9 py-3.5 font-display text-sm uppercase tracking-[0.2em] text-accent-foreground"
+                style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
+                className="glass-panel glass-panel-interactive px-9 py-3.5 font-display text-sm font-semibold uppercase tracking-[0.2em]"
               >
                 Explore Freely
               </button>
