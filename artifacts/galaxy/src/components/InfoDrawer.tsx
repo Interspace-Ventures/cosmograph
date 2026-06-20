@@ -139,6 +139,11 @@ export function InfoDrawer() {
               OpenAlex — {galaxyData.papers.length.toLocaleString()} papers across{" "}
               {galaxyData.domains.length} domains.
             </p>
+            <p className="mt-3 font-mono text-[11px] leading-relaxed text-ink-dim">
+              Live presence is anonymous and ephemeral: while you explore, only your camera position
+              is shared so others can see your wisp and the headcount. Nothing is stored, and it all
+              vanishes the moment you leave.
+            </p>
             <p className="mt-4 font-mono text-[10px] leading-relaxed text-ink-dim/70">
               v{SITE.version} · <span className="text-ink-dim">{SITE.domain}</span> is an{" "}
               <a

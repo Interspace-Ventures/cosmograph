@@ -9,6 +9,8 @@ import { FlyHud } from "./FlyHud";
 import { Footer } from "./Footer";
 import { InfoDrawer } from "./InfoDrawer";
 import { galaxyData } from "@/data/galaxy";
+import { presence } from "@/lib/presence";
+import { useSyncExternalStore } from "react";
 import { Compass, Rewind, Info } from "lucide-react";
 
 export function Overlay() {
@@ -96,6 +98,7 @@ function Header() {
         <p className="pointer-events-none text-ink-dim font-mono text-[11px] mt-1 uppercase tracking-widest">
           A Journey of Scientific Exploration · {galaxyData.author.name}
         </p>
+        <LivePresence />
       </div>
       <div className="flex items-center gap-2">
         <button
@@ -113,6 +116,20 @@ function Header() {
           Take the Tour
         </button>
       </div>
+    </div>
+  );
+}
+
+function LivePresence() {
+  const count = useSyncExternalStore(presence.subscribe, presence.getCount, () => 0);
+  if (count < 1) return null;
+  return (
+    <div className="pointer-events-none mt-2 inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-ink-dim">
+      <span className="relative flex h-1.5 w-1.5">
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75" />
+        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-accent" />
+      </span>
+      <span className="text-ink">{count}</span> galacticon{count === 1 ? "" : "s"} streaming now
     </div>
   );
 }

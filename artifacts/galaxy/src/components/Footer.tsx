@@ -1,8 +1,11 @@
+import { Github, Star } from "lucide-react";
 import { SITE } from "@/config/site";
 import { useAppState } from "@/lib/store";
+import { useGithubStars, formatStars } from "@/lib/useGithubStars";
 
 export function Footer() {
   const { setInfoOpen } = useAppState();
+  const { stars, url } = useGithubStars();
 
   return (
     <footer className="absolute inset-x-0 bottom-0 z-20 flex justify-center px-4 pb-1.5 pt-1 pointer-events-none">
@@ -30,6 +33,22 @@ export function Footer() {
           </a>
           .
         </span>
+        <span className="text-ink-dim/30">·</span>
+        <a
+          href={url ?? SITE.github.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="pointer-events-auto inline-flex items-center gap-1 uppercase tracking-widest transition-colors hover:text-ink"
+        >
+          <Github size={11} />
+          GitHub
+          {stars !== null && (
+            <span className="inline-flex items-center gap-0.5 text-accent">
+              <Star size={9} className="fill-current" />
+              {formatStars(stars)}
+            </span>
+          )}
+        </a>
         <span className="text-ink-dim/30">·</span>
         <button
           onClick={() => setInfoOpen(true)}

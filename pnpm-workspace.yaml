@@ -62,7 +62,7 @@ catalog:
   tailwind-merge: ^3.3.1
   tailwindcss: ^4.1.14
   tsx: ^4.21.0
-  vite: ^7.3.2
+  vite: ^7.3.5
   wouter: ^3.3.5
   zod: ^3.25.76
 
@@ -158,3 +158,9 @@ overrides:
   # drizzle-kit uses esbuild internally on an older version that's vulnerable, this overrides it
   "@esbuild-kit/esm-loader": "npm:tsx@^4.21.0"
   esbuild: "0.27.3"
+  # Security advisory patch bumps for transitive build/dev dependencies (all
+  # same-major, non-breaking). Clears GHSA findings surfaced by the audit.
+  "@babel/core": "^7.29.6"
+  "js-yaml": "^4.2.0"
+  "markdown-it": "^14.2.0"
+  "qs": "^6.15.2"

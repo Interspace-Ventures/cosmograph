@@ -5,6 +5,7 @@ import { EffectComposer, Bloom } from "@react-three/postprocessing";
 import * as THREE from "three";
 import { GalaxySystem } from "./GalaxySystem";
 import { CameraController, INTRO_START } from "./CameraControls";
+import { PresenceBroadcaster, PresenceWisps } from "./Presence";
 import { useAppState } from "@/lib/store";
 
 function Background() {
@@ -19,7 +20,7 @@ function Background() {
 }
 
 export function Scene() {
-  const { setSelectedObject } = useAppState();
+  const { setSelectedObject, introFinished } = useAppState();
 
   return (
     <div className="absolute inset-0 z-0">
@@ -46,6 +47,13 @@ export function Scene() {
 
           <GalaxySystem />
           <CameraController />
+
+          {introFinished && (
+            <>
+              <PresenceBroadcaster />
+              <PresenceWisps />
+            </>
+          )}
 
           <EffectComposer enableNormalPass={false}>
             <Bloom

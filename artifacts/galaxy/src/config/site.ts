@@ -6,4 +6,8 @@ export const SITE = {
     url: "https://interspace.ventures",
   },
   replitUrl: "https://replit.com",
+  github: {
+    repo: "heyinterspace/galactic",
+    url: "https://github.com/heyinterspace/galactic",
+  },
 } as const;

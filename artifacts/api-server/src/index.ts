@@ -1,4 +1,6 @@
+import { createServer } from "node:http";
 import app from "./app";
+import { attachPresence } from "./presence/server";
 import { logger } from "./lib/logger";
 
 const rawPort = process.env["PORT"];
@@ -15,11 +17,14 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-app.listen(port, (err) => {
-  if (err) {
-    logger.error({ err }, "Error listening on port");
-    process.exit(1);
-  }
+const server = createServer(app);
+attachPresence(server);
 
+server.listen(port, () => {
   logger.info({ port }, "Server listening");
+});
+
+server.on("error", (err) => {
+  logger.error({ err }, "Error listening on port");
+  process.exit(1);
 });
