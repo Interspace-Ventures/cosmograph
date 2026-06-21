@@ -61,7 +61,7 @@ export function Overlay() {
               <AnimatePresence>
                 {selectedObject && (
                   <div
-                    className={`absolute z-30 inset-x-3 bottom-24 max-h-[38vh] md:inset-x-auto md:bottom-auto md:top-28 md:left-5 md:w-[min(384px,calc(100vw-2.5rem))] md:max-h-[calc(100vh-13rem)] md:!block overflow-y-auto custom-scrollbar pointer-events-auto ${
+                    className={`absolute z-30 inset-x-3 bottom-24 max-h-[38vh] md:inset-x-auto md:bottom-auto md:top-36 md:left-5 md:w-[min(384px,calc(100vw-2.5rem))] md:max-h-[calc(100vh-15rem)] md:!block overflow-y-auto custom-scrollbar pointer-events-auto ${
                       searchActive ? "hidden" : "block"
                     }`}
                   >
@@ -84,15 +84,36 @@ export function Overlay() {
 }
 
 function Header() {
+  const { stats } = galaxyData;
   return (
     <div className="absolute top-0 left-0 p-6">
       <h1 className="pointer-events-none text-3xl font-title font-bold tracking-tight text-ink">Galactic</h1>
       <p className="pointer-events-none text-ink-dim font-mono text-[11px] mt-1 uppercase tracking-widest">
         A Journey of Scientific Exploration · {galaxyData.author.name}
       </p>
+      <div className="pointer-events-none mt-3 flex flex-wrap gap-x-4 gap-y-1">
+        <HeaderStat label="Papers" value={stats.totalPapers.toLocaleString()} />
+        <HeaderStat label="Citations" value={stats.totalCitations.toLocaleString()} />
+        <HeaderStat label="Co-authors" value={stats.uniqueCoAuthors.toLocaleString()} />
+        <HeaderStat label="Years" value={String(stats.yearsActive)} />
+        <HeaderStat label="Words" value={`${compactNumber(stats.estimatedWords)}+`} />
+      </div>
       <LivePresence />
     </div>
   );
+}
+
+function HeaderStat({ label, value }: { label: string; value: string }) {
+  return (
+    <span className="inline-flex items-baseline gap-1 font-mono text-[11px] text-ink-dim">
+      <span className="text-ink">{value}</span>
+      <span className="text-[10px] uppercase tracking-widest">{label}</span>
+    </span>
+  );
+}
+
+function compactNumber(n: number): string {
+  return new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 }).format(n);
 }
 
 function LivePresence() {

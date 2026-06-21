@@ -37,10 +37,6 @@ interface SearchResult {
 
 type SearchIndexItem = SearchResult & { haystack: string };
 
-function compactNumber(n: number): string {
-  return new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 }).format(n);
-}
-
 export function Sidebar() {
   const {
     setCameraMode,
@@ -58,10 +54,8 @@ export function Sidebar() {
 
   const [open, setOpen] = useState(true);
   const [query, setQuery] = useState("");
-  const [showFilters, setShowFilters] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const focusOnOpen = useRef(false);
-  const { stats } = galaxyData;
 
   // Built from live galaxyData at mount; the whole Sidebar remounts on a dataset
   // swap (key={datasetVersion}), so these stay in sync with the active scientist.
@@ -154,7 +148,6 @@ export function Sidebar() {
     setOpen(true);
   };
   const expandWithFilters = () => {
-    setShowFilters(true);
     setOpen(true);
   };
 
@@ -187,224 +180,201 @@ export function Sidebar() {
 
             {/* Scroll body */}
             <div className="flex flex-col gap-4 overflow-y-auto custom-scrollbar p-3">
+              {/* Share */}
+              <div className="flex flex-col gap-2">
+                <SectionLabel>Share</SectionLabel>
+                <div className="flex items-center gap-1.5">
+                  <GitHubLink />
+                  <ShareButton />
+                </div>
+              </div>
+
+              {/* Navigate */}
+              <div className="flex flex-col gap-1.5 border-t-2 border-edge pt-3">
+                <SectionLabel>Navigate</SectionLabel>
+                <ConsoleButton
+                  onClick={() => setInfoOpen(true)}
+                  icon={<Info size={14} />}
+                  label="Info"
+                />
+                <ConsoleButton
+                  active={cameraMode === "god"}
+                  onClick={() => setCameraMode("god")}
+                  icon={<Orbit size={14} />}
+                  label="Orbit"
+                />
+                <ConsoleButton
+                  active={cameraMode === "spaceship"}
+                  onClick={() => setCameraMode("spaceship")}
+                  icon={<Compass size={14} />}
+                  label="Fly"
+                />
+                <ConsoleButton
+                  onClick={startTour}
+                  icon={<Map size={14} />}
+                  label="Tour"
+                />
+                <ConsoleButton
+                  onClick={replayIntro}
+                  icon={<Rewind size={14} />}
+                  label="Replay"
+                />
+              </div>
+
               {/* Search */}
-              <div>
-                <div className="flex items-center gap-2 border-2 border-edge bg-white/5 px-2 focus-within:border-accent">
-                  <Search size={15} className="shrink-0 text-ink-dim" />
-                  <input
-                    ref={inputRef}
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Search papers, domains…"
-                    className="min-w-0 flex-1 bg-transparent py-2 text-sm text-ink placeholder:text-ink-dim/70 focus:outline-none"
-                  />
-                  {query && (
-                    <button
-                      onClick={() => setQuery("")}
-                      className="shrink-0 text-ink-dim hover:text-ink"
-                      aria-label="Clear search"
-                    >
-                      <X size={14} />
-                    </button>
+              <div className="flex flex-col gap-2 border-t-2 border-edge pt-3">
+                <SectionLabel>Search</SectionLabel>
+                <div>
+                  <div className="flex items-center gap-2 border-2 border-edge bg-white/5 px-2 focus-within:border-accent">
+                    <Search size={15} className="shrink-0 text-ink-dim" />
+                    <input
+                      ref={inputRef}
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder="Search papers, domains…"
+                      className="min-w-0 flex-1 bg-transparent py-2 text-sm text-ink placeholder:text-ink-dim/70 focus:outline-none"
+                    />
+                    {query && (
+                      <button
+                        onClick={() => setQuery("")}
+                        className="shrink-0 text-ink-dim hover:text-ink"
+                        aria-label="Clear search"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+                  {results.length > 0 && (
+                    <div className="mt-1.5 max-h-[34vh] overflow-y-auto custom-scrollbar border-2 border-edge">
+                      {results.map((r) => (
+                        <button
+                          key={`${r.type}-${r.id}`}
+                          onClick={() => pick(r)}
+                          className="flex w-full items-center gap-2.5 border-b border-white/8 px-3 py-2.5 text-left transition-colors last:border-0 hover:bg-accent/15"
+                        >
+                          {r.type === "sun" ? (
+                            <Sun size={14} className="shrink-0 text-accent" />
+                          ) : (
+                            <Globe2 size={14} className="shrink-0 text-ink-dim" />
+                          )}
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm text-ink">{r.title}</span>
+                            <span className="block truncate font-mono text-[10px] uppercase tracking-wider text-ink-dim">
+                              {r.subtitle}
+                            </span>
+                          </span>
+                        </button>
+                      ))}
+                    </div>
                   )}
                 </div>
-                {results.length > 0 && (
-                  <div className="mt-1.5 max-h-[34vh] overflow-y-auto custom-scrollbar border-2 border-edge">
-                    {results.map((r) => (
-                      <button
-                        key={`${r.type}-${r.id}`}
-                        onClick={() => pick(r)}
-                        className="flex w-full items-center gap-2.5 border-b border-white/8 px-3 py-2.5 text-left transition-colors last:border-0 hover:bg-accent/15"
-                      >
-                        {r.type === "sun" ? (
-                          <Sun size={14} className="shrink-0 text-accent" />
-                        ) : (
-                          <Globe2 size={14} className="shrink-0 text-ink-dim" />
-                        )}
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm text-ink">{r.title}</span>
-                          <span className="block truncate font-mono text-[10px] uppercase tracking-wider text-ink-dim">
-                            {r.subtitle}
-                          </span>
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                )}
               </div>
 
-              {/* Navigation */}
-              <div className="flex flex-col gap-1.5">
-                <SectionLabel>Navigate</SectionLabel>
-                <div className="grid grid-cols-2 gap-1.5">
-                  <ConsoleButton
-                    active={cameraMode === "god"}
-                    onClick={() => setCameraMode("god")}
-                    icon={<Orbit size={14} />}
-                    label="Orbit"
-                  />
-                  <ConsoleButton
-                    active={cameraMode === "spaceship"}
-                    onClick={() => setCameraMode("spaceship")}
-                    icon={<Compass size={14} />}
-                    label="Fly"
-                  />
-                </div>
-                <div className="grid grid-cols-3 gap-1.5">
-                  <ConsoleButton
-                    onClick={() => setInfoOpen(true)}
-                    icon={<Info size={14} />}
-                    label="Info"
-                  />
-                  <ConsoleButton
-                    onClick={replayIntro}
-                    icon={<Rewind size={14} />}
-                    label="Replay"
-                  />
-                  <ConsoleButton
-                    onClick={startTour}
-                    icon={<Map size={14} />}
-                    label="Tour"
-                  />
-                </div>
-              </div>
-
-              {/* Stats */}
-              <div className="flex flex-col gap-2 border-t-2 border-edge pt-3">
-                <SectionLabel>Corpus</SectionLabel>
-                <div className="grid grid-cols-2 gap-x-3 gap-y-2">
-                  <Stat label="Papers" value={stats.totalPapers.toLocaleString()} />
-                  <Stat label="Citations" value={stats.totalCitations.toLocaleString()} />
-                  <Stat label="Co-authors" value={stats.uniqueCoAuthors.toLocaleString()} />
-                  <Stat label="Years" value={String(stats.yearsActive)} />
-                  <Stat label="Words" value={`${compactNumber(stats.estimatedWords)}+`} />
-                </div>
-              </div>
-
-              {/* Filters */}
-              <div className="flex flex-col gap-2 border-t-2 border-edge pt-3">
-                <button
-                  onClick={() => setShowFilters((s) => !s)}
-                  className="flex items-center justify-between gap-2"
-                >
+              {/* Filter */}
+              <div className="flex flex-col gap-3 border-t-2 border-edge pt-3">
+                <div className="flex items-center justify-between gap-2">
                   <span className="flex items-center gap-2">
                     <Filter
                       size={13}
                       className={filtersActive ? "text-accent" : "text-ink-dim"}
                     />
-                    <span className="font-display text-xs uppercase tracking-wider text-ink">
-                      Filters
-                    </span>
+                    <SectionLabel>Filter</SectionLabel>
                   </span>
                   <span
                     className={`font-mono text-[11px] ${filtersActive ? "text-accent" : "text-ink-dim"}`}
                   >
                     {filtersActive ? `${matchCount}/${totalPapers}` : `${totalPapers} papers`}
                   </span>
-                </button>
+                </div>
 
-                <AnimatePresence initial={false}>
-                  {showFilters && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.18 }}
-                      className="overflow-hidden"
+                <div>
+                  <span className="mb-1.5 block font-mono text-[11px] uppercase tracking-widest text-ink-dim">
+                    Year Range
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      aria-label="Start year"
+                      min={yearRange.min}
+                      max={maxYear}
+                      value={minYear}
+                      onChange={(e) => {
+                        const v = parseInt(e.target.value, 10);
+                        if (Number.isNaN(v)) return;
+                        const c = Math.min(Math.max(v, yearRange.min), maxYear);
+                        setFilters({ minYear: c <= yearRange.min ? null : c });
+                      }}
+                      className={`w-[4.5rem] ${numInputCls}`}
+                    />
+                    <span className="font-mono text-xs text-ink-dim">–</span>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      aria-label="End year"
+                      min={minYear}
+                      max={yearRange.max}
+                      value={maxYear}
+                      onChange={(e) => {
+                        const v = parseInt(e.target.value, 10);
+                        if (Number.isNaN(v)) return;
+                        const c = Math.max(Math.min(v, yearRange.max), minYear);
+                        setFilters({ maxYear: c >= yearRange.max ? null : c });
+                      }}
+                      className={`w-[4.5rem] ${numInputCls}`}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <span className="mb-1.5 block font-mono text-[11px] uppercase tracking-widest text-ink-dim">
+                    Min Citations
+                  </span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    aria-label="Minimum citations"
+                    min={0}
+                    max={maxCitations}
+                    value={filters.minCitations}
+                    onChange={(e) => {
+                      const v = parseInt(e.target.value, 10);
+                      setFilters({
+                        minCitations: Number.isNaN(v)
+                          ? 0
+                          : Math.min(Math.max(v, 0), maxCitations),
+                      });
+                    }}
+                    className={`w-20 ${numInputCls}`}
+                  />
+                </div>
+
+                <div>
+                  <span className="mb-1.5 block font-mono text-[11px] uppercase tracking-widest text-ink-dim">
+                    Domain
+                  </span>
+                  <div className="flex max-h-[6.5rem] flex-wrap gap-1.5 overflow-y-auto custom-scrollbar">
+                    <Chip
+                      active={filters.domainId === null}
+                      onClick={() => setFilters({ domainId: null })}
                     >
-                      <div className="flex flex-col gap-4 pt-1">
-                        <div>
-                          <span className="mb-1.5 block font-mono text-[11px] uppercase tracking-widest text-ink-dim">
-                            Year Range
-                          </span>
-                          <div className="flex items-center gap-1.5">
-                            <input
-                              type="number"
-                              inputMode="numeric"
-                              aria-label="Start year"
-                              min={yearRange.min}
-                              max={maxYear}
-                              value={minYear}
-                              onChange={(e) => {
-                                const v = parseInt(e.target.value, 10);
-                                if (Number.isNaN(v)) return;
-                                const c = Math.min(Math.max(v, yearRange.min), maxYear);
-                                setFilters({ minYear: c <= yearRange.min ? null : c });
-                              }}
-                              className={`w-[4.5rem] ${numInputCls}`}
-                            />
-                            <span className="font-mono text-xs text-ink-dim">–</span>
-                            <input
-                              type="number"
-                              inputMode="numeric"
-                              aria-label="End year"
-                              min={minYear}
-                              max={yearRange.max}
-                              value={maxYear}
-                              onChange={(e) => {
-                                const v = parseInt(e.target.value, 10);
-                                if (Number.isNaN(v)) return;
-                                const c = Math.max(Math.min(v, yearRange.max), minYear);
-                                setFilters({ maxYear: c >= yearRange.max ? null : c });
-                              }}
-                              className={`w-[4.5rem] ${numInputCls}`}
-                            />
-                          </div>
-                        </div>
-
-                        <div>
-                          <span className="mb-1.5 block font-mono text-[11px] uppercase tracking-widest text-ink-dim">
-                            Min Citations
-                          </span>
-                          <input
-                            type="number"
-                            inputMode="numeric"
-                            aria-label="Minimum citations"
-                            min={0}
-                            max={maxCitations}
-                            value={filters.minCitations}
-                            onChange={(e) => {
-                              const v = parseInt(e.target.value, 10);
-                              setFilters({
-                                minCitations: Number.isNaN(v)
-                                  ? 0
-                                  : Math.min(Math.max(v, 0), maxCitations),
-                              });
-                            }}
-                            className={`w-20 ${numInputCls}`}
-                          />
-                        </div>
-
-                        <div>
-                          <span className="mb-1.5 block font-mono text-[11px] uppercase tracking-widest text-ink-dim">
-                            Domain
-                          </span>
-                          <div className="flex flex-wrap gap-1.5">
-                            <Chip
-                              active={filters.domainId === null}
-                              onClick={() => setFilters({ domainId: null })}
-                            >
-                              All
-                            </Chip>
-                            {galaxyData.domains.map((d) => (
-                              <Chip
-                                key={d.id}
-                                active={filters.domainId === d.id}
-                                onClick={() =>
-                                  setFilters({
-                                    domainId: filters.domainId === d.id ? null : d.id,
-                                  })
-                                }
-                              >
-                                {d.name}
-                              </Chip>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                      All
+                    </Chip>
+                    {galaxyData.domains.map((d) => (
+                      <Chip
+                        key={d.id}
+                        active={filters.domainId === d.id}
+                        onClick={() =>
+                          setFilters({
+                            domainId: filters.domainId === d.id ? null : d.id,
+                          })
+                        }
+                      >
+                        {d.name}
+                      </Chip>
+                    ))}
+                  </div>
+                </div>
 
                 {filtersActive && (
                   <div className="flex flex-col border-2 border-edge">
@@ -471,12 +441,6 @@ export function Sidebar() {
                   </div>
                 )}
               </div>
-
-              {/* Share / repo */}
-              <div className="flex items-center gap-1.5 border-t-2 border-edge pt-3">
-                <ShareButton />
-                <GitHubLink />
-              </div>
             </div>
           </motion.div>
         ) : (
@@ -509,11 +473,11 @@ export function Sidebar() {
             >
               <Compass size={15} />
             </RailButton>
-            <RailButton onClick={replayIntro} label="Replay">
-              <Rewind size={15} />
-            </RailButton>
             <RailButton onClick={startTour} label="Tour">
               <Map size={15} />
+            </RailButton>
+            <RailButton onClick={replayIntro} label="Replay">
+              <Rewind size={15} />
             </RailButton>
             <Divider />
             <RailButton onClick={expandWithSearch} label="Search">
@@ -557,7 +521,7 @@ function ConsoleButton({
       aria-pressed={active}
       title={label}
       style={active ? { background: "var(--accent)" } : undefined}
-      className={`flex items-center justify-center gap-1.5 border-2 border-edge px-2 py-2 text-[11px] font-display uppercase tracking-wider transition-all ${
+      className={`flex w-full items-center gap-2 border-2 border-edge px-3 py-2 text-[11px] font-display uppercase tracking-wider transition-all ${
         active ? "text-accent-foreground" : "bg-white/5 text-ink hover:bg-white/10"
       }`}
     >
@@ -617,16 +581,5 @@ function Chip({
     >
       {children}
     </button>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex flex-col">
-      <span className="font-mono text-sm leading-none text-ink">{value}</span>
-      <span className="mt-1 font-mono text-[9px] uppercase tracking-widest text-ink-dim">
-        {label}
-      </span>
-    </div>
   );
 }
