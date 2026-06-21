@@ -3,22 +3,60 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
-    <title>Galactic</title>
-    <meta name="description" content="Galactic — an explorable 3D map of a lifetime of scientific discovery." />
+    <title>Mahendra S. Rao Research Galaxy | Galactic</title>
+    <meta name="description" content="Explore the lifetime scientific work of Dr. Mahendra S. Rao as an interactive 3D galaxy — 364 papers, 28,860 citations, and 30 years of stem-cell and regenerative medicine research visualized as suns, planets, and moons." />
     <meta name="robots" content="index, follow" />
-    <meta property="og:title" content="Galactic" />
-    <meta property="og:description" content="Galactic — an explorable 3D map of a lifetime of scientific discovery." />
+
     <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://galactic.dad/" />
+    <meta property="og:title" content="Mahendra S. Rao Research Galaxy | Galactic" />
+    <meta property="og:description" content="Explore the lifetime scientific work of Dr. Mahendra S. Rao as an interactive 3D galaxy — 364 papers, 28,860 citations, and 30 years of stem-cell and regenerative medicine research visualized as suns, planets, and moons." />
+    <meta property="og:image" content="https://galactic.dad/opengraph.png" />
+    <meta property="og:image:width" content="1280" />
+    <meta property="og:image:height" content="720" />
+
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Galactic" />
-    <meta name="twitter:description" content="Galactic — an explorable 3D map of a lifetime of scientific discovery." />
+    <meta name="twitter:title" content="Mahendra S. Rao Research Galaxy | Galactic" />
+    <meta name="twitter:description" content="Explore the lifetime scientific work of Dr. Mahendra S. Rao as an interactive 3D galaxy — 364 papers, 28,860 citations, and 30 years of stem-cell and regenerative medicine research visualized as suns, planets, and moons." />
+    <meta name="twitter:image" content="https://galactic.dad/opengraph.png" />
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "ProfilePage",
+      "name": "Galactic — Mahendra S. Rao",
+      "description": "An interactive 3D visualization of the lifetime scientific work of Dr. Mahendra S. Rao, featuring 364 publications and 28,860 citations across stem-cell research and regenerative medicine.",
+      "url": "https://galactic.dad/",
+      "image": "https://galactic.dad/opengraph.png",
+      "mainEntity": {
+        "@type": "Person",
+        "name": "Mahendra S. Rao",
+        "affiliation": {
+          "@type": "Organization",
+          "name": "National Institutes of Health"
+        },
+        "sameAs": "https://openalex.org/A5111365293",
+        "description": "Stem-cell scientist and researcher with an h-index of 90, 364 publications, and 28,860 citations spanning 30 years of active research."
+      }
+    }
+    </script>
+
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <main aria-label="Galactic — Mahendra S. Rao Research Galaxy" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0">
+        <h1>Galactic — Mahendra S. Rao Research Galaxy</h1>
+        <p>Welcome to Galactic: an interactive 3D map of the lifetime scientific work of Dr. Mahendra S. Rao.</p>
+        <p>Dr. Rao is a stem-cell scientist and pioneer in regenerative medicine, affiliated with the National Institutes of Health. His research career spans 30 years (1994–2024), with 364 publications, an h-index of 90, an i10-index of 278, and 28,860 total citations.</p>
+        <p>This galaxy visualization maps research domains as luminous suns, individual papers as orbiting planets (sized by citation count), and co-authors as moons. Explore 12 scientific domains and 1,191 unique collaborators across a 30-year body of work.</p>
+        <p>Navigate using spaceship fly-through mode or god-view orbit mode. Click any planet to read the paper details, or click a sun to explore a research domain.</p>
+        <p>Built with Galactic — an open-source template for visualizing any scientist's lifetime research as an explorable 3D galaxy.</p>
+      </main>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
