@@ -14,6 +14,8 @@ import {
   Map,
   ChevronRight,
   ChevronLeft,
+  ChevronDown,
+  Check,
 } from "lucide-react";
 import { useAppState } from "@/lib/store";
 import {
@@ -54,6 +56,7 @@ export function Sidebar() {
 
   const [open, setOpen] = useState(true);
   const [query, setQuery] = useState("");
+  const [domainMenuOpen, setDomainMenuOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const focusOnOpen = useRef(false);
 
@@ -142,6 +145,23 @@ export function Sidebar() {
     setCameraMode("god");
     setSelectedObject({ type: "planet", id });
   };
+
+  const domainNameById = useMemo<Record<string, string>>(
+    () => Object.fromEntries(galaxyData.domains.map((d) => [d.id, d.name])),
+    [],
+  );
+  const toggleDomain = (id: string) => {
+    const next = new Set(filters.domainIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setFilters({ domainIds: [...next] });
+  };
+  const selectedDomainLabel =
+    filters.domainIds.length === 0
+      ? "All domains"
+      : filters.domainIds.length === 1
+        ? (domainNameById[filters.domainIds[0]] ?? "1 selected")
+        : `${filters.domainIds.length} domains`;
 
   const expandWithSearch = () => {
     focusOnOpen.current = true;
@@ -291,49 +311,8 @@ export function Sidebar() {
                   </span>
                 </div>
 
-                <div>
-                  <span className="mb-1.5 block font-mono text-[11px] uppercase tracking-widest text-ink-dim">
-                    Year Range
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      aria-label="Start year"
-                      min={yearRange.min}
-                      max={maxYear}
-                      value={minYear}
-                      onChange={(e) => {
-                        const v = parseInt(e.target.value, 10);
-                        if (Number.isNaN(v)) return;
-                        const c = Math.min(Math.max(v, yearRange.min), maxYear);
-                        setFilters({ minYear: c <= yearRange.min ? null : c });
-                      }}
-                      className={`w-[4.5rem] ${numInputCls}`}
-                    />
-                    <span className="font-mono text-xs text-ink-dim">–</span>
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      aria-label="End year"
-                      min={minYear}
-                      max={yearRange.max}
-                      value={maxYear}
-                      onChange={(e) => {
-                        const v = parseInt(e.target.value, 10);
-                        if (Number.isNaN(v)) return;
-                        const c = Math.max(Math.min(v, yearRange.max), minYear);
-                        setFilters({ maxYear: c >= yearRange.max ? null : c });
-                      }}
-                      className={`w-[4.5rem] ${numInputCls}`}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <span className="mb-1.5 block font-mono text-[11px] uppercase tracking-widest text-ink-dim">
-                    Min Citations
-                  </span>
+                {/* Citations — single line: [#] Citations */}
+                <div className="flex items-center gap-2">
                   <input
                     type="number"
                     inputMode="numeric"
@@ -351,32 +330,89 @@ export function Sidebar() {
                     }}
                     className={`w-20 ${numInputCls}`}
                   />
+                  <span className="font-mono text-[11px] uppercase tracking-widest text-ink-dim">
+                    Citations
+                  </span>
                 </div>
 
+                {/* Year range — single line: [YYYY] – [YYYY] Year range */}
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    aria-label="Start year"
+                    min={yearRange.min}
+                    max={maxYear}
+                    value={minYear}
+                    onChange={(e) => {
+                      const v = parseInt(e.target.value, 10);
+                      if (Number.isNaN(v)) return;
+                      const c = Math.min(Math.max(v, yearRange.min), maxYear);
+                      setFilters({ minYear: c <= yearRange.min ? null : c });
+                    }}
+                    className={`w-[3.75rem] ${numInputCls}`}
+                  />
+                  <span className="font-mono text-xs text-ink-dim">–</span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    aria-label="End year"
+                    min={minYear}
+                    max={yearRange.max}
+                    value={maxYear}
+                    onChange={(e) => {
+                      const v = parseInt(e.target.value, 10);
+                      if (Number.isNaN(v)) return;
+                      const c = Math.max(Math.min(v, yearRange.max), minYear);
+                      setFilters({ maxYear: c >= yearRange.max ? null : c });
+                    }}
+                    className={`w-[3.75rem] ${numInputCls}`}
+                  />
+                  <span className="font-mono text-[11px] uppercase tracking-widest text-ink-dim">
+                    Year range
+                  </span>
+                </div>
+
+                {/* Domain — multi-select dropdown */}
                 <div>
                   <span className="mb-1.5 block font-mono text-[11px] uppercase tracking-widest text-ink-dim">
                     Domain
                   </span>
-                  <div className="flex max-h-[6.5rem] flex-wrap gap-1.5 overflow-y-auto custom-scrollbar">
-                    <Chip
-                      active={filters.domainId === null}
-                      onClick={() => setFilters({ domainId: null })}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setDomainMenuOpen((o) => !o)}
+                      aria-expanded={domainMenuOpen}
+                      className="flex w-full items-center justify-between gap-2 border-2 border-edge bg-white/5 px-2 py-1.5 text-left text-xs text-ink transition-colors hover:bg-white/10"
                     >
-                      All
-                    </Chip>
-                    {galaxyData.domains.map((d) => (
-                      <Chip
-                        key={d.id}
-                        active={filters.domainId === d.id}
-                        onClick={() =>
-                          setFilters({
-                            domainId: filters.domainId === d.id ? null : d.id,
-                          })
-                        }
-                      >
-                        {d.name}
-                      </Chip>
-                    ))}
+                      <span className="min-w-0 flex-1 truncate">{selectedDomainLabel}</span>
+                      <ChevronDown
+                        size={14}
+                        className={`shrink-0 text-ink-dim transition-transform ${
+                          domainMenuOpen ? "rotate-180" : ""
+                        }`}
+                      />
+                    </button>
+                    {domainMenuOpen && (
+                      <div className="mt-1 max-h-[11rem] overflow-y-auto custom-scrollbar border-2 border-edge bg-black/50">
+                        <DomainOption
+                          checked={filters.domainIds.length === 0}
+                          onClick={() => setFilters({ domainIds: [] })}
+                        >
+                          All domains
+                        </DomainOption>
+                        {galaxyData.domains.map((d) => (
+                          <DomainOption
+                            key={d.id}
+                            checked={filters.domainIds.includes(d.id)}
+                            swatch={getDomainColorStr(domainIndexById[d.id] ?? 0)}
+                            onClick={() => toggleDomain(d.id)}
+                          >
+                            {d.name}
+                          </DomainOption>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -566,24 +602,39 @@ function Divider() {
   return <div className="my-0.5 h-px w-6 bg-edge/60" />;
 }
 
-function Chip({
-  active,
+function DomainOption({
+  checked,
+  swatch,
   onClick,
   children,
 }: {
-  active: boolean;
+  checked: boolean;
+  swatch?: string;
   onClick: () => void;
   children: React.ReactNode;
 }) {
   return (
     <button
       type="button"
+      role="menuitemcheckbox"
+      aria-checked={checked}
       onClick={onClick}
-      className={`border-2 border-edge px-3 py-1.5 font-mono text-[11px] transition-all ${
-        active ? "bg-accent text-accent-foreground" : "bg-white/5 text-ink hover:bg-white/10"
-      }`}
+      className="flex w-full items-center gap-2 border-b border-white/8 px-2 py-1.5 text-left text-xs text-ink transition-colors last:border-0 hover:bg-accent/15"
     >
-      {children}
+      <span
+        className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center border-2 border-edge ${
+          checked ? "bg-accent" : ""
+        }`}
+      >
+        {checked && <Check size={10} className="text-accent-foreground" />}
+      </span>
+      {swatch && (
+        <span
+          className="h-2 w-2 shrink-0 border border-edge"
+          style={{ background: swatch }}
+        />
+      )}
+      <span className="min-w-0 flex-1 truncate">{children}</span>
     </button>
   );
 }

@@ -114,14 +114,14 @@ export function getDomain(id: string): Domain | undefined {
 export interface Filters {
   minYear: number | null;
   maxYear: number | null;
-  domainId: string | null;
+  domainIds: string[];
   minCitations: number;
 }
 
 export const defaultFilters: Filters = {
   minYear: null,
   maxYear: null,
-  domainId: null,
+  domainIds: [],
   minCitations: 0,
 };
 
@@ -129,13 +129,13 @@ export function isFiltersActive(f: Filters): boolean {
   return (
     f.minYear != null ||
     f.maxYear != null ||
-    f.domainId != null ||
+    f.domainIds.length > 0 ||
     f.minCitations > 0
   );
 }
 
 export function paperMatchesFilters(p: Paper, f: Filters): boolean {
-  if (f.domainId && p.domainId !== f.domainId) return false;
+  if (f.domainIds.length > 0 && !f.domainIds.includes(p.domainId)) return false;
   if (f.minCitations > 0 && p.citations < f.minCitations) return false;
   if (f.minYear != null && (p.year == null || p.year < f.minYear)) return false;
   if (f.maxYear != null && (p.year == null || p.year > f.maxYear)) return false;
