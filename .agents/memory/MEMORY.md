@@ -1,5 +1,6 @@
 - [Galaxy visual language](galaxy-visual-language.md) — Structured Liquidity applies to 2D UI only; 3D scene stays photoreal with per-domain stellar colors; orbits must read as real planetary systems, not belts.
 - [R3F headless WebGL](r3f-headless-webgl.md) — screenshot sandbox has no GPU so WebGL context fails; this is expected, verify via typecheck + browser logs, not screenshots.
+- [R3F canvas resize jank](r3f-canvas-resize-jank.md) — animating a flex-sibling panel's width resizes the Canvas per frame (janky); debounce `<Canvas resize={{debounce}}>` so the buffer snaps once after layout settles.
 - [Live dataset swap staleness](dataset-swap-staleness.md) — values derived from galaxyData must be mount-time useMemo inside the key={datasetVersion} subtree, never module-scope consts, or they show the prior scientist after a swap.
 - [OpenAlex merged profile](openalex-merged-profile.md) — the galaxy author id merges TWO same-named people; disambiguate by institution+coauthor (not year alone) via fetch-galaxy filters; recompute headline stats from kept works.
 - [Fly camera mode](fly-camera-mode.md) — first-person spaceship: dive-in on entry, OrbitControls unmounted, momentum velocity (clamp+delta-damp), never unbounded translate.

@@ -29,6 +29,11 @@ export function Scene() {
         camera={{ position: [INTRO_START.x, INTRO_START.y, INTRO_START.z], fov: 55, near: 0.1, far: 60000 }}
         gl={{ antialias: true, alpha: false, stencil: false, preserveDrawingBuffer: true }}
         dpr={[1, 1.5]}
+        // Debounce the WebGL buffer resize so toggling the console doesn't trigger
+        // a per-frame renderer + camera-aspect recompute (which made the shift
+        // stutter). During the width transition the existing frame is cheaply
+        // CSS-scaled to fit, then the buffer snaps to crisp once the layout settles.
+        resize={{ debounce: 150 }}
         onCreated={({ gl }) => {
           gl.toneMapping = THREE.ACESFilmicToneMapping;
           gl.toneMappingExposure = 1.08;

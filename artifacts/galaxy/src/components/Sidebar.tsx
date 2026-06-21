@@ -153,7 +153,7 @@ export function Sidebar() {
 
   return (
     <div
-      className={`console-panel relative z-30 flex h-full shrink-0 flex-col overflow-hidden transition-[width] duration-200 ${
+      className={`console-panel relative z-30 flex h-full shrink-0 flex-col overflow-hidden transition-[width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] will-change-[width] ${
         open ? "w-[min(16rem,80vw)]" : "w-14"
       }`}
     >
