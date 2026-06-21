@@ -328,7 +328,7 @@ export function Sidebar() {
                           : Math.min(Math.max(v, 0), maxCitations),
                       });
                     }}
-                    className={`w-20 ${numInputCls}`}
+                    className={`w-16 ${numInputCls}`}
                   />
                   <span className="font-mono text-[11px] uppercase tracking-widest text-ink-dim">
                     Citations
@@ -350,7 +350,7 @@ export function Sidebar() {
                       const c = Math.min(Math.max(v, yearRange.min), maxYear);
                       setFilters({ minYear: c <= yearRange.min ? null : c });
                     }}
-                    className={`w-[3.75rem] ${numInputCls}`}
+                    className={`w-14 ${numInputCls}`}
                   />
                   <span className="font-mono text-xs text-ink-dim">–</span>
                   <input
@@ -366,10 +366,10 @@ export function Sidebar() {
                       const c = Math.max(Math.min(v, yearRange.max), minYear);
                       setFilters({ maxYear: c >= yearRange.max ? null : c });
                     }}
-                    className={`w-[3.75rem] ${numInputCls}`}
+                    className={`w-14 ${numInputCls}`}
                   />
                   <span className="font-mono text-[11px] uppercase tracking-widest text-ink-dim">
-                    Year range
+                    Years
                   </span>
                 </div>
 
