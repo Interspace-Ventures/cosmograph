@@ -119,6 +119,19 @@
   box-shadow: calc(var(--hard-x) - 3px) calc(var(--hard-y) - 3px) 0 0 var(--hard-shadow);
 }
 
+/* Recessed console surface: the galaxy reads as the dominant layer showing
+   through, with the dashboard set *into* the screen (inset shadow) rather than
+   lifted on top of it (no hard offset drop shadow). */
+.console-panel {
+  background: rgba(var(--glass-tint), 0.32);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: var(--border-w) solid rgb(var(--edge));
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+    inset 0 2px 36px rgba(0, 0, 0, 0.55);
+}
+
 .custom-scrollbar::-webkit-scrollbar {
   width: 8px;
   height: 8px;

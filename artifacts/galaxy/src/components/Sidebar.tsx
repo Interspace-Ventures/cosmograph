@@ -152,7 +152,7 @@ export function Sidebar() {
   };
 
   return (
-    <div className="absolute right-5 top-16 z-30 flex max-h-[calc(100vh-7rem)] flex-col items-end pointer-events-none">
+    <div className="absolute right-0 top-16 z-30 flex max-h-[calc(100vh-7rem)] flex-col items-end pointer-events-none">
       <AnimatePresence mode="wait" initial={false}>
         {open ? (
           <motion.div
@@ -161,7 +161,7 @@ export function Sidebar() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 12 }}
             transition={{ duration: 0.18 }}
-            className="glass-panel pointer-events-auto flex max-h-full w-[min(20rem,calc(100vw-2.5rem))] flex-col overflow-hidden"
+            className="console-panel pointer-events-auto flex max-h-full w-[min(16rem,calc(100vw-2.5rem))] flex-col overflow-hidden"
           >
             {/* Header */}
             <div className="flex shrink-0 items-center justify-between gap-2 border-b-2 border-edge px-3 py-2">
@@ -183,9 +183,9 @@ export function Sidebar() {
               {/* Share */}
               <div className="flex flex-col gap-2">
                 <SectionLabel>Share</SectionLabel>
-                <div className="flex items-center gap-1.5">
-                  <GitHubLink />
-                  <ShareButton />
+                <div className="flex flex-col gap-1.5">
+                  <GitHubLink full />
+                  <ShareButton full />
                 </div>
               </div>
 
@@ -450,7 +450,7 @@ export function Sidebar() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 12 }}
             transition={{ duration: 0.18 }}
-            className="glass-panel pointer-events-auto flex flex-col items-center gap-1 p-1.5"
+            className="console-panel pointer-events-auto flex flex-col items-center gap-1 p-1.5"
           >
             <RailButton onClick={() => setOpen(true)} label="Expand console">
               <ChevronLeft size={16} />
