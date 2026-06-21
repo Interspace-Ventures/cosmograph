@@ -148,7 +148,7 @@ export const planetOrbits: Record<string, OrbitParams> = {};
 export const planetRefs: Record<string, THREE.Object3D> = {};
 export const sunRefs: Record<string, THREE.Object3D> = {};
 
-// ----- precompute galaxy distribution + planetary orbits ONCE (deterministic) -----
+// ----- galaxy distribution + planetary orbits (deterministic, per dataset) -----
 // Domains are grouped into clusters by their broad research field, so two suns
 // being near each other genuinely means "related science". Clusters are packed
 // by each system's FULL orbital footprint (sun + the radius its planets orbit
@@ -168,108 +168,127 @@ const domainSpan = (d: Dom) => {
   return targetOuter + 25;
 };
 
-// Group domains by field.
-const fieldGroups = new Map<string, Dom[]>();
-for (const d of galaxyData.domains) {
-  const arr = fieldGroups.get(d.field) ?? [];
-  arr.push(d);
-  fieldGroups.set(d.field, arr);
-}
+// The journey route is rebuilt alongside the layout; mutable so a dataset swap
+// can replace it. Consumers read it as an ES-module live binding.
+export let waypointRoute: string[] = [];
 
-// Build each field cluster: largest system at its centre, the rest ringed around
-// it, spaced so no two orbital systems touch.
-const clusters = [...fieldGroups.entries()].map(([field, domsRaw]) => {
-  const doms = [...domsRaw].sort((a, b) => domainSpan(b) - domainSpan(a));
-  const spans = doms.map(domainSpan);
-  const locals: Array<{ d: Dom; lx: number; lz: number }> = [{ d: doms[0], lx: 0, lz: 0 }];
-  let footprint = spans[0];
-  if (doms.length > 1) {
-    const others = spans.slice(1);
-    const maxRo = Math.max(...others);
-    const m = others.length;
-    const rho1 = spans[0] + maxRo + GAP_IN; // clear the centre system
-    const rho2 = m > 1 ? (maxRo + GAP_IN / 2) / Math.sin(Math.PI / m) : 0; // clear neighbours
-    const rho = Math.max(rho1, rho2);
-    for (let k = 0; k < m; k++) {
-      const a = (k * 2 * Math.PI) / m + 0.4;
-      locals.push({ d: doms[k + 1], lx: Math.cos(a) * rho, lz: Math.sin(a) * rho });
+// Recompute the entire 3D layout for the ACTIVE dataset (galaxyData). Runs once
+// at module load and again after applyDataset() swaps in a new scientist, so the
+// suns/planets/route always match the current data. Clears prior singletons (and
+// stale mesh refs) first so nothing from the previous dataset lingers.
+export function rebuildLayout(): void {
+  for (const k of Object.keys(domainPositions)) delete domainPositions[k];
+  for (const k of Object.keys(sunRadii)) delete sunRadii[k];
+  for (const k of Object.keys(planetOrbits)) delete planetOrbits[k];
+  for (const k of Object.keys(planetRefs)) delete planetRefs[k];
+  for (const k of Object.keys(sunRefs)) delete sunRefs[k];
+
+  // Group domains by field.
+  const fieldGroups = new Map<string, Dom[]>();
+  for (const d of galaxyData.domains) {
+    const arr = fieldGroups.get(d.field) ?? [];
+    arr.push(d);
+    fieldGroups.set(d.field, arr);
+  }
+
+  // Build each field cluster: largest system at its centre, the rest ringed
+  // around it, spaced so no two orbital systems touch.
+  const clusters = [...fieldGroups.entries()].map(([field, domsRaw]) => {
+    const doms = [...domsRaw].sort((a, b) => domainSpan(b) - domainSpan(a));
+    const spans = doms.map(domainSpan);
+    const locals: Array<{ d: Dom; lx: number; lz: number }> = [
+      { d: doms[0], lx: 0, lz: 0 },
+    ];
+    let footprint = spans[0];
+    if (doms.length > 1) {
+      const others = spans.slice(1);
+      const maxRo = Math.max(...others);
+      const m = others.length;
+      const rho1 = spans[0] + maxRo + GAP_IN; // clear the centre system
+      const rho2 = m > 1 ? (maxRo + GAP_IN / 2) / Math.sin(Math.PI / m) : 0; // clear neighbours
+      const rho = Math.max(rho1, rho2);
+      for (let k = 0; k < m; k++) {
+        const a = (k * 2 * Math.PI) / m + 0.4;
+        locals.push({ d: doms[k + 1], lx: Math.cos(a) * rho, lz: Math.sin(a) * rho });
+      }
+      footprint = rho + maxRo;
     }
-    footprint = rho + maxRo;
-  }
-  return { field, locals, footprint };
-});
-
-// Largest cluster anchors the galactic core; remaining clusters ring around it,
-// spaced so clusters don't overlap either.
-clusters.sort((a, b) => b.footprint - a.footprint);
-const clusterCenters: Array<[number, number]> = [[0, 0]];
-const ringClusters = clusters.slice(1);
-if (ringClusters.length > 0) {
-  const maxOuterFp = Math.max(...ringClusters.map((c) => c.footprint));
-  const M = ringClusters.length;
-  const RR1 = clusters[0].footprint + maxOuterFp + GAP_CL; // clear the core cluster
-  const RR2 = M > 1 ? (maxOuterFp + GAP_CL / 2) / Math.sin(Math.PI / M) : 0; // clear neighbours
-  const RR = Math.max(RR1, RR2);
-  for (let j = 0; j < M; j++) {
-    const a = (j * 2 * Math.PI) / M + 0.7;
-    clusterCenters.push([Math.cos(a) * RR, Math.sin(a) * RR]);
-  }
-}
-
-clusters.forEach((c, ci) => {
-  const [cx, cz] = clusterCenters[ci];
-  for (const { d, lx, lz } of c.locals) {
-    const rng = mulberry32(hashString(d.id));
-    const y = (rng() - 0.5) * 60; // gentle vertical scatter for depth
-    domainPositions[d.id] = new THREE.Vector3(cx + lx, y, cz + lz);
-  }
-});
-
-galaxyData.domains.forEach((d) => {
-  // Sun size encodes the breadth of the body of work in that domain — i.e. how
-  // many papers orbit it — rather than citation count.
-  const sunRadius = sunRadiusFor(d.paperCount);
-  sunRadii[d.id] = sunRadius;
-
-  const papers = [...(papersByDomain[d.id] || [])].sort((a, b) => b.relevance - a.relevance);
-  const n = papers.length;
-  const innerR = sunRadius + 14;
-  const targetOuter = innerR + 50 + 13 * Math.sqrt(Math.max(1, n));
-
-  papers.forEach((p, k) => {
-    const prng = mulberry32(hashString(p.id));
-    const f = n > 1 ? Math.pow(k / (n - 1), 0.82) : 0;
-    const a = innerR + (targetOuter - innerR) * f + (prng() - 0.5) * 3;
-    const e = 0.02 + prng() * 0.12;
-    const incl = (prng() - 0.5) * 0.5;
-    const node = prng() * Math.PI * 2;
-    const initialAngle = prng() * Math.PI * 2;
-    const speed = (0.4 + prng() * 0.5) / Math.sqrt(a);
-    const planetRadius = Math.min(8, Math.max(1.2, Math.sqrt(p.citations) * 0.16 + 1.2));
-    const texIndex = Math.abs(hashString(p.id)) % PLANET_TEXTURES.length;
-    planetOrbits[p.id] = { a, e, incl, node, initialAngle, speed, planetRadius, texIndex };
+    return { field, locals, footprint };
   });
-});
 
-function ellipseR(a: number, e: number, theta: number) {
-  return (a * (1 - e * e)) / (1 + e * Math.cos(theta));
-}
+  // Largest cluster anchors the galactic core; remaining clusters ring around
+  // it, spaced so clusters don't overlap either.
+  clusters.sort((a, b) => b.footprint - a.footprint);
+  const clusterCenters: Array<[number, number]> = [[0, 0]];
+  const ringClusters = clusters.slice(1);
+  if (ringClusters.length > 0) {
+    const maxOuterFp = Math.max(...ringClusters.map((c) => c.footprint));
+    const M = ringClusters.length;
+    const RR1 = clusters[0].footprint + maxOuterFp + GAP_CL; // clear the core cluster
+    const RR2 = M > 1 ? (maxOuterFp + GAP_CL / 2) / Math.sin(Math.PI / M) : 0; // clear neighbours
+    const RR = Math.max(RR1, RR2);
+    for (let j = 0; j < M; j++) {
+      const a = (j * 2 * Math.PI) / M + 0.7;
+      clusterCenters.push([Math.cos(a) * RR, Math.sin(a) * RR]);
+    }
+  }
 
-// ----- waypoint journey route ---------------------------------------------
-// A faint guided path threading the suns into one continuous route. Because
-// systems are clustered so proximity == relatedness, a nearest-neighbour walk
-// naturally connects related domains together. It doubles as a journey line to
-// follow when flying. Built once (deterministic) from the sun positions.
-export const waypointRoute: string[] = (() => {
-  const ids = galaxyData.domains.map((d) => d.id).filter((id) => domainPositions[id]);
-  if (ids.length <= 1) return ids;
+  clusters.forEach((c, ci) => {
+    const [cx, cz] = clusterCenters[ci];
+    for (const { d, lx, lz } of c.locals) {
+      const rng = mulberry32(hashString(d.id));
+      const y = (rng() - 0.5) * 60; // gentle vertical scatter for depth
+      domainPositions[d.id] = new THREE.Vector3(cx + lx, y, cz + lz);
+    }
+  });
+
+  galaxyData.domains.forEach((d) => {
+    // Sun size encodes the breadth of the body of work in that domain — i.e. how
+    // many papers orbit it — rather than citation count.
+    const sunRadius = sunRadiusFor(d.paperCount);
+    sunRadii[d.id] = sunRadius;
+
+    const papers = [...(papersByDomain[d.id] || [])].sort(
+      (a, b) => b.relevance - a.relevance,
+    );
+    const n = papers.length;
+    const innerR = sunRadius + 14;
+    const targetOuter = innerR + 50 + 13 * Math.sqrt(Math.max(1, n));
+
+    papers.forEach((p, k) => {
+      const prng = mulberry32(hashString(p.id));
+      const f = n > 1 ? Math.pow(k / (n - 1), 0.82) : 0;
+      const a = innerR + (targetOuter - innerR) * f + (prng() - 0.5) * 3;
+      const e = 0.02 + prng() * 0.12;
+      const incl = (prng() - 0.5) * 0.5;
+      const node = prng() * Math.PI * 2;
+      const initialAngle = prng() * Math.PI * 2;
+      const speed = (0.4 + prng() * 0.5) / Math.sqrt(a);
+      const planetRadius = Math.min(8, Math.max(1.2, Math.sqrt(p.citations) * 0.16 + 1.2));
+      const texIndex = Math.abs(hashString(p.id)) % PLANET_TEXTURES.length;
+      planetOrbits[p.id] = { a, e, incl, node, initialAngle, speed, planetRadius, texIndex };
+    });
+  });
+
+  // Waypoint journey route: a faint guided path threading the suns into one
+  // continuous nearest-neighbour walk (proximity == relatedness), doubling as a
+  // line to follow when flying. Rebuilt from the fresh sun positions above.
+  const ids = galaxyData.domains
+    .map((d) => d.id)
+    .filter((id) => domainPositions[id]);
+  if (ids.length <= 1) {
+    waypointRoute = ids;
+    return;
+  }
   const remaining = new Set(ids);
-  // Start from the system nearest the galactic core (origin).
   let current = ids[0];
   let best = Infinity;
   for (const id of ids) {
     const d = domainPositions[id].lengthSq();
-    if (d < best) { best = d; current = id; }
+    if (d < best) {
+      best = d;
+      current = id;
+    }
   }
   const order: string[] = [current];
   remaining.delete(current);
@@ -279,14 +298,24 @@ export const waypointRoute: string[] = (() => {
     let nd = Infinity;
     for (const id of remaining) {
       const d = from.distanceToSquared(domainPositions[id]);
-      if (d < nd) { nd = d; next = id; }
+      if (d < nd) {
+        nd = d;
+        next = id;
+      }
     }
     order.push(next);
     remaining.delete(next);
     current = next;
   }
-  return order;
-})();
+  waypointRoute = order;
+}
+
+// Initialize the layout for the baked default dataset at module load.
+rebuildLayout();
+
+function ellipseR(a: number, e: number, theta: number) {
+  return (a * (1 - e * e)) / (1 + e * Math.cos(theta));
+}
 
 const WAYPOINT_COLOR = new THREE.Color("#a388ee");
 

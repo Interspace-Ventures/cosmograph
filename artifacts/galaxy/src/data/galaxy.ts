@@ -64,33 +64,52 @@ export interface GalaxyData {
   papers: Paper[];
 }
 
-export const galaxyData = raw as GalaxyData;
+// The active dataset and its derived structures are mutable so the whole app can
+// switch to any scientist at runtime (see applyDataset). They start from the
+// baked snapshot so the galaxy renders instantly and never depends on the network.
+// Consumers import these as ES-module live bindings; after a switch the data tree
+// is remounted (key={datasetVersion}) so every component re-reads fresh values.
+export let galaxyData: GalaxyData = raw as GalaxyData;
 
-export const papersByDomain: Record<string, Paper[]> = galaxyData.domains.reduce(
-  (acc, d) => {
-    acc[d.id] = galaxyData.papers.filter((p) => p.domainId === d.id);
-    return acc;
-  },
-  {} as Record<string, Paper[]>,
-);
+function computePapersByDomain(d: GalaxyData): Record<string, Paper[]> {
+  return d.domains.reduce(
+    (acc, dom) => {
+      acc[dom.id] = d.papers.filter((p) => p.domainId === dom.id);
+      return acc;
+    },
+    {} as Record<string, Paper[]>,
+  );
+}
+
+function computeYearRange(d: GalaxyData): { min: number; max: number } {
+  const years = d.papers.map((p) => p.year).filter((y): y is number => y != null);
+  return {
+    min: years.length ? Math.min(...years) : 0,
+    max: years.length ? Math.max(...years) : 0,
+  };
+}
+
+function computeMaxCitations(d: GalaxyData): number {
+  return d.papers.reduce((m, p) => Math.max(m, p.citations), 0);
+}
+
+export let papersByDomain: Record<string, Paper[]> = computePapersByDomain(galaxyData);
+export let yearRange = computeYearRange(galaxyData);
+export let maxCitations = computeMaxCitations(galaxyData);
+
+// Swap in a new dataset (e.g. a different scientist fetched live from OpenAlex)
+// and recompute every derived structure. Callers must also rebuild the 3D layout
+// (GalaxySystem.rebuildLayout) and bump datasetVersion to remount the scene.
+export function applyDataset(data: GalaxyData): void {
+  galaxyData = data;
+  papersByDomain = computePapersByDomain(data);
+  yearRange = computeYearRange(data);
+  maxCitations = computeMaxCitations(data);
+}
 
 export function getDomain(id: string): Domain | undefined {
   return galaxyData.domains.find((d) => d.id === id);
 }
-
-const _years = galaxyData.papers
-  .map((p) => p.year)
-  .filter((y): y is number => y != null);
-
-export const yearRange = {
-  min: _years.length ? Math.min(..._years) : 0,
-  max: _years.length ? Math.max(..._years) : 0,
-};
-
-export const maxCitations = galaxyData.papers.reduce(
-  (m, p) => Math.max(m, p.citations),
-  0,
-);
 
 export interface Filters {
   minYear: number | null;

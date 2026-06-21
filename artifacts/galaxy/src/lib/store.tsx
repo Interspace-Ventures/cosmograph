@@ -1,5 +1,10 @@
 import React, { createContext, useContext, useState, useCallback, useRef, ReactNode } from 'react';
-import { Filters, defaultFilters } from '@/data/galaxy';
+import { Filters, defaultFilters, applyDataset, galaxyData } from '@/data/galaxy';
+import { buildGalaxyData } from '@/data/buildGalaxy';
+import { fetchAuthor, fetchAuthorWorks, type AuthorCandidate } from '@/lib/openalex';
+import { rebuildLayout } from '@/components/GalaxySystem';
+
+export type DatasetStatus = 'idle' | 'loading' | 'ready' | 'error';
 
 export type CameraMode = 'god' | 'spaceship';
 
@@ -44,6 +49,14 @@ interface AppState {
   setInfoOpen: (val: boolean) => void;
   changelogOpen: boolean;
   setChangelogOpen: (val: boolean) => void;
+  // Live dataset switching: load any scientist from OpenAlex at runtime.
+  datasetVersion: number;
+  datasetStatus: DatasetStatus;
+  datasetError: string | null;
+  loadProgress: { fetched: number; total: number } | null;
+  activeAuthorLabel: string;
+  loadAuthor: (target: string | AuthorCandidate) => Promise<void>;
+  dismissDatasetError: () => void;
 }
 
 const AppStateContext = createContext<AppState | undefined>(undefined);
@@ -121,6 +134,61 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [infoOpen, setInfoOpen] = useState(false);
   const [changelogOpen, setChangelogOpen] = useState(false);
 
+  const [datasetVersion, setDatasetVersion] = useState(0);
+  const [datasetStatus, setDatasetStatus] = useState<DatasetStatus>('idle');
+  const [datasetError, setDatasetError] = useState<string | null>(null);
+  const [loadProgress, setLoadProgress] = useState<{ fetched: number; total: number } | null>(null);
+  const [activeAuthorLabel, setActiveAuthorLabel] = useState<string>(galaxyData.author.name);
+  // Monotonic request id so a superseded (older) load can't clobber a newer one.
+  const loadReqRef = useRef(0);
+
+  // Fetch a scientist live from OpenAlex, re-derive the whole galaxy, rebuild the
+  // 3D layout, reset any view state tied to the old dataset, and bump
+  // datasetVersion so the data tree remounts cleanly (see key={datasetVersion}).
+  const loadAuthor = useCallback(async (target: string | AuthorCandidate) => {
+    const reqId = ++loadReqRef.current;
+    const id = typeof target === 'string' ? target : target.id;
+    setDatasetStatus('loading');
+    setDatasetError(null);
+    setLoadProgress({ fetched: 0, total: 0 });
+    try {
+      const rawAuthor = await fetchAuthor(id);
+      const rawWorks = await fetchAuthorWorks(id, (fetched, total) => {
+        if (loadReqRef.current === reqId) setLoadProgress({ fetched, total });
+      });
+      if (loadReqRef.current !== reqId) return; // superseded by a newer load
+      const data = buildGalaxyData(rawAuthor, rawWorks);
+      applyDataset(data);
+      rebuildLayout();
+      // Drop any selection/hover/tour/filters that referenced the old galaxy.
+      setSelectedObject(null);
+      setHoveredObject(null);
+      setSearchActive(false);
+      setTourActive(false);
+      setTourStopIndex(0);
+      setCameraMode('god');
+      setFiltersState(defaultFilters);
+      setActiveAuthorLabel(data.author.name);
+      setDatasetVersion((v) => v + 1);
+      setDatasetStatus('ready');
+      setLoadProgress(null);
+    } catch (err) {
+      if (loadReqRef.current !== reqId) return;
+      setDatasetStatus('error');
+      setDatasetError(
+        err instanceof Error ? err.message : 'Could not load this scientist from OpenAlex.',
+      );
+      setLoadProgress(null);
+    }
+  }, []);
+
+  const dismissDatasetError = useCallback(() => {
+    loadReqRef.current++; // invalidate any in-flight load
+    setDatasetStatus('idle');
+    setDatasetError(null);
+    setLoadProgress(null);
+  }, []);
+
   const startTour = () => {
     setSelectedObject(null);
     setCameraMode('god');
@@ -164,6 +232,13 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         setInfoOpen,
         changelogOpen,
         setChangelogOpen,
+        datasetVersion,
+        datasetStatus,
+        datasetError,
+        loadProgress,
+        activeAuthorLabel,
+        loadAuthor,
+        dismissDatasetError,
       }}
     >
       {children}

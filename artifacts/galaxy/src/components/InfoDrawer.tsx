@@ -6,6 +6,7 @@ import { galaxyData } from "@/data/galaxy";
 import { SITE } from "@/config/site";
 import { LEGEND, NAV_MODES } from "@/lib/legend";
 import { useGithubStars, formatStars } from "@/lib/useGithubStars";
+import { ResearcherSearch } from "@/components/ResearcherSearch";
 
 export function InfoDrawer() {
   const { infoOpen, setInfoOpen, setChangelogOpen } = useAppState();
@@ -111,6 +112,10 @@ export function InfoDrawer() {
                   </span>
                 )}
               </a>
+            </div>
+
+            <div className="mb-7">
+              <ResearcherSearch />
             </div>
 
             <span className="font-mono text-[10px] uppercase tracking-widest text-accent">
