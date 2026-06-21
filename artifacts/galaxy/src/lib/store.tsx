@@ -96,16 +96,22 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [introFinished, setIntroFinishedState] = useState(introSeen);
   const [introStarted, setIntroStarted] = useState(false);
   const introProgressRef = useRef(introSeen ? 1 : 0);
+  // Console starts collapsed while the intro/title screen plays so it never
+  // covers it; it auto-opens once the intro finishes. Returning visitors (intro
+  // already seen) get the console open immediately.
+  const [consoleOpen, setConsoleOpen] = useState(introSeen);
 
   const setIntroFinished = useCallback((val: boolean) => {
     if (val) writeIntroSeen();
     setIntroFinishedState(val);
+    if (val) setConsoleOpen(true);
   }, []);
 
   const replayIntro = useCallback(() => {
     introProgressRef.current = 0;
     setIntroStarted(false);
     setIntroFinishedState(false);
+    setConsoleOpen(false);
     setInfoOpen(false);
     setChangelogOpen(false);
   }, []);
@@ -115,6 +121,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     introProgressRef.current = 0;
     setIntroStarted(false);
     setIntroFinishedState(false);
+    setConsoleOpen(false);
     setInfoOpen(false);
     setChangelogOpen(false);
   }, []);
@@ -137,7 +144,6 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [tourStopIndex, setTourStopIndex] = useState(0);
   const [infoOpen, setInfoOpen] = useState(false);
   const [changelogOpen, setChangelogOpen] = useState(false);
-  const [consoleOpen, setConsoleOpen] = useState(true);
 
   const [datasetVersion, setDatasetVersion] = useState(0);
   const [datasetStatus, setDatasetStatus] = useState<DatasetStatus>('idle');
