@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Sun, Globe2, X, Filter, ListFilter } from "lucide-react";
+import { Search, Sun, Globe2, X, Filter, ListFilter, Minus, Plus } from "lucide-react";
 import { useAppState } from "@/lib/store";
 import {
   galaxyData,
@@ -80,6 +80,7 @@ export function CommandBar() {
   };
   const minYear = filters.minYear ?? yearRange.min;
   const maxYear = filters.maxYear ?? yearRange.max;
+  const citationStep = Math.max(5, Math.round(maxCitations / 50 / 5) * 5);
 
   const results: SearchResult[] = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -126,72 +127,102 @@ export function CommandBar() {
               </span>
             </div>
 
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-mono text-[11px] uppercase tracking-widest text-ink-dim">Year Range</span>
-                <span className="font-mono text-[11px] text-ink">
-                  {minYear}–{maxYear}
-                </span>
+            <div className="flex flex-wrap items-end gap-x-5 gap-y-3">
+              <div>
+                <span className="block mb-1.5 font-mono text-[11px] uppercase tracking-widest text-ink-dim">Year Range</span>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number"
+                    aria-label="Start year"
+                    min={yearRange.min}
+                    max={maxYear}
+                    value={minYear}
+                    onChange={(e) => {
+                      const v = parseInt(e.target.value, 10);
+                      if (Number.isNaN(v)) return;
+                      const c = Math.min(Math.max(v, yearRange.min), maxYear);
+                      setFilters({ minYear: c <= yearRange.min ? null : c });
+                    }}
+                    className="w-[4.5rem] bg-white/5 border-2 border-edge px-2 py-1 font-mono text-xs text-ink outline-none focus:border-accent"
+                  />
+                  <span className="font-mono text-xs text-ink-dim">–</span>
+                  <input
+                    type="number"
+                    aria-label="End year"
+                    min={minYear}
+                    max={yearRange.max}
+                    value={maxYear}
+                    onChange={(e) => {
+                      const v = parseInt(e.target.value, 10);
+                      if (Number.isNaN(v)) return;
+                      const c = Math.max(Math.min(v, yearRange.max), minYear);
+                      setFilters({ maxYear: c >= yearRange.max ? null : c });
+                    }}
+                    className="w-[4.5rem] bg-white/5 border-2 border-edge px-2 py-1 font-mono text-xs text-ink outline-none focus:border-accent"
+                  />
+                </div>
               </div>
-              <div className="flex flex-col gap-2">
-                <input
-                  type="range"
-                  min={yearRange.min}
-                  max={yearRange.max}
-                  step={1}
-                  value={minYear}
-                  onChange={(e) => {
-                    const v = parseInt(e.target.value, 10);
-                    setFilters({ minYear: v <= yearRange.min ? null : Math.min(v, maxYear) });
-                  }}
-                  className="w-full h-1.5 bg-white/15 appearance-none cursor-pointer accent-accent"
-                />
-                <input
-                  type="range"
-                  min={yearRange.min}
-                  max={yearRange.max}
-                  step={1}
-                  value={maxYear}
-                  onChange={(e) => {
-                    const v = parseInt(e.target.value, 10);
-                    setFilters({ maxYear: v >= yearRange.max ? null : Math.max(v, minYear) });
-                  }}
-                  className="w-full h-1.5 bg-white/15 appearance-none cursor-pointer accent-accent"
-                />
-              </div>
-            </div>
 
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-mono text-[11px] uppercase tracking-widest text-ink-dim">Min Citations</span>
-                <span className="font-mono text-[11px] text-ink">{filters.minCitations.toLocaleString()}</span>
-              </div>
-              <input
-                type="range"
-                min={0}
-                max={maxCitations}
-                step={Math.max(1, Math.round(maxCitations / 200))}
-                value={filters.minCitations}
-                onChange={(e) => setFilters({ minCitations: parseInt(e.target.value, 10) })}
-                className="w-full h-1.5 bg-white/15 appearance-none cursor-pointer accent-accent"
-              />
-            </div>
-
-            <div>
-              <span className="font-mono text-[11px] uppercase tracking-widest text-ink-dim">Domain</span>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                <Chip active={filters.domainId === null} onClick={() => setFilters({ domainId: null })}>
-                  All
-                </Chip>
-                {galaxyData.domains.map((d) => (
-                  <Chip
-                    key={d.id}
-                    active={filters.domainId === d.id}
-                    onClick={() => setFilters({ domainId: filters.domainId === d.id ? null : d.id })}
+              <div>
+                <span className="block mb-1.5 font-mono text-[11px] uppercase tracking-widest text-ink-dim">Min Citations</span>
+                <div className="flex items-stretch">
+                  <button
+                    type="button"
+                    aria-label="Decrease minimum citations"
+                    onClick={() =>
+                      setFilters({ minCitations: Math.max(0, filters.minCitations - citationStep) })
+                    }
+                    className="flex items-center justify-center border-2 border-edge px-1.5 text-ink-dim transition-colors hover:text-ink hover:border-accent"
                   >
-                    {d.name}
-                  </Chip>
-                ))}
+                    <Minus size={13} />
+                  </button>
+                  <input
+                    type="number"
+                    aria-label="Minimum citations"
+                    min={0}
+                    max={maxCitations}
+                    step={citationStep}
+                    value={filters.minCitations}
+                    onChange={(e) => {
+                      const v = parseInt(e.target.value, 10);
+                      setFilters({
+                        minCitations: Number.isNaN(v)
+                          ? 0
+                          : Math.min(Math.max(v, 0), maxCitations),
+                      });
+                    }}
+                    className="w-16 border-y-2 border-edge bg-white/5 px-2 py-1 text-center font-mono text-xs text-ink outline-none focus:border-accent"
+                  />
+                  <button
+                    type="button"
+                    aria-label="Increase minimum citations"
+                    onClick={() =>
+                      setFilters({
+                        minCitations: Math.min(maxCitations, filters.minCitations + citationStep),
+                      })
+                    }
+                    className="flex items-center justify-center border-2 border-edge px-1.5 text-ink-dim transition-colors hover:text-ink hover:border-accent"
+                  >
+                    <Plus size={13} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="min-w-[10rem] flex-1">
+                <span className="block mb-1.5 font-mono text-[11px] uppercase tracking-widest text-ink-dim">Domain</span>
+                <select
+                  aria-label="Research domain"
+                  value={filters.domainId ?? ""}
+                  onChange={(e) => setFilters({ domainId: e.target.value || null })}
+                  className="w-full bg-white/5 border-2 border-edge px-2 py-1 font-mono text-xs text-ink outline-none focus:border-accent [&>option]:bg-[#12131a] [&>option]:text-ink"
+                >
+                  <option value="">All domains</option>
+                  {galaxyData.domains.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
@@ -338,27 +369,6 @@ export function CommandBar() {
         </div>
       </motion.div>
     </div>
-  );
-}
-
-function Chip({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`px-3 py-2 sm:py-1.5 border-2 border-edge font-mono text-[11px] transition-all ${
-        active ? "bg-accent text-accent-foreground" : "bg-white/5 text-ink hover:bg-white/10"
-      }`}
-    >
-      {children}
-    </button>
   );
 }
 
