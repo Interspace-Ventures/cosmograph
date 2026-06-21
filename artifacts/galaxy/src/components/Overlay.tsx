@@ -2,7 +2,7 @@ import { useAppState } from "@/lib/store";
 import { AnimatePresence, motion } from "framer-motion";
 import { ScrollIntro } from "./ScrollIntro";
 import { DetailPanel } from "./DetailPanel";
-import { CommandBar } from "./CommandBar";
+import { Sidebar } from "./Sidebar";
 import { TourOverlay } from "./TourOverlay";
 import { FlyHud } from "./FlyHud";
 import { Footer } from "./Footer";
@@ -11,7 +11,6 @@ import { ChangelogDrawer } from "./ChangelogDrawer";
 import { galaxyData } from "@/data/galaxy";
 import { presence } from "@/lib/presence";
 import { useSyncExternalStore } from "react";
-import { Compass, Rewind, Info, Orbit } from "lucide-react";
 
 export function Overlay() {
   const { introFinished, selectedObject, hoveredObject, searchActive, tourActive } = useAppState();
@@ -25,7 +24,7 @@ export function Overlay() {
           {!tourActive && (
             <>
               <Header />
-              <SideNav />
+              <Sidebar />
 
               <AnimatePresence>
                 {hoveredObject && (
@@ -71,7 +70,6 @@ export function Overlay() {
                 )}
               </AnimatePresence>
 
-              <CommandBar />
               <FlyHud />
               <Footer />
             </>
@@ -97,50 +95,6 @@ function Header() {
   );
 }
 
-function SideNav() {
-  const { startTour, replayIntro, cameraMode, setCameraMode, setInfoOpen } = useAppState();
-
-  return (
-    <div className="absolute right-5 top-1/2 z-20 flex w-36 -translate-y-1/2 flex-col gap-2 pointer-events-none">
-      <button
-        onClick={() => setInfoOpen(true)}
-        aria-label="About this visualization"
-        title="About this visualization"
-        className="glass-panel glass-panel-interactive flex w-full items-center justify-start gap-2 px-4 py-2 text-xs font-display uppercase tracking-wider text-ink pointer-events-auto"
-      >
-        <Info size={16} />
-        Info
-      </button>
-      <ModeButton
-        active={cameraMode === "god"}
-        onClick={() => setCameraMode("god")}
-        icon={<Orbit size={14} />}
-        label="Orbit"
-      />
-      <ModeButton
-        active={cameraMode === "spaceship"}
-        onClick={() => setCameraMode("spaceship")}
-        icon={<Compass size={14} />}
-        label="Fly"
-      />
-      <button
-        onClick={replayIntro}
-        className="glass-panel glass-panel-interactive flex w-full items-center justify-start gap-2 px-4 py-2 text-xs font-display uppercase tracking-wider text-ink pointer-events-auto"
-      >
-        <Rewind size={14} />
-        Replay
-      </button>
-      <button
-        onClick={startTour}
-        className="glass-panel glass-panel-interactive flex w-full items-center justify-start gap-2 px-4 py-2 text-xs font-display uppercase tracking-wider text-ink pointer-events-auto"
-      >
-        <Compass size={14} />
-        Tour
-      </button>
-    </div>
-  );
-}
-
 function LivePresence() {
   const count = useSyncExternalStore(presence.subscribe, presence.getCount, () => 0);
   if (count < 1) return null;
@@ -152,31 +106,5 @@ function LivePresence() {
       </span>
       <span className="text-ink">{count}</span> galacticon{count === 1 ? "" : "s"} streaming now
     </div>
-  );
-}
-
-function ModeButton({
-  active,
-  onClick,
-  icon,
-  label,
-}: {
-  active: boolean;
-  onClick: () => void;
-  icon: React.ReactNode;
-  label: string;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      aria-pressed={active}
-      style={active ? { background: "var(--accent)" } : undefined}
-      className={`glass-panel glass-panel-interactive flex w-full items-center justify-start gap-2 px-4 py-2 text-xs font-display uppercase tracking-wider pointer-events-auto ${
-        active ? "text-accent-foreground" : "text-ink"
-      }`}
-    >
-      {icon}
-      {label}
-    </button>
   );
 }
