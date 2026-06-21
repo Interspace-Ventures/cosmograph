@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Sun, Globe2, X, Filter, ListFilter, Minus, Plus } from "lucide-react";
+import { Search, Sun, Globe2, X, Filter, ListFilter, Check } from "lucide-react";
 import { useAppState } from "@/lib/store";
 import {
   galaxyData,
@@ -80,7 +80,19 @@ export function CommandBar() {
   };
   const minYear = filters.minYear ?? yearRange.min;
   const maxYear = filters.maxYear ?? yearRange.max;
-  const citationStep = Math.max(5, Math.round(maxCitations / 50 / 5) * 5);
+  const numInputCls =
+    "bg-white/5 border-2 border-edge px-2 py-1 font-mono text-xs text-ink outline-none focus:border-accent [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
+
+  const domains = galaxyData.domains;
+  const domainMeasureRef = useRef<HTMLDivElement>(null);
+  const domainWrapRef = useRef<HTMLDivElement>(null);
+  const [domainFit, setDomainFit] = useState(domains.length);
+  const [domainMenuOpen, setDomainMenuOpen] = useState(false);
+  const overflow = domainFit < domains.length;
+  const visibleDomains = overflow ? domains.slice(0, Math.max(0, domainFit - 1)) : domains;
+  const hiddenDomains = overflow ? domains.slice(visibleDomains.length) : [];
+  const hiddenActive =
+    filters.domainId != null && hiddenDomains.some((d) => d.id === filters.domainId);
 
   const results: SearchResult[] = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -100,6 +112,42 @@ export function CommandBar() {
   }, [results.length, setSearchActive]);
 
   useEffect(() => () => setSearchActive(false), [setSearchActive]);
+
+  useLayoutEffect(() => {
+    if (!showFilters) return;
+    const el = domainMeasureRef.current;
+    if (!el) return;
+    const compute = () => {
+      const kids = Array.from(el.children) as HTMLElement[];
+      if (kids.length === 0) return;
+      const top0 = kids[0].offsetTop;
+      let count = 0;
+      for (let i = 1; i < kids.length; i++) {
+        if (kids[i].offsetTop <= top0) count++;
+        else break;
+      }
+      setDomainFit(count);
+    };
+    compute();
+    const ro = new ResizeObserver(compute);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [showFilters]);
+
+  useEffect(() => {
+    if (!overflow) setDomainMenuOpen(false);
+  }, [overflow]);
+
+  useEffect(() => {
+    if (!domainMenuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (domainWrapRef.current && !domainWrapRef.current.contains(e.target as Node)) {
+        setDomainMenuOpen(false);
+      }
+    };
+    window.addEventListener("mousedown", onDown);
+    return () => window.removeEventListener("mousedown", onDown);
+  }, [domainMenuOpen]);
 
   const pick = (r: SearchResult) => {
     setCameraMode("god");
@@ -133,6 +181,7 @@ export function CommandBar() {
                 <div className="flex items-center gap-1.5">
                   <input
                     type="number"
+                    inputMode="numeric"
                     aria-label="Start year"
                     min={yearRange.min}
                     max={maxYear}
@@ -143,11 +192,12 @@ export function CommandBar() {
                       const c = Math.min(Math.max(v, yearRange.min), maxYear);
                       setFilters({ minYear: c <= yearRange.min ? null : c });
                     }}
-                    className="w-[4.5rem] bg-white/5 border-2 border-edge px-2 py-1 font-mono text-xs text-ink outline-none focus:border-accent"
+                    className={`w-[4.5rem] ${numInputCls}`}
                   />
                   <span className="font-mono text-xs text-ink-dim">–</span>
                   <input
                     type="number"
+                    inputMode="numeric"
                     aria-label="End year"
                     min={minYear}
                     max={yearRange.max}
@@ -158,71 +208,103 @@ export function CommandBar() {
                       const c = Math.max(Math.min(v, yearRange.max), minYear);
                       setFilters({ maxYear: c >= yearRange.max ? null : c });
                     }}
-                    className="w-[4.5rem] bg-white/5 border-2 border-edge px-2 py-1 font-mono text-xs text-ink outline-none focus:border-accent"
+                    className={`w-[4.5rem] ${numInputCls}`}
                   />
                 </div>
               </div>
 
               <div>
                 <span className="block mb-1.5 font-mono text-[11px] uppercase tracking-widest text-ink-dim">Min Citations</span>
-                <div className="flex items-stretch">
-                  <button
-                    type="button"
-                    aria-label="Decrease minimum citations"
-                    onClick={() =>
-                      setFilters({ minCitations: Math.max(0, filters.minCitations - citationStep) })
-                    }
-                    className="flex items-center justify-center border-2 border-edge px-1.5 text-ink-dim transition-colors hover:text-ink hover:border-accent"
-                  >
-                    <Minus size={13} />
-                  </button>
-                  <input
-                    type="number"
-                    aria-label="Minimum citations"
-                    min={0}
-                    max={maxCitations}
-                    step={citationStep}
-                    value={filters.minCitations}
-                    onChange={(e) => {
-                      const v = parseInt(e.target.value, 10);
-                      setFilters({
-                        minCitations: Number.isNaN(v)
-                          ? 0
-                          : Math.min(Math.max(v, 0), maxCitations),
-                      });
-                    }}
-                    className="w-16 border-y-2 border-edge bg-white/5 px-2 py-1 text-center font-mono text-xs text-ink outline-none focus:border-accent"
-                  />
-                  <button
-                    type="button"
-                    aria-label="Increase minimum citations"
-                    onClick={() =>
-                      setFilters({
-                        minCitations: Math.min(maxCitations, filters.minCitations + citationStep),
-                      })
-                    }
-                    className="flex items-center justify-center border-2 border-edge px-1.5 text-ink-dim transition-colors hover:text-ink hover:border-accent"
-                  >
-                    <Plus size={13} />
-                  </button>
-                </div>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  aria-label="Minimum citations"
+                  min={0}
+                  max={maxCitations}
+                  value={filters.minCitations}
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value, 10);
+                    setFilters({
+                      minCitations: Number.isNaN(v) ? 0 : Math.min(Math.max(v, 0), maxCitations),
+                    });
+                  }}
+                  className={`w-20 ${numInputCls}`}
+                />
               </div>
 
-              <div className="min-w-[10rem] flex-1">
+              <div ref={domainWrapRef} className="relative min-w-[12rem] flex-1">
                 <span className="block mb-1.5 font-mono text-[11px] uppercase tracking-widest text-ink-dim">Domain</span>
-                <select
-                  aria-label="Research domain"
-                  value={filters.domainId ?? ""}
-                  onChange={(e) => setFilters({ domainId: e.target.value || null })}
-                  className="w-full bg-white/5 border-2 border-edge px-2 py-1 font-mono text-xs text-ink outline-none focus:border-accent [&>option]:bg-[#12131a] [&>option]:text-ink"
+
+                <div
+                  ref={domainMeasureRef}
+                  aria-hidden
+                  className="pointer-events-none invisible absolute inset-x-0 flex flex-wrap gap-1.5"
                 >
-                  <option value="">All domains</option>
-                  {galaxyData.domains.map((d) => (
-                    <option key={d.id} value={d.id}>
+                  <Chip active={false} onClick={() => {}}>All</Chip>
+                  {domains.map((d) => (
+                    <Chip key={d.id} active={false} onClick={() => {}}>
                       {d.name}
-                    </option>
+                    </Chip>
                   ))}
-                </select>
+                </div>
+
+                <div className="flex flex-wrap gap-1.5">
+                  <Chip active={filters.domainId === null} onClick={() => setFilters({ domainId: null })}>
+                    All
+                  </Chip>
+                  {visibleDomains.map((d) => (
+                    <Chip
+                      key={d.id}
+                      active={filters.domainId === d.id}
+                      onClick={() => setFilters({ domainId: filters.domainId === d.id ? null : d.id })}
+                    >
+                      {d.name}
+                    </Chip>
+                  ))}
+                  {overflow && (
+                    <button
+                      type="button"
+                      aria-label={`Show ${hiddenDomains.length} more domains`}
+                      aria-expanded={domainMenuOpen}
+                      onClick={() => setDomainMenuOpen((o) => !o)}
+                      className={`px-3 py-2 sm:py-1.5 border-2 border-edge font-mono text-[11px] transition-all ${
+                        hiddenActive || domainMenuOpen
+                          ? "bg-accent text-accent-foreground"
+                          : "bg-white/5 text-ink hover:bg-white/10"
+                      }`}
+                    >
+                      +{hiddenDomains.length}
+                    </button>
+                  )}
+                </div>
+
+                {overflow && domainMenuOpen && (
+                  <div className="glass-panel custom-scrollbar absolute bottom-full left-0 right-0 z-20 mb-2 max-h-56 overflow-y-auto p-1.5">
+                    {hiddenDomains.map((d) => {
+                      const active = filters.domainId === d.id;
+                      return (
+                        <button
+                          key={d.id}
+                          type="button"
+                          onClick={() => {
+                            setFilters({ domainId: active ? null : d.id });
+                            setDomainMenuOpen(false);
+                          }}
+                          className="flex w-full items-center gap-2 px-2 py-1.5 text-left font-mono text-[11px] text-ink transition-colors hover:bg-accent/15"
+                        >
+                          <span
+                            className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center border-2 ${
+                              active ? "border-accent bg-accent" : "border-edge"
+                            }`}
+                          >
+                            {active && <Check size={10} className="text-accent-foreground" />}
+                          </span>
+                          <span className="truncate">{d.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -369,6 +451,28 @@ export function CommandBar() {
         </div>
       </motion.div>
     </div>
+  );
+}
+
+function Chip({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`px-3 py-2 sm:py-1.5 border-2 border-edge font-mono text-[11px] transition-all ${
+        active ? "bg-accent text-accent-foreground" : "bg-white/5 text-ink hover:bg-white/10"
+      }`}
+    >
+      {children}
+    </button>
   );
 }
 
