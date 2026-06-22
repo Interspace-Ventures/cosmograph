@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { X, Copy, Check, Link2, Share2, Loader2 } from "lucide-react";
 import {
@@ -95,7 +96,7 @@ export function ShareModal({ open, onClose }: { open: boolean; onClose: () => vo
     await nativeShareCard(blobRef.current);
   };
 
-  return (
+  return createPortal(
     <AnimatePresence>
       {open && (
         <motion.div
@@ -117,7 +118,7 @@ export function ShareModal({ open, onClose }: { open: boolean; onClose: () => vo
               animate={{ y: 0, opacity: 1, scale: 1 }}
               exit={{ y: 16, opacity: 0, scale: 0.98 }}
               transition={{ type: "spring", stiffness: 340, damping: 32 }}
-              className="custom-scrollbar relative max-h-[90vh] w-full max-w-lg overflow-y-auto border-2 border-edge bg-bg/95 p-6 backdrop-blur-xl"
+              className="custom-scrollbar relative max-h-[90vh] w-full max-w-2xl overflow-y-auto border-2 border-edge bg-bg/95 p-6 backdrop-blur-xl sm:p-8"
             >
               <button
                 onClick={onClose}
@@ -204,6 +205,7 @@ export function ShareModal({ open, onClose }: { open: boolean; onClose: () => vo
           </div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }
