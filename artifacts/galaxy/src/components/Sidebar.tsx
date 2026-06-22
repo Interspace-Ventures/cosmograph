@@ -259,9 +259,24 @@ export function Sidebar() {
                 />
               </div>
 
-              {/* Search */}
-              <div className="flex flex-col gap-2 border-t-2 border-edge pt-3">
-                <SectionLabel>Search</SectionLabel>
+              {/* Filter */}
+              <div className="flex flex-col gap-3 border-t-2 border-edge pt-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-2">
+                    <Filter
+                      size={13}
+                      className={filtersActive ? "text-accent" : "text-ink-dim"}
+                    />
+                    <SectionLabel>Filter</SectionLabel>
+                  </span>
+                  <span
+                    className={`font-mono text-[11px] ${filtersActive ? "text-accent" : "text-ink-dim"}`}
+                  >
+                    {filtersActive ? `${matchCount}/${totalPapers}` : `${totalPapers} papers`}
+                  </span>
+                </div>
+
+                {/* Search */}
                 <div>
                   <div className="flex items-center gap-2 border-2 border-edge bg-white/5 px-2 focus-within:border-accent">
                     <Search size={15} className="shrink-0 text-ink-dim" />
@@ -305,24 +320,6 @@ export function Sidebar() {
                       ))}
                     </div>
                   )}
-                </div>
-              </div>
-
-              {/* Filter */}
-              <div className="flex flex-col gap-3 border-t-2 border-edge pt-3">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="flex items-center gap-2">
-                    <Filter
-                      size={13}
-                      className={filtersActive ? "text-accent" : "text-ink-dim"}
-                    />
-                    <SectionLabel>Filter</SectionLabel>
-                  </span>
-                  <span
-                    className={`font-mono text-[11px] ${filtersActive ? "text-accent" : "text-ink-dim"}`}
-                  >
-                    {filtersActive ? `${matchCount}/${totalPapers}` : `${totalPapers} papers`}
-                  </span>
                 </div>
 
                 {/* Citations — single line: [#] Citations */}
