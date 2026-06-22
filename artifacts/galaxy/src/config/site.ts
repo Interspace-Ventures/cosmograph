@@ -11,5 +11,6 @@ export const SITE = {
   github: {
     repo: "heyinterspace/galactic",
     url: "https://github.com/heyinterspace/galactic",
+    sponsors: "https://github.com/sponsors/heyinterspace",
   },
 } as const;

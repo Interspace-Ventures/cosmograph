@@ -18,6 +18,8 @@ import {
   ChevronLeft,
   ChevronDown,
   Check,
+  Sparkles,
+  Heart,
 } from "lucide-react";
 import { useAppState } from "@/lib/store";
 import {
@@ -29,6 +31,7 @@ import {
   getMatchingPapers,
 } from "@/data/galaxy";
 import { getDomainColorStr } from "@/lib/colors";
+import { SITE } from "@/config/site";
 import { ShareButton } from "./ShareButton";
 import { GitHubLink } from "./GitHubLink";
 
@@ -59,7 +62,7 @@ export function Sidebar() {
   } = useAppState();
 
   const [query, setQuery] = useState("");
-  const [domainMenuOpen, setDomainMenuOpen] = useState(true);
+  const { openSections, toggleSection } = useSectionState();
   const inputRef = useRef<HTMLInputElement>(null);
   const focusOnOpen = useRef(false);
 
@@ -149,10 +152,6 @@ export function Sidebar() {
     setSelectedObject({ type: "planet", id });
   };
 
-  const domainNameById = useMemo<Record<string, string>>(
-    () => Object.fromEntries(galaxyData.domains.map((d) => [d.id, d.name])),
-    [],
-  );
   const toggleDomain = (id: string) => {
     const next = new Set(filters.domainIds);
     if (next.has(id)) next.delete(id);
@@ -162,13 +161,6 @@ export function Sidebar() {
   const allDomainsSelected = galaxyData.domains.every((d) =>
     filters.domainIds.includes(d.id),
   );
-  const selectedDomainLabel = allDomainsSelected
-    ? "All domains"
-    : filters.domainIds.length === 0
-      ? "No domains"
-      : filters.domainIds.length === 1
-        ? (domainNameById[filters.domainIds[0]] ?? "1 selected")
-        : `${filters.domainIds.length} domains`;
 
   const expandWithSearch = () => {
     focusOnOpen.current = true;
@@ -211,289 +203,306 @@ export function Sidebar() {
 
             {/* Scroll body */}
             <div className="flex flex-col gap-4 overflow-y-auto custom-scrollbar p-3">
+              {/* Customize */}
+              <CollapsibleSection
+                icon={<Sparkles size={15} />}
+                title="Customize"
+                isOpen={openSections.customize}
+                onToggle={() => toggleSection("customize")}
+                first
+              >
+                <div className="flex flex-col gap-1.5">
+                  <a
+                    href={SITE.github.sponsors}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="Support development via GitHub Sponsors"
+                    className="flex h-9 w-full items-center gap-2 border-2 border-edge bg-white/5 px-3 text-ink transition-all hover:bg-white/10"
+                  >
+                    <Heart size={14} className="shrink-0 text-accent" />
+                    <span className="font-display text-[11px] uppercase tracking-wider">
+                      Donate
+                    </span>
+                  </a>
+                </div>
+              </CollapsibleSection>
+
               {/* Share */}
-              <div className="flex flex-col gap-2">
-                <SectionLabel icon={<Share2 size={15} />}>Share</SectionLabel>
+              <CollapsibleSection
+                icon={<Share2 size={15} />}
+                title="Share"
+                isOpen={openSections.share}
+                onToggle={() => toggleSection("share")}
+              >
                 <div className="flex flex-col gap-1.5">
                   <GitHubLink full />
                   <ShareButton full />
                 </div>
-              </div>
+              </CollapsibleSection>
 
               {/* Navigate */}
-              <div className="flex flex-col gap-1.5 border-t-2 border-edge pt-3">
-                <SectionLabel icon={<Navigation size={15} />}>Navigate</SectionLabel>
-                <ConsoleButton
-                  onClick={() => setInfoOpen(true)}
-                  icon={<Info size={14} />}
-                  label="Info"
-                />
-                <ConsoleButton
-                  active={cameraMode === "god"}
-                  onClick={() => setCameraMode("god")}
-                  icon={<Orbit size={14} />}
-                  label="Orbit"
-                />
-                <ConsoleButton
-                  active={cameraMode === "spaceship"}
-                  onClick={() => setCameraMode("spaceship")}
-                  icon={<Compass size={14} />}
-                  label="Fly"
-                />
-                <ConsoleButton
-                  onClick={startTour}
-                  icon={<Map size={14} />}
-                  label="Tour"
-                />
-                <ConsoleButton
-                  onClick={replayIntro}
-                  icon={<Rewind size={14} />}
-                  label="Replay"
-                />
-              </div>
+              <CollapsibleSection
+                icon={<Navigation size={15} />}
+                title="Navigate"
+                isOpen={openSections.navigate}
+                onToggle={() => toggleSection("navigate")}
+              >
+                <div className="flex flex-col gap-1.5">
+                  <ConsoleButton
+                    onClick={() => setInfoOpen(true)}
+                    icon={<Info size={14} />}
+                    label="Info"
+                  />
+                  <ConsoleButton
+                    active={cameraMode === "god"}
+                    onClick={() => setCameraMode("god")}
+                    icon={<Orbit size={14} />}
+                    label="Orbit"
+                  />
+                  <ConsoleButton
+                    active={cameraMode === "spaceship"}
+                    onClick={() => setCameraMode("spaceship")}
+                    icon={<Compass size={14} />}
+                    label="Fly"
+                  />
+                  <ConsoleButton
+                    onClick={startTour}
+                    icon={<Map size={14} />}
+                    label="Tour"
+                  />
+                  <ConsoleButton
+                    onClick={replayIntro}
+                    icon={<Rewind size={14} />}
+                    label="Replay"
+                  />
+                </div>
+              </CollapsibleSection>
 
               {/* Filter */}
-              <div className="flex flex-col gap-3 border-t-2 border-edge pt-3">
-                <div className="flex items-center justify-between gap-2">
-                  <SectionLabel
-                    icon={
-                      <Filter
-                        size={15}
-                        className={filtersActive ? "text-accent" : "text-ink-dim"}
-                      />
-                    }
-                  >
-                    Filter
-                  </SectionLabel>
+              <CollapsibleSection
+                icon={
+                  <Filter
+                    size={15}
+                    className={filtersActive ? "text-accent" : "text-ink-dim"}
+                  />
+                }
+                title="Filter"
+                isOpen={openSections.filter}
+                onToggle={() => toggleSection("filter")}
+                right={
                   <span
                     className={`font-mono text-[11px] ${filtersActive ? "text-accent" : "text-ink-dim"}`}
                   >
                     {filtersActive ? `${matchCount}/${totalPapers}` : `${totalPapers} papers`}
                   </span>
-                </div>
-
-                {/* Search */}
-                <div>
-                  <div className="flex items-center gap-2 border-2 border-edge bg-white/5 px-2 focus-within:border-accent">
-                    <Search size={15} className="shrink-0 text-ink-dim" />
-                    <input
-                      ref={inputRef}
-                      value={query}
-                      onChange={(e) => setQuery(e.target.value)}
-                      placeholder="Search papers, domains…"
-                      className="min-w-0 flex-1 bg-transparent py-2 text-sm text-ink placeholder:text-ink-dim/70 focus:outline-none"
-                    />
-                    {query && (
-                      <button
-                        onClick={() => setQuery("")}
-                        className="shrink-0 text-ink-dim hover:text-ink"
-                        aria-label="Clear search"
-                      >
-                        <X size={14} />
-                      </button>
-                    )}
-                  </div>
-                  {results.length > 0 && (
-                    <div className="mt-1.5 max-h-[34vh] overflow-y-auto custom-scrollbar border-2 border-edge">
-                      {results.map((r) => (
-                        <button
-                          key={`${r.type}-${r.id}`}
-                          onClick={() => pick(r)}
-                          className="flex w-full items-center gap-2.5 border-b border-white/8 px-3 py-2.5 text-left transition-colors last:border-0 hover:bg-accent/15"
-                        >
-                          {r.type === "sun" ? (
-                            <Sun size={14} className="shrink-0 text-accent" />
-                          ) : (
-                            <Globe2 size={14} className="shrink-0 text-ink-dim" />
-                          )}
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate text-sm text-ink">{r.title}</span>
-                            <span className="block truncate font-mono text-[10px] uppercase tracking-wider text-ink-dim">
-                              {r.subtitle}
-                            </span>
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Citations — single line: [#] Citations */}
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    aria-label="Minimum citations"
-                    min={0}
-                    max={maxCitations}
-                    value={filters.minCitations}
-                    onChange={(e) => {
-                      const v = parseInt(e.target.value, 10);
-                      setFilters({
-                        minCitations: Number.isNaN(v)
-                          ? 0
-                          : Math.min(Math.max(v, 0), maxCitations),
-                      });
-                    }}
-                    className={`w-16 ${numInputCls}`}
-                  />
-                  <span className="font-mono text-[11px] uppercase tracking-widest text-ink-dim">
-                    Min citations
-                  </span>
-                </div>
-
-                {/* Year range — single line: [YYYY] – [YYYY] Year range */}
-                <div className="flex items-center gap-1.5">
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    aria-label="Start year"
-                    min={yearRange.min}
-                    max={maxYear}
-                    value={minYear}
-                    onChange={(e) => {
-                      const v = parseInt(e.target.value, 10);
-                      if (Number.isNaN(v)) return;
-                      const c = Math.min(Math.max(v, yearRange.min), maxYear);
-                      setFilters({ minYear: c <= yearRange.min ? null : c });
-                    }}
-                    className={`w-14 ${numInputCls}`}
-                  />
-                  <span className="font-mono text-xs text-ink-dim">–</span>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    aria-label="End year"
-                    min={minYear}
-                    max={yearRange.max}
-                    value={maxYear}
-                    onChange={(e) => {
-                      const v = parseInt(e.target.value, 10);
-                      if (Number.isNaN(v)) return;
-                      const c = Math.max(Math.min(v, yearRange.max), minYear);
-                      setFilters({ maxYear: c >= yearRange.max ? null : c });
-                    }}
-                    className={`w-14 ${numInputCls}`}
-                  />
-                  <span className="font-mono text-[11px] uppercase tracking-widest text-ink-dim">
-                    Years
-                  </span>
-                </div>
-
-                {/* Domain — multi-select dropdown */}
-                <div>
-                  <span className="mb-1.5 block font-mono text-[11px] uppercase tracking-widest text-ink-dim">
-                    Domain
-                  </span>
+                }
+              >
+                <div className="flex flex-col gap-3">
+                  {/* Search */}
                   <div>
-                    <button
-                      type="button"
-                      onClick={() => setDomainMenuOpen((o) => !o)}
-                      aria-expanded={domainMenuOpen}
-                      className="flex w-full items-center justify-between gap-2 border-2 border-edge bg-white/5 px-2 py-1.5 text-left text-xs text-ink transition-colors hover:bg-white/10"
-                    >
-                      <span className="min-w-0 flex-1 truncate">{selectedDomainLabel}</span>
-                      <ChevronDown
-                        size={14}
-                        className={`shrink-0 text-ink-dim transition-transform ${
-                          domainMenuOpen ? "rotate-180" : ""
-                        }`}
+                    <div className="flex items-center gap-2 border-2 border-edge bg-white/5 px-2 focus-within:border-accent">
+                      <Search size={15} className="shrink-0 text-ink-dim" />
+                      <input
+                        ref={inputRef}
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        placeholder="Search papers, domains…"
+                        className="min-w-0 flex-1 bg-transparent py-2 text-sm text-ink placeholder:text-ink-dim/70 focus:outline-none"
                       />
-                    </button>
-                    {domainMenuOpen && (
-                      <div className="mt-1 max-h-[16rem] overflow-y-auto custom-scrollbar border-2 border-edge bg-white/5">
-                        <DomainOption
-                          checked={allDomainsSelected}
-                          onClick={() =>
-                            setFilters({
-                              domainIds: allDomainsSelected
-                                ? []
-                                : galaxyData.domains.map((d) => d.id),
-                            })
-                          }
+                      {query && (
+                        <button
+                          onClick={() => setQuery("")}
+                          className="shrink-0 text-ink-dim hover:text-ink"
+                          aria-label="Clear search"
                         >
-                          All domains
-                        </DomainOption>
-                        {galaxyData.domains.map((d) => (
-                          <DomainOption
-                            key={d.id}
-                            checked={filters.domainIds.includes(d.id)}
-                            swatch={getDomainColorStr(domainIndexById[d.id] ?? 0)}
-                            onClick={() => toggleDomain(d.id)}
+                          <X size={14} />
+                        </button>
+                      )}
+                    </div>
+                    {results.length > 0 && (
+                      <div className="mt-1.5 max-h-[34vh] overflow-y-auto custom-scrollbar border-2 border-edge">
+                        {results.map((r) => (
+                          <button
+                            key={`${r.type}-${r.id}`}
+                            onClick={() => pick(r)}
+                            className="flex w-full items-center gap-2.5 border-b border-white/8 px-3 py-2.5 text-left transition-colors last:border-0 hover:bg-accent/15"
                           >
-                            {d.name}
-                          </DomainOption>
+                            {r.type === "sun" ? (
+                              <Sun size={14} className="shrink-0 text-accent" />
+                            ) : (
+                              <Globe2 size={14} className="shrink-0 text-ink-dim" />
+                            )}
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate text-sm text-ink">{r.title}</span>
+                              <span className="block truncate font-mono text-[10px] uppercase tracking-wider text-ink-dim">
+                                {r.subtitle}
+                              </span>
+                            </span>
+                          </button>
                         ))}
                       </div>
                     )}
                   </div>
-                </div>
 
-                {filtersActive && (
-                  <div className="flex flex-col border-2 border-edge">
-                    <div className="flex items-center gap-2 px-3 py-2">
-                      <ListFilter size={14} className="text-accent" />
-                      <span className="font-display text-[11px] uppercase tracking-wider text-ink">
-                        Matching
-                      </span>
-                      <span className="font-mono text-[11px] text-ink-dim">
-                        {matchingPapers.length}
-                      </span>
-                      <button
-                        onClick={resetFilters}
-                        title="Clear filters"
-                        className="ml-auto flex items-center gap-1 font-display text-[11px] uppercase tracking-wider text-ink-dim transition-colors hover:text-ink"
+                  {/* Citations — single line: [#] Min citations */}
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      aria-label="Minimum citations"
+                      min={0}
+                      max={maxCitations}
+                      value={filters.minCitations}
+                      onChange={(e) => {
+                        const v = parseInt(e.target.value, 10);
+                        setFilters({
+                          minCitations: Number.isNaN(v)
+                            ? 0
+                            : Math.min(Math.max(v, 0), maxCitations),
+                        });
+                      }}
+                      className={`w-16 ${numInputCls}`}
+                    />
+                    <span className="font-mono text-[11px] uppercase tracking-widest text-ink-dim">
+                      Min citations
+                    </span>
+                  </div>
+
+                  {/* Year range — single line: [YYYY] – [YYYY] Years */}
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      aria-label="Start year"
+                      min={yearRange.min}
+                      max={maxYear}
+                      value={minYear}
+                      onChange={(e) => {
+                        const v = parseInt(e.target.value, 10);
+                        if (Number.isNaN(v)) return;
+                        const c = Math.min(Math.max(v, yearRange.min), maxYear);
+                        setFilters({ minYear: c <= yearRange.min ? null : c });
+                      }}
+                      className={`w-14 ${numInputCls}`}
+                    />
+                    <span className="font-mono text-xs text-ink-dim">–</span>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      aria-label="End year"
+                      min={minYear}
+                      max={yearRange.max}
+                      value={maxYear}
+                      onChange={(e) => {
+                        const v = parseInt(e.target.value, 10);
+                        if (Number.isNaN(v)) return;
+                        const c = Math.max(Math.min(v, yearRange.max), minYear);
+                        setFilters({ maxYear: c >= yearRange.max ? null : c });
+                      }}
+                      className={`w-14 ${numInputCls}`}
+                    />
+                    <span className="font-mono text-[11px] uppercase tracking-widest text-ink-dim">
+                      Years
+                    </span>
+                  </div>
+
+                  {/* Domain — inline multi-select */}
+                  <div>
+                    <span className="mb-1.5 block font-mono text-[11px] uppercase tracking-widest text-ink-dim">
+                      Domain
+                    </span>
+                    <div className="max-h-[16rem] overflow-y-auto custom-scrollbar border-2 border-edge bg-white/5">
+                      <DomainOption
+                        checked={allDomainsSelected}
+                        onClick={() =>
+                          setFilters({
+                            domainIds: allDomainsSelected
+                              ? []
+                              : galaxyData.domains.map((d) => d.id),
+                          })
+                        }
                       >
-                        Clear <X size={12} />
-                      </button>
-                    </div>
-                    <div className="max-h-[30vh] overflow-y-auto custom-scrollbar border-t-2 border-edge">
-                      {matchingPapers.length === 0 ? (
-                        <div className="px-3 py-5 text-center text-sm text-ink-dim">
-                          No papers match these filters.
-                        </div>
-                      ) : (
-                        matchingPapers.map((p) => {
-                          const isSelected =
-                            selectedObject?.type === "planet" && selectedObject.id === p.id;
-                          return (
-                            <button
-                              key={p.id}
-                              onClick={() => pickPaper(p.id)}
-                              className={`flex w-full flex-col gap-1.5 border-b border-white/8 px-3 py-2.5 text-left transition-colors last:border-0 ${
-                                isSelected ? "bg-accent/20" : "hover:bg-accent/15"
-                              }`}
-                            >
-                              <span className="block text-sm leading-snug text-ink line-clamp-2">
-                                {p.title}
-                              </span>
-                              <span className="flex flex-wrap items-center gap-2 font-mono text-[10px] uppercase tracking-wider text-ink-dim">
-                                {p.year != null && <span>{p.year}</span>}
-                                <span className="text-accent">
-                                  {p.citations.toLocaleString()} cites
-                                </span>
-                                {p.domainName && (
-                                  <span className="flex min-w-0 items-center gap-1">
-                                    <span
-                                      className="h-2 w-2 shrink-0 border border-edge"
-                                      style={{
-                                        background: getDomainColorStr(
-                                          domainIndexById[p.domainId] ?? 0,
-                                        ),
-                                      }}
-                                    />
-                                    <span className="truncate">{p.domainName}</span>
-                                  </span>
-                                )}
-                              </span>
-                            </button>
-                          );
-                        })
-                      )}
+                        All domains
+                      </DomainOption>
+                      {galaxyData.domains.map((d) => (
+                        <DomainOption
+                          key={d.id}
+                          checked={filters.domainIds.includes(d.id)}
+                          swatch={getDomainColorStr(domainIndexById[d.id] ?? 0)}
+                          onClick={() => toggleDomain(d.id)}
+                        >
+                          {d.name}
+                        </DomainOption>
+                      ))}
                     </div>
                   </div>
-                )}
-              </div>
+
+                  {filtersActive && (
+                    <div className="flex flex-col border-2 border-edge">
+                      <div className="flex items-center gap-2 px-3 py-2">
+                        <ListFilter size={14} className="text-accent" />
+                        <span className="font-display text-[11px] uppercase tracking-wider text-ink">
+                          Matching
+                        </span>
+                        <span className="font-mono text-[11px] text-ink-dim">
+                          {matchingPapers.length}
+                        </span>
+                        <button
+                          onClick={resetFilters}
+                          title="Clear filters"
+                          className="ml-auto flex items-center gap-1 font-display text-[11px] uppercase tracking-wider text-ink-dim transition-colors hover:text-ink"
+                        >
+                          Clear <X size={12} />
+                        </button>
+                      </div>
+                      <div className="max-h-[30vh] overflow-y-auto custom-scrollbar border-t-2 border-edge">
+                        {matchingPapers.length === 0 ? (
+                          <div className="px-3 py-5 text-center text-sm text-ink-dim">
+                            No papers match these filters.
+                          </div>
+                        ) : (
+                          matchingPapers.map((p) => {
+                            const isSelected =
+                              selectedObject?.type === "planet" && selectedObject.id === p.id;
+                            return (
+                              <button
+                                key={p.id}
+                                onClick={() => pickPaper(p.id)}
+                                className={`flex w-full flex-col gap-1.5 border-b border-white/8 px-3 py-2.5 text-left transition-colors last:border-0 ${
+                                  isSelected ? "bg-accent/20" : "hover:bg-accent/15"
+                                }`}
+                              >
+                                <span className="block text-sm leading-snug text-ink line-clamp-2">
+                                  {p.title}
+                                </span>
+                                <span className="flex flex-wrap items-center gap-2 font-mono text-[10px] uppercase tracking-wider text-ink-dim">
+                                  {p.year != null && <span>{p.year}</span>}
+                                  <span className="text-accent">
+                                    {p.citations.toLocaleString()} cites
+                                  </span>
+                                  {p.domainName && (
+                                    <span className="flex min-w-0 items-center gap-1">
+                                      <span
+                                        className="h-2 w-2 shrink-0 border border-edge"
+                                        style={{
+                                          background: getDomainColorStr(
+                                            domainIndexById[p.domainId] ?? 0,
+                                          ),
+                                        }}
+                                      />
+                                      <span className="truncate">{p.domainName}</span>
+                                    </span>
+                                  )}
+                                </span>
+                              </button>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CollapsibleSection>
             </div>
           </motion.div>
         ) : (
@@ -509,6 +518,18 @@ export function Sidebar() {
             <RailButton onClick={() => setOpen(true)} label="Expand console">
               <ChevronLeft size={16} />
             </RailButton>
+            <Divider />
+            {/* Customize */}
+            <a
+              href={SITE.github.sponsors}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Donate via GitHub Sponsors"
+              title="Donate via GitHub Sponsors"
+              className="relative flex h-9 w-9 items-center justify-center border-2 border-edge bg-white/5 text-accent transition-all hover:bg-white/10"
+            >
+              <Heart size={15} />
+            </a>
             <Divider />
             {/* Share */}
             <GitHubLink compact />
@@ -533,10 +554,10 @@ export function Sidebar() {
               <Compass size={15} />
             </RailButton>
             <RailButton onClick={startTour} label="Tour">
-              <Map size={15} />
+              <Map size={16} />
             </RailButton>
             <RailButton onClick={replayIntro} label="Replay">
-              <Rewind size={15} />
+              <Rewind size={16} />
             </RailButton>
             <Divider />
             {/* Filter (search lives in this section when expanded) */}
@@ -552,6 +573,82 @@ export function Sidebar() {
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+type SectionKey = "customize" | "share" | "navigate" | "filter";
+
+const SECTION_STORAGE_KEY = "galaxy.console.sections";
+const DEFAULT_SECTIONS: Record<SectionKey, boolean> = {
+  customize: true,
+  share: true,
+  navigate: true,
+  filter: true,
+};
+
+function useSectionState() {
+  const [openSections, setOpenSections] = useState<Record<SectionKey, boolean>>(
+    () => {
+      try {
+        const raw = localStorage.getItem(SECTION_STORAGE_KEY);
+        if (raw) return { ...DEFAULT_SECTIONS, ...JSON.parse(raw) };
+      } catch {
+        /* ignore */
+      }
+      return DEFAULT_SECTIONS;
+    },
+  );
+  const toggleSection = (key: SectionKey) =>
+    setOpenSections((prev) => {
+      const next = { ...prev, [key]: !prev[key] };
+      try {
+        localStorage.setItem(SECTION_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  return { openSections, toggleSection };
+}
+
+function CollapsibleSection({
+  icon,
+  title,
+  isOpen,
+  onToggle,
+  right,
+  first = false,
+  children,
+}: {
+  icon?: React.ReactNode;
+  title: string;
+  isOpen: boolean;
+  onToggle: () => void;
+  right?: React.ReactNode;
+  first?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={first ? "" : "border-t-2 border-edge pt-3"}>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={isOpen}
+        className="flex w-full items-center justify-between gap-2 text-left"
+      >
+        <SectionLabel icon={icon}>{title}</SectionLabel>
+        <span className="flex items-center gap-2">
+          {right}
+          <ChevronDown
+            size={14}
+            className={`shrink-0 text-ink-dim transition-transform ${
+              isOpen ? "" : "-rotate-90"
+            }`}
+          />
+        </span>
+      </button>
+      {isOpen && <div className="mt-3">{children}</div>}
     </div>
   );
 }
