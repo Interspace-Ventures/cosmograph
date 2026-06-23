@@ -15,7 +15,6 @@ import {
   Sparkles,
   Heart,
   Lock,
-  MessageCircleQuestion,
   SendHorizontal,
   Loader2,
   Bug,
@@ -41,6 +40,7 @@ import { SITE } from "@/config/site";
 import { ShareButton } from "./ShareButton";
 import { GitHubLink } from "./GitHubLink";
 import { AccountIndicator, AccountIndicatorRail } from "./AccountIndicator";
+import { MessageCircleStar } from "./MessageCircleStar";
 import {
   Tooltip,
   TooltipTrigger,
@@ -222,7 +222,7 @@ export function Sidebar() {
               {/* Ask the galaxy */}
               <CollapsibleSection
                 icon={
-                  <MessageCircleQuestion
+                  <MessageCircleStar
                     size={15}
                     className={filtersActive ? "text-accent" : "text-ink-dim"}
                   />
@@ -314,7 +314,7 @@ export function Sidebar() {
             <Divider />
             {/* Ask */}
             <RailButton active={filtersActive} onClick={expandWithAsk} label="Ask">
-              <MessageCircleQuestion size={15} />
+              <MessageCircleStar size={15} />
               {filtersActive && (
                 <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-accent ring-2 ring-black" />
               )}
