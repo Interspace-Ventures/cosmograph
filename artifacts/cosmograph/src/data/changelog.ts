@@ -27,6 +27,8 @@ export const CHANGELOG: ChangelogEntry[] = [
       "The console's Sign In action is now a clear Subscribe button — subscribing signs you in along the way.",
       "Renamed Donate to Sponsor, with a heart on the left and the GitHub mark on the right.",
       "Shareable screenshots are more reliable — the card always renders, falling back to the branded stats card if the live view can't be captured.",
+      "The preview screenshot now lives inside the membership panel instead of behind it, with a single Copy-image-to-clipboard action.",
+      "Refreshed the membership panel — accent Subscribe button, clearer $7/year preview copy, and an updated feature list.",
       "Clearer messaging when OpenAlex is rate-limiting scientist search.",
     ],
   },

@@ -10,8 +10,6 @@ import {
   Telescope,
   Copy,
   Check,
-  Download,
-  Share2,
   Heart,
   ArrowLeft,
 } from "lucide-react";
@@ -19,13 +17,7 @@ import { useCreateCheckout } from "@workspace/api-client-react";
 import { useAppState } from "@/lib/store";
 import { Scene } from "@/components/Scene";
 import { PERKS } from "@/components/Paywall";
-import {
-  buildShareCard,
-  copyImageToClipboard,
-  downloadShareCard,
-  canNativeShareFiles,
-  nativeShareCard,
-} from "@/lib/share";
+import { buildShareCard, copyImageToClipboard } from "@/lib/share";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 const SPONSOR_URL = "https://github.com/sponsors/heyinterspace";
@@ -33,8 +25,9 @@ const SPONSOR_URL = "https://github.com/sponsors/heyinterspace";
 // The screenshot-only paywall gate. When a non-member selects a non-default
 // scientist, the interactive galaxy is replaced by this: the live scene renders
 // briefly off-view to capture the branded share card, then it's torn down and
-// only the static screenshot + a Subscribe CTA remain. The home/default
-// scientist never reaches this (it's free) and members never reach it (entitled).
+// the captured preview is shown *inside* the membership panel alongside a
+// Subscribe CTA. The home/default scientist never reaches this (it's free) and
+// members never reach it (entitled).
 export function ScreenshotGate() {
   const { activeAuthorLabel, activeAuthorId, setEntitlement } = useAppState();
   const [, setLocation] = useLocation();
@@ -48,8 +41,6 @@ export function ScreenshotGate() {
   const blobRef = useRef<Blob | null>(null);
   const urlRef = useRef<string | null>(null);
   const copyResetTimer = useRef<number | null>(null);
-
-  const showNative = canNativeShareFiles();
 
   useEffect(() => {
     let cancelled = false;
@@ -128,16 +119,6 @@ export function ScreenshotGate() {
     }
   };
 
-  const handleDownload = () => {
-    if (!blobRef.current) return;
-    downloadShareCard(blobRef.current);
-  };
-
-  const handleNativeShare = async () => {
-    if (!blobRef.current) return;
-    await nativeShareCard(blobRef.current);
-  };
-
   return (
     <div className="absolute inset-0 z-20 overflow-hidden bg-[#03030a]">
       {/* The live scene renders here, invisibly, only while we capture the frame.
@@ -148,22 +129,6 @@ export function ScreenshotGate() {
           <Scene />
         </div>
       )}
-
-      {/* The shareable screenshot, cover-fit as a full-screen hero. */}
-      {imageUrl && (
-        <motion.img
-          key="card"
-          src={imageUrl}
-          alt={`Cosmograph of ${activeAuthorLabel}`}
-          initial={{ opacity: 0, scale: 1.04 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-          className="absolute inset-0 h-full w-full object-cover"
-        />
-      )}
-
-      {/* Scrim so the panel stays legible over the screenshot. */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/55 to-black/85" />
 
       {/* Back to the free home galaxy. */}
       <button
@@ -182,6 +147,26 @@ export function ScreenshotGate() {
           transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
           className="glass-panel my-auto w-full max-w-md p-6 sm:p-7"
         >
+          {/* The captured cosmograph preview, shown inside the panel. */}
+          <div className="mb-5 overflow-hidden border-2 border-edge bg-black/40">
+            {imageUrl ? (
+              <motion.img
+                key="card"
+                src={imageUrl}
+                alt={`Cosmograph of ${activeAuthorLabel}`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                className="block w-full"
+              />
+            ) : (
+              <div className="flex aspect-[16/10] w-full items-center justify-center gap-2 font-mono text-[10px] uppercase tracking-widest text-ink-dim">
+                <Loader2 size={14} className="animate-spin" />
+                Rendering preview…
+              </div>
+            )}
+          </div>
+
           <div className="flex items-center gap-2.5">
             <div className="grid h-10 w-10 shrink-0 place-items-center border-2 border-accent/60 bg-accent/10 text-accent">
               <Lock size={18} />
@@ -197,11 +182,10 @@ export function ScreenshotGate() {
           </div>
 
           <p className="mt-3 text-[13px] leading-relaxed text-ink-dim">
-            This is the shareable view of{" "}
-            <span className="text-ink">{activeAuthorLabel}</span>'s cosmograph. A{" "}
-            <span className="text-ink">$7/year</span> membership opens the full
-            interactive galaxy — for <span className="text-ink">any</span>{" "}
-            scientist you search.
+            This is a preview of{" "}
+            <span className="text-ink">{activeAuthorLabel}</span>'s cosmograph.
+            For full access and a bunch of amazing features, subscribe for{" "}
+            <span className="text-ink">$7 / year</span>.
           </p>
 
           <ul className="mt-4 space-y-2">
@@ -220,7 +204,8 @@ export function ScreenshotGate() {
             <Show when="signed-out">
               <button
                 onClick={goSignIn}
-                className="glass-panel glass-panel-interactive flex w-full items-center justify-center gap-2 py-3 font-display text-xs uppercase tracking-widest text-ink"
+                style={{ background: "var(--accent)" }}
+                className="glass-panel glass-panel-interactive flex w-full items-center justify-center gap-2 py-3 font-display text-xs uppercase tracking-widest text-accent-foreground"
               >
                 <Rocket size={14} />
                 <span>Subscribe</span>
@@ -248,52 +233,20 @@ export function ScreenshotGate() {
             </Show>
           </div>
 
-          {/* Share actions for the screenshot. */}
+          {/* Share action for the screenshot — copy to clipboard only. */}
           <div className="mt-4 border-t-2 border-edge pt-4">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-ink-dim">
-              Share this cosmograph
-            </span>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <button
-                onClick={handleCopyImage}
-                disabled={!imageUrl}
-                className="flex items-center gap-1.5 border-2 border-edge bg-white/5 px-3 py-2 font-display text-[10px] uppercase tracking-wider text-ink transition-colors hover:bg-white/10 disabled:opacity-50"
-              >
-                {imageCopied ? (
-                  <Check size={13} className="text-accent" />
-                ) : (
-                  <Copy size={13} />
-                )}
-                {imageCopied ? "Copied" : "Copy image"}
-              </button>
-
-              <button
-                onClick={handleDownload}
-                disabled={!imageUrl}
-                className="flex items-center gap-1.5 border-2 border-edge bg-white/5 px-3 py-2 font-display text-[10px] uppercase tracking-wider text-ink transition-colors hover:bg-white/10 disabled:opacity-50"
-              >
-                <Download size={13} />
-                Download
-              </button>
-
-              {showNative && (
-                <button
-                  onClick={handleNativeShare}
-                  disabled={!imageUrl}
-                  className="flex items-center gap-1.5 border-2 border-accent/50 bg-accent/10 px-3 py-2 font-display text-[10px] uppercase tracking-wider text-accent transition-colors hover:bg-accent/20 disabled:opacity-50"
-                >
-                  <Share2 size={13} />
-                  Share…
-                </button>
+            <button
+              onClick={handleCopyImage}
+              disabled={!imageUrl}
+              className="flex w-full items-center justify-center gap-1.5 border-2 border-edge bg-white/5 px-3 py-2.5 font-display text-[10px] uppercase tracking-wider text-ink transition-colors hover:bg-white/10 disabled:opacity-50"
+            >
+              {imageCopied ? (
+                <Check size={13} className="text-accent" />
+              ) : (
+                <Copy size={13} />
               )}
-
-              {!imageUrl && capturing && (
-                <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-ink-dim">
-                  <Loader2 size={12} className="animate-spin" />
-                  Rendering…
-                </span>
-              )}
-            </div>
+              {imageCopied ? "Copied to clipboard" : "Copy image to clipboard"}
+            </button>
           </div>
 
           <a

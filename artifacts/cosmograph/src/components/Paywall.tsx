@@ -10,11 +10,11 @@ const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 const SPONSOR_URL = "https://github.com/sponsors/heyinterspace";
 
 export const PERKS = [
-  "Ask Cosmo — ask questions about any researcher's work, answered from their galaxy",
-  "Fly the spaceship through any researcher's galaxy",
-  "Take the guided tour of their domains and landmark papers",
-  "Open rich planet detail — venue, every co-author, source link",
-  "Every new feature as it ships, included",
+  "Rich detailed cosmos view with every sun and planet reflecting the researcher's body of work",
+  "Dedicated scientist cosmos URL with customized dedication and unique guided tour, shareable with up to 3 cosmonauts",
+  "Ask Cosmos: ask questions about any researcher's work or metrics and get a view of every paper in their cosmos",
+  "Interactive visualization with first-person fly-through for any scientist's cosmos",
+  "Every new feature and product update as it ships, instantly",
 ];
 
 export function Paywall() {
@@ -97,11 +97,10 @@ export function Paywall() {
             </div>
 
             <p className="mt-3 text-[13px] leading-relaxed text-ink-dim">
-              The stats and shareable view for{" "}
-              <span className="text-ink">{activeAuthorLabel}</span> are free. A{" "}
-              <span className="text-ink">$7/year</span> membership opens deep
-              exploration for <span className="text-ink">any</span> scientist you
-              search — plus Ask Cosmo and every new feature as it ships.
+              This is a preview of{" "}
+              <span className="text-ink">{activeAuthorLabel}</span>'s cosmograph.
+              For full access and a bunch of amazing features, subscribe for{" "}
+              <span className="text-ink">$7 / year</span>.
             </p>
 
             <ul className="mt-4 space-y-2">
@@ -123,7 +122,8 @@ export function Paywall() {
               <Show when="signed-out">
                 <button
                   onClick={goSignIn}
-                  className="glass-panel glass-panel-interactive flex items-center justify-center gap-2 w-full py-3 font-display text-xs uppercase tracking-widest text-ink"
+                  style={{ background: "var(--accent)" }}
+                  className="glass-panel glass-panel-interactive flex items-center justify-center gap-2 w-full py-3 font-display text-xs uppercase tracking-widest text-accent-foreground"
                 >
                   <Rocket size={14} />
                   <span>Subscribe</span>
