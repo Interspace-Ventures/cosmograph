@@ -137,20 +137,28 @@ export function Sidebar() {
                   />
 
                   {/* Personalize — paid */}
-                  <button
-                    type="button"
-                    onClick={() => setCustomizeOpen(true)}
-                    className="flex h-9 w-full items-center gap-2 border-2 border-accent bg-accent/20 px-3 text-white transition-all hover:bg-accent/30"
-                  >
-                    <Telescope size={14} className="shrink-0 text-white" />
-                    <span className="font-display text-[11px] uppercase tracking-wider">
-                      Personalize
-                    </span>
-                    <Sparkles size={13} className="ml-auto shrink-0 text-white/90" />
-                  </button>
-                  <p className="text-[11px] leading-relaxed text-ink-dim">
-                    Choose scientist for cosmograph
-                  </p>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() => setCustomizeOpen(true)}
+                        className="flex h-9 w-full items-center gap-2 border-2 border-accent bg-accent/20 px-3 text-white transition-all hover:bg-accent/30"
+                      >
+                        <Telescope size={14} className="shrink-0 text-white" />
+                        <span className="font-display text-[11px] uppercase tracking-wider">
+                          Personalize
+                        </span>
+                        <Sparkles size={13} className="ml-auto shrink-0 text-white/90" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent
+                      side="left"
+                      sideOffset={8}
+                      className="rounded-none border-2 border-edge bg-black/90 px-2 py-1 font-display text-[10px] uppercase tracking-wider text-ink"
+                    >
+                      Choose scientist for cosmograph
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
               </CollapsibleSection>
 
