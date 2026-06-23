@@ -126,33 +126,22 @@ export function Sidebar() {
 
             {/* Scroll body */}
             <div className="flex flex-col gap-4 overflow-y-auto custom-scrollbar p-3">
-              {/* Account */}
+              {/* Info */}
+              <ConsoleButton
+                onClick={() => setInfoOpen(true)}
+                icon={<Info size={14} />}
+                label="Info"
+              />
+
+              {/* Profile */}
               <CollapsibleSection
                 icon={<UserRound size={15} />}
-                title="Account"
+                title="Profile"
                 isOpen={openSections.account}
                 onToggle={() => toggleSection("account")}
-                first
               >
                 <div className="flex flex-col gap-1.5">
                   <AccountIndicator />
-                  <ConsoleButton
-                    onClick={() => setInfoOpen(true)}
-                    icon={<Info size={14} />}
-                    label="Info"
-                  />
-                  <a
-                    href={SITE.github.sponsors}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    title="Support development via GitHub Sponsors"
-                    className="flex h-9 w-full items-center gap-2 border-2 border-edge bg-white/5 px-3 text-ink transition-all hover:bg-white/10"
-                  >
-                    <Heart size={14} className="shrink-0 text-accent" />
-                    <span className="font-display text-[11px] uppercase tracking-wider">
-                      Donate
-                    </span>
-                  </a>
                 </div>
               </CollapsibleSection>
 
@@ -166,6 +155,18 @@ export function Sidebar() {
                 <div className="flex flex-col gap-1.5">
                   <GitHubLink full />
                   <ShareButton full />
+                  <a
+                    href={SITE.github.sponsors}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="Support development via GitHub Sponsors"
+                    className="flex h-9 w-full items-center gap-2 border-2 border-edge bg-white/5 px-3 text-ink transition-all hover:bg-white/10"
+                  >
+                    <Heart size={14} className="shrink-0 text-accent" />
+                    <span className="font-display text-[11px] uppercase tracking-wider">
+                      Donate
+                    </span>
+                  </a>
                 </div>
               </CollapsibleSection>
 
@@ -241,11 +242,19 @@ export function Sidebar() {
               <ChevronLeft size={16} />
             </RailButton>
             <Divider />
-            {/* Account */}
-            <AccountIndicatorRail />
+            {/* Info + Profile */}
             <RailButton onClick={() => setInfoOpen(true)} label="Info">
               <Info size={16} />
             </RailButton>
+            <AccountIndicatorRail />
+            <Divider />
+            {/* Share */}
+            <RailTip label="GitHub">
+              <GitHubLink compact />
+            </RailTip>
+            <RailTip label="Share">
+              <ShareButton />
+            </RailTip>
             <RailTip label="Donate">
               <a
                 href={SITE.github.sponsors}
@@ -256,14 +265,6 @@ export function Sidebar() {
               >
                 <Heart size={15} />
               </a>
-            </RailTip>
-            <Divider />
-            {/* Share */}
-            <RailTip label="GitHub">
-              <GitHubLink compact />
-            </RailTip>
-            <RailTip label="Share">
-              <ShareButton />
             </RailTip>
             <Divider />
             {/* Navigate */}
