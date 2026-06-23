@@ -63,7 +63,14 @@ export function Paywall() {
 
             <div className="mt-5 flex flex-col gap-2">
               <MembershipActions onDone={() => setPaywallOpen(false)} />
+            </div>
 
+            {/* Sponsor the project on GitHub. */}
+            <div className="mt-4 border-t-2 border-edge pt-4">
+              <p className="mb-2 text-center text-[12px] leading-relaxed text-ink-dim">
+                If you like what you see and want to support this project,
+                contribute:
+              </p>
               <a
                 href={SPONSOR_URL}
                 target="_blank"

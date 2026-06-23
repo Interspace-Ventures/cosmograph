@@ -144,35 +144,41 @@ export function ScreenshotGate() {
             ))}
           </ul>
 
-          <div className="mt-5 flex flex-col gap-2">
-            <MembershipActions />
-          </div>
-
-          {/* Share action for the screenshot — copy to clipboard only. */}
-          <div className="mt-4 border-t-2 border-edge pt-4">
+          {/* Copy the share card and Subscribe, side by side. */}
+          <div className="mt-5 flex items-stretch gap-2">
             <button
               onClick={handleCopyImage}
               disabled={!imageUrl}
-              className="flex w-full items-center justify-center gap-1.5 border-2 border-edge bg-white/5 px-3 py-2.5 font-display text-[10px] uppercase tracking-wider text-ink transition-colors hover:bg-white/10 disabled:opacity-50"
+              className="flex flex-1 items-center justify-center gap-1.5 border-2 border-edge bg-white/5 px-3 py-3 font-display text-[10px] uppercase tracking-wider text-ink transition-colors hover:bg-white/10 disabled:opacity-50"
             >
               {imageCopied ? (
                 <Check size={13} className="text-accent" />
               ) : (
                 <Copy size={13} />
               )}
-              {imageCopied ? "Copied to clipboard" : "Copy image to clipboard"}
+              {imageCopied ? "Copied" : "Copy image"}
             </button>
+            <div className="flex-1">
+              <MembershipActions />
+            </div>
           </div>
 
-          <a
-            href={SPONSOR_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-4 flex w-full items-center justify-center gap-2 border-2 border-edge bg-white/5 py-2.5 font-display text-[11px] uppercase tracking-widest text-ink-dim transition-colors hover:bg-white/10 hover:text-ink"
-          >
-            <Heart size={13} />
-            <span>Sponsor on GitHub</span>
-          </a>
+          {/* Sponsor the project on GitHub. */}
+          <div className="mt-4 border-t-2 border-edge pt-4">
+            <p className="mb-2 text-center text-[12px] leading-relaxed text-ink-dim">
+              If you like what you see and want to support this project,
+              contribute:
+            </p>
+            <a
+              href={SPONSOR_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex w-full items-center justify-center gap-2 border-2 border-edge bg-white/5 py-2.5 font-display text-[11px] uppercase tracking-widest text-ink-dim transition-colors hover:bg-white/10 hover:text-ink"
+            >
+              <Heart size={13} />
+              <span>Sponsor on GitHub</span>
+            </a>
+          </div>
 
           <p className="mt-3 text-center font-mono text-[10px] leading-relaxed text-ink-dim/70">
             Secure checkout by Stripe · $7/year, renews annually
