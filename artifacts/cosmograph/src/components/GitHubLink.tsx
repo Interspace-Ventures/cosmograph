@@ -1,4 +1,4 @@
-import { Github, Star } from "lucide-react";
+import { Github, Star, ExternalLink } from "lucide-react";
 import { SITE } from "@/config/site";
 import { useGithubStars, formatStars } from "@/lib/useGithubStars";
 
@@ -38,6 +38,12 @@ export function GitHubLink({
           <Star size={11} className="fill-current" />
           {formatStars(stars)}
         </span>
+      )}
+      {full && (
+        <ExternalLink
+          size={12}
+          className={`shrink-0 text-ink-dim ${stars === null ? "ml-auto" : ""}`}
+        />
       )}
     </a>
   );

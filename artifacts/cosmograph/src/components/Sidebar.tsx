@@ -191,13 +191,17 @@ export function Sidebar() {
                     href={SITE.github.sponsors}
                     target="_blank"
                     rel="noopener noreferrer"
-                    title="Support development via GitHub Sponsors"
-                    className="flex h-9 w-full items-center gap-2 border-2 border-accent bg-accent px-3 text-white transition-all hover:brightness-110"
+                    title="Support development via GitHub Sponsors (opens in a new tab)"
+                    className="flex h-9 w-full items-center gap-2 border-2 border-accent bg-accent/20 px-3 text-white transition-all hover:bg-accent/30"
                   >
                     <Heart size={14} className="shrink-0 text-white" />
                     <span className="font-display text-[11px] uppercase tracking-wider">
                       Donate
                     </span>
+                    <ExternalLink
+                      size={12}
+                      className="ml-auto shrink-0 text-white/60"
+                    />
                   </a>
                 </div>
               </CollapsibleSection>
@@ -304,8 +308,8 @@ export function Sidebar() {
                 href={SITE.github.sponsors}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label="Donate via GitHub Sponsors"
-                className="relative flex h-9 w-9 items-center justify-center border-2 border-accent bg-accent text-white transition-all hover:brightness-110"
+                aria-label="Donate via GitHub Sponsors (opens in a new tab)"
+                className="relative flex h-9 w-9 items-center justify-center border-2 border-accent bg-accent/20 text-white transition-all hover:bg-accent/30"
               >
                 <Heart size={15} />
               </a>
