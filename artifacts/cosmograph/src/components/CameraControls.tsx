@@ -3,7 +3,7 @@ import { OrbitControls } from "@react-three/drei";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useAppState } from "@/lib/store";
-import { planetRefs, sunRefs, planetOrbits, sunRadii } from "./GalaxySystem";
+import { planetRefs, sunRefs, planetOrbits, sunRadii, domainPositions } from "./GalaxySystem";
 import { getTourStops } from "@/lib/tour";
 
 // Resting overview after the intro flight (and god-mode home). Kept close and
@@ -37,7 +37,7 @@ function easeInOutCubic(t: number): number {
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 }
 
-export function CameraController() {
+export function CameraController({ captureTopDown = false }: { captureTopDown?: boolean }) {
   const { cameraMode, selectedObject, tourActive, tourStopIndex, introFinished, introProgressRef } = useAppState();
   const camera = useThree((s) => s.camera);
   const gl = useThree((s) => s.gl);
@@ -45,6 +45,29 @@ export function CameraController() {
   // Recomputed per mount; CameraController remounts on a dataset swap so tour
   // targets/captions track the active scientist (see key={datasetVersion}).
   const tourStops = useMemo(() => getTourStops(), []);
+
+  // Overhead vantage for the share-card capture: a near-top-down look at the
+  // whole disk. Height is derived from the galaxy's actual footprint (farthest
+  // system + outermost planet orbit) so any scientist's galaxy is framed fully,
+  // then pulled back with margin so the cover-fit crop of the card never clips
+  // the spiral. Recomputed per mount; the layout is built before this runs.
+  const captureHeight = useMemo(() => {
+    let maxR = 200;
+    for (const id in domainPositions) {
+      const p = domainPositions[id];
+      const r = Math.hypot(p.x, p.z) + (sunRadii[id] ?? 0);
+      if (r > maxR) maxR = r;
+    }
+    let maxReach = 0;
+    for (const id in planetOrbits) {
+      const o = planetOrbits[id];
+      const reach = o.a * (1 + o.e);
+      if (reach > maxReach) maxReach = reach;
+    }
+    const radius = maxR + maxReach;
+    const halfFov = (BASE_FOV / 2) * (Math.PI / 180);
+    return (radius / Math.tan(halfFov)) * 1.5;
+  }, []);
 
   const targetPosition = useRef(new THREE.Vector3().copy(HOME_POS));
   const targetLookAt = useRef(new THREE.Vector3());
@@ -257,6 +280,21 @@ export function CameraController() {
   }, [cameraMode, gl]);
 
   useFrame((state, delta) => {
+    if (captureTopDown) {
+      // Force a fixed near-overhead frame for the off-screen share-card capture,
+      // overriding intro/tour/god/fly so the card always shows the disk top-down.
+      if (state.camera instanceof THREE.PerspectiveCamera && state.camera.fov !== BASE_FOV) {
+        state.camera.fov = BASE_FOV;
+        state.camera.updateProjectionMatrix();
+      }
+      // A small Z keeps lookAt off the vertical singularity and adds a hint of
+      // perspective so the spiral reads as a disk rather than a flat ring.
+      state.camera.up.set(0, 1, 0);
+      state.camera.position.set(0, captureHeight, captureHeight * 0.12);
+      state.camera.lookAt(0, 0, 0);
+      return;
+    }
+
     if (!introFinished) {
       const p = easeInOutCubic(THREE.MathUtils.clamp(introProgressRef.current, 0, 1));
       state.camera.position.copy(INTRO_START).lerp(HOME_POS, p);
@@ -422,6 +460,10 @@ export function CameraController() {
       savedFly.current.has = true;
     }
   });
+
+  if (captureTopDown) {
+    return null;
+  }
 
   if (cameraMode === "spaceship" && !tourActive) {
     return null;

@@ -20,7 +20,7 @@ function Background() {
   );
 }
 
-export function Scene() {
+export function Scene({ captureTopDown = false }: { captureTopDown?: boolean }) {
   const { setSelectedObject, introFinished } = useAppState();
 
   return (
@@ -54,7 +54,7 @@ export function Scene() {
           <Stars radius={6000} depth={1500} count={6000} factor={20} saturation={0} fade speed={0.4} />
 
           <GalaxySystem />
-          <CameraController />
+          <CameraController captureTopDown={captureTopDown} />
 
           {introFinished && (
             <>

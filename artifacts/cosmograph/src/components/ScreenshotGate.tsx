@@ -89,7 +89,7 @@ export function ScreenshotGate() {
           though the canvas is never shown to the visitor. */}
       {capturing && (
         <div className="pointer-events-none absolute inset-0 opacity-0" aria-hidden>
-          <Scene />
+          <Scene captureTopDown />
         </div>
       )}
 

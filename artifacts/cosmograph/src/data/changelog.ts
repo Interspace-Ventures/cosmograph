@@ -17,6 +17,15 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.10.0",
+    codename: "Bird's Eye",
+    date: "2026-06-23",
+    summary: "Shareable screenshots now capture the galaxy from a top-down view.",
+    changes: [
+      "The shareable screenshot now shows your galaxy from a top-down vantage, framing the whole disk instead of the last camera angle.",
+    ],
+  },
+  {
     version: "3.9.0",
     codename: "Clear Skies",
     date: "2026-06-23",
