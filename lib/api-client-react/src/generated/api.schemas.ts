@@ -10,10 +10,19 @@ export interface HealthStatus {
 }
 
 export interface Entitlement {
-  /** Whether the account has an active full-access membership. */
+  /** Whether the account is an active full-access member. */
   entitled: boolean;
   /** The account's primary email, when known. */
   email?: string | null;
+  /** How many researcher unlocks the base membership includes. */
+  includedSlots: number;
+  /** OpenAlex author ids this account has unlocked, oldest first. */
+  unlocked: string[];
+}
+
+export interface UnlockRequest {
+  /** OpenAlex author id of the researcher to unlock. */
+  author: string;
 }
 
 export interface CheckoutSession {

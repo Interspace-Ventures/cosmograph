@@ -9,6 +9,15 @@ export type DatasetStatus = 'idle' | 'loading' | 'ready' | 'error';
 
 export type CameraMode = 'god' | 'spaceship';
 
+// The entitlement snapshot pushed in from the server (EntitlementBridge): whether
+// the account is an active member, which researchers it has unlocked, and how many
+// unlocks the base membership includes.
+export type EntitlementState = {
+  entitled: boolean;
+  unlocked: string[];
+  includedSlots: number;
+};
+
 export type SelectedObject = {
   type: 'sun' | 'planet';
   id: string;
@@ -44,11 +53,15 @@ interface AppState {
   startTour: () => void;
   endTour: () => void;
   setTourStopIndex: (i: number) => void;
-  // Entitlement / paywall. The default baked scientist is always free; deep
-  // exploration (fly, tour, rich planet detail) of any OTHER searched scientist
-  // requires the one-time global account unlock (entitled).
+  // Entitlement / paywall. The default baked researcher is always free; deep
+  // exploration (fly, tour, rich planet detail) of any OTHER searched researcher
+  // requires an active membership (entitled) AND that researcher to be in the
+  // account's unlocked set. The base membership includes `includedSlots`
+  // researchers; each beyond that adds a prorated +$1/year add-on.
   entitled: boolean;
-  setEntitlement: (val: boolean) => void;
+  unlockedAuthors: string[];
+  includedSlots: number;
+  setEntitlement: (e: EntitlementState) => void;
   isDefaultScientist: boolean;
   canExplore: boolean;
   paywallOpen: boolean;
@@ -161,22 +174,31 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [changelogOpen, setChangelogOpen] = useState(false);
   const [customizeOpen, setCustomizeOpen] = useState(false);
 
-  // Entitlement: the one-time global account unlock. Mirrored into a ref so the
-  // gated handlers below read the current value without a stale closure.
+  // Entitlement: membership (entitled) + the set of researchers this account has
+  // unlocked. Mirrored into refs so the gated handlers below read current values
+  // without a stale closure.
   const [entitled, setEntitledState] = useState(false);
+  const [unlockedAuthors, setUnlockedAuthorsState] = useState<string[]>([]);
+  const [includedSlots, setIncludedSlots] = useState(3);
   const entitledRef = useRef(false);
-  const setEntitlement = useCallback((val: boolean) => {
-    entitledRef.current = val;
-    setEntitledState(val);
+  const unlockedRef = useRef<string[]>([]);
+  const setEntitlement = useCallback((e: EntitlementState) => {
+    entitledRef.current = e.entitled;
+    unlockedRef.current = e.unlocked;
+    setEntitledState(e.entitled);
+    setUnlockedAuthorsState(e.unlocked);
+    setIncludedSlots(e.includedSlots);
   }, []);
   const [paywallOpen, setPaywallOpen] = useState(false);
 
-  // Live gate check for handlers: free on the default scientist, otherwise needs
-  // the unlock. Reads galaxyData live (mutable binding) + the entitlement ref.
-  const canExploreNow = useCallback(
-    () => isDefaultAuthor() || entitledRef.current,
-    [],
-  );
+  // Live gate check for handlers: free on the default researcher, otherwise the
+  // active researcher must be a member-unlocked one. Reads galaxyData live
+  // (mutable binding) + the entitlement refs.
+  const canExploreNow = useCallback(() => {
+    if (isDefaultAuthor()) return true;
+    const id = galaxyData.author.openAlexId;
+    return !!id && entitledRef.current && unlockedRef.current.includes(id);
+  }, []);
 
   const [datasetVersion, setDatasetVersion] = useState(0);
   const [datasetStatus, setDatasetStatus] = useState<DatasetStatus>('idle');
@@ -293,10 +315,12 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [datasetVersion],
   );
-  const canExplore = useMemo(
-    () => isDefaultScientist || entitled,
-    [isDefaultScientist, entitled],
-  );
+  const canExplore = useMemo(() => {
+    if (isDefaultScientist) return true;
+    return (
+      !!activeAuthorId && entitled && unlockedAuthors.includes(activeAuthorId)
+    );
+  }, [isDefaultScientist, entitled, unlockedAuthors, activeAuthorId]);
 
   return (
     <AppStateContext.Provider
@@ -325,6 +349,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         endTour,
         setTourStopIndex,
         entitled,
+        unlockedAuthors,
+        includedSlots,
         setEntitlement,
         isDefaultScientist,
         canExplore,

@@ -18,18 +18,37 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
- * Returns whether the signed-in account has an active full-access membership. Requires an authenticated session; the galaxy default scientist never calls this since it is always free.
+ * Returns whether the signed-in account is an active member and which researchers it has unlocked. Requires an authenticated session; the galaxy default researcher never calls this since it is always free.
 
  * @summary Current account entitlement
  */
 export const GetEntitlementResponse = zod.object({
-  "entitled": zod.boolean().describe('Whether the account has an active full-access membership.'),
-  "email": zod.string().nullish().describe('The account\'s primary email, when known.')
+  "entitled": zod.boolean().describe('Whether the account is an active full-access member.'),
+  "email": zod.string().nullish().describe('The account\'s primary email, when known.'),
+  "includedSlots": zod.number().describe('How many researcher unlocks the base membership includes.'),
+  "unlocked": zod.array(zod.string()).describe('OpenAlex author ids this account has unlocked, oldest first.')
 })
 
 
 /**
- * Creates a Stripe Checkout session (mode=subscription) for the $10/year full-access membership and returns its hosted URL. If the account is already entitled, returns alreadyEntitled=true and no URL.
+ * Unlocks a researcher's galaxy for an active member. The first few researchers are included in the base membership; each one beyond that adds a recurring +$1/year add-on, charged immediately with proration. Idempotent — re-unlocking an already-unlocked researcher never charges. Returns the updated entitlement.
+
+ * @summary Unlock a researcher for the signed-in member
+ */
+export const UnlockResearcherBody = zod.object({
+  "author": zod.string().describe('OpenAlex author id of the researcher to unlock.')
+})
+
+export const UnlockResearcherResponse = zod.object({
+  "entitled": zod.boolean().describe('Whether the account is an active full-access member.'),
+  "email": zod.string().nullish().describe('The account\'s primary email, when known.'),
+  "includedSlots": zod.number().describe('How many researcher unlocks the base membership includes.'),
+  "unlocked": zod.array(zod.string()).describe('OpenAlex author ids this account has unlocked, oldest first.')
+})
+
+
+/**
+ * Creates a Stripe Checkout session (mode=subscription) for the $7/year full-access membership and returns its hosted URL. If the account is already entitled, returns alreadyEntitled=true and no URL.
 
  * @summary Start the membership subscription checkout
  */
@@ -53,8 +72,10 @@ export const ConfirmCheckoutBody = zod.object({
 })
 
 export const ConfirmCheckoutResponse = zod.object({
-  "entitled": zod.boolean().describe('Whether the account has an active full-access membership.'),
-  "email": zod.string().nullish().describe('The account\'s primary email, when known.')
+  "entitled": zod.boolean().describe('Whether the account is an active full-access member.'),
+  "email": zod.string().nullish().describe('The account\'s primary email, when known.'),
+  "includedSlots": zod.number().describe('How many researcher unlocks the base membership includes.'),
+  "unlocked": zod.array(zod.string()).describe('OpenAlex author ids this account has unlocked, oldest first.')
 })
 
 

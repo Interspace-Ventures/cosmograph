@@ -1,22 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Show } from "@clerk/react";
-import { useLocation } from "wouter";
 import { toast } from "sonner";
-import {
-  Lock,
-  Loader2,
-  Rocket,
-  Telescope,
-  Copy,
-  Check,
-  Heart,
-  ArrowLeft,
-} from "lucide-react";
-import { useCreateCheckout } from "@workspace/api-client-react";
+import { Loader2, Telescope, Copy, Check, Heart, ArrowLeft } from "lucide-react";
 import { useAppState } from "@/lib/store";
 import { Scene } from "@/components/Scene";
 import { PERKS } from "@/components/Paywall";
+import { MembershipActions } from "@/components/MembershipActions";
+import { MembershipPitch } from "@/components/MembershipPitch";
 import { buildShareCard, copyImageToClipboard } from "@/lib/share";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -29,9 +19,7 @@ const SPONSOR_URL = "https://github.com/sponsors/heyinterspace";
 // Subscribe CTA. The home/default scientist never reaches this (it's free) and
 // members never reach it (entitled).
 export function ScreenshotGate() {
-  const { activeAuthorLabel, activeAuthorId, setEntitlement } = useAppState();
-  const [, setLocation] = useLocation();
-  const checkout = useCreateCheckout();
+  const { activeAuthorLabel } = useAppState();
 
   // Capture lifecycle: keep the hidden Scene mounted only long enough to render
   // a frame, snapshot it into the share card, then unmount the GPU scene.
@@ -76,35 +64,10 @@ export function ScreenshotGate() {
     };
   }, []);
 
-  const goSignIn = () => setLocation("/sign-in");
-
   const goHome = () => {
-    // The baked default scientist is the initial bundle state — a reload returns
+    // The baked default researcher is the initial bundle state — a reload returns
     // to the free, fully interactive home galaxy.
     window.location.href = basePath || "/";
-  };
-
-  const startCheckout = () => {
-    // Carry the explored scientist through the Stripe round-trip so the success
-    // redirect returns to this galaxy (encoded as ?author= in success_url),
-    // not the default home scientist.
-    checkout.mutate({ data: { author: activeAuthorId } }, {
-      onSuccess: (res) => {
-        if (res.alreadyEntitled) {
-          setEntitlement(true);
-          toast.success("You're already a member — explore away.");
-          return;
-        }
-        if (res.url) {
-          window.location.href = res.url;
-        } else {
-          toast.error("Could not start checkout. Please try again.");
-        }
-      },
-      onError: () => {
-        toast.error("Could not start checkout. Please try again.");
-      },
-    });
   };
 
   const handleCopyImage = async () => {
@@ -167,26 +130,7 @@ export function ScreenshotGate() {
             )}
           </div>
 
-          <div className="flex items-center gap-2.5">
-            <div className="grid h-10 w-10 shrink-0 place-items-center border-2 border-accent/60 bg-accent/10 text-accent">
-              <Lock size={18} />
-            </div>
-            <div>
-              <span className="font-mono text-[10px] uppercase tracking-widest text-accent">
-                Membership · $7 / year
-              </span>
-              <h2 className="text-xl font-title font-bold leading-tight tracking-tight text-ink">
-                Unlock {activeAuthorLabel}'s galaxy
-              </h2>
-            </div>
-          </div>
-
-          <p className="mt-3 text-[13px] leading-relaxed text-ink-dim">
-            This is a preview of{" "}
-            <span className="text-ink">{activeAuthorLabel}</span>'s cosmograph.
-            For full access and a bunch of amazing features, subscribe for{" "}
-            <span className="text-ink">$7 / year</span>.
-          </p>
+          <MembershipPitch />
 
           <ul className="mt-4 space-y-2">
             {PERKS.map((perk) => (
@@ -201,36 +145,7 @@ export function ScreenshotGate() {
           </ul>
 
           <div className="mt-5 flex flex-col gap-2">
-            <Show when="signed-out">
-              <button
-                onClick={goSignIn}
-                style={{ background: "var(--accent)" }}
-                className="glass-panel glass-panel-interactive flex w-full items-center justify-center gap-2 py-3 font-display text-xs uppercase tracking-widest text-accent-foreground"
-              >
-                <Rocket size={14} />
-                <span>Subscribe</span>
-              </button>
-            </Show>
-
-            <Show when="signed-in">
-              <button
-                onClick={startCheckout}
-                disabled={checkout.isPending}
-                style={{ background: "var(--accent)" }}
-                className="glass-panel glass-panel-interactive flex w-full items-center justify-center gap-2 py-3 font-display text-xs uppercase tracking-widest text-accent-foreground disabled:opacity-60"
-              >
-                {checkout.isPending ? (
-                  <Loader2 size={14} className="animate-spin" />
-                ) : (
-                  <Lock size={14} />
-                )}
-                <span>
-                  {checkout.isPending
-                    ? "Starting checkout…"
-                    : "Subscribe · $7/year"}
-                </span>
-              </button>
-            </Show>
+            <MembershipActions />
           </div>
 
           {/* Share action for the screenshot — copy to clipboard only. */}

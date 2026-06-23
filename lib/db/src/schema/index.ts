@@ -3,3 +3,4 @@
 // insert schema, and types.
 
 export * from "./users";
+export * from "./researcherUnlocks";

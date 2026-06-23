@@ -26,14 +26,15 @@ export function EntitlementBridge() {
     },
   });
 
-  // Push the server answer into the store. Signed-out always means locked.
+  // Push the server answer into the store. Signed-out always means no member,
+  // no unlocks.
   useEffect(() => {
     if (!isLoaded) return;
     if (!isSignedIn) {
-      setEntitlement(false);
+      setEntitlement({ entitled: false, unlocked: [], includedSlots: 3 });
       return;
     }
-    if (data) setEntitlement(data.entitled);
+    if (data) setEntitlement(data);
   }, [isLoaded, isSignedIn, data, setEntitlement]);
 
   // Complete (or report) the Stripe Checkout return. Runs once we know the
@@ -58,12 +59,12 @@ export function EntitlementBridge() {
         { data: { sessionId } },
         {
           onSuccess: (res) => {
-            setEntitlement(res.entitled);
+            setEntitlement(res);
             void queryClient.invalidateQueries({
               queryKey: getGetEntitlementQueryKey(),
             });
             if (res.entitled) {
-              toast.success("Unlocked — explore any researcher's full galaxy.");
+              toast.success("You're a member — this researcher's galaxy is unlocked.");
             }
           },
           onError: () => {

@@ -7,10 +7,12 @@ import { z } from "zod/v4";
 // (customers, prices, checkout sessions, payments) lives in the `stripe`
 // schema that stripe-replit-sync manages — we never duplicate it here.
 //
-// `hasPaid` is the cached one-time-unlock flag. It is the durable record of a
-// completed $10 purchase, set after the checkout session is verified against
-// Stripe (see the billing routes). `stripeCustomerId` ties this account to its
-// Stripe customer so repeat checkouts reuse one customer.
+// `hasPaid` is the cached "active member" flag — true while the yearly
+// membership subscription is live, set after a checkout session is verified
+// against Stripe and cleared when the subscription lapses (see the billing
+// routes). Which specific researchers a member has unlocked lives in the
+// separate `researcher_unlocks` table. `stripeCustomerId` ties this account to
+// its Stripe customer so repeat checkouts reuse one customer.
 export const usersTable = pgTable("users", {
   id: text("id").primaryKey(),
   email: text("email"),

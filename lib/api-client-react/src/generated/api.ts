@@ -29,7 +29,8 @@ import type {
   Error,
   FeedbackRequest,
   FeedbackResult,
-  HealthStatus
+  HealthStatus,
+  UnlockRequest
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -131,7 +132,7 @@ export const getGetEntitlementUrl = () => {
 }
 
 /**
- * Returns whether the signed-in account has an active full-access membership. Requires an authenticated session; the galaxy default scientist never calls this since it is always free.
+ * Returns whether the signed-in account is an active member and which researchers it has unlocked. Requires an authenticated session; the galaxy default researcher never calls this since it is always free.
 
  * @summary Current account entitlement
  */
@@ -201,6 +202,79 @@ export function useGetEntitlement<TData = Awaited<ReturnType<typeof getEntitleme
 
 
 
+export const getUnlockResearcherUrl = () => {
+
+
+
+
+  return `/api/me/unlock`
+}
+
+/**
+ * Unlocks a researcher's galaxy for an active member. The first few researchers are included in the base membership; each one beyond that adds a recurring +$1/year add-on, charged immediately with proration. Idempotent — re-unlocking an already-unlocked researcher never charges. Returns the updated entitlement.
+
+ * @summary Unlock a researcher for the signed-in member
+ */
+export const unlockResearcher = async (unlockRequest: UnlockRequest, options?: RequestInit): Promise<Entitlement> => {
+
+  return customFetch<Entitlement>(getUnlockResearcherUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      unlockRequest,)
+  }
+);}
+
+
+
+
+export const getUnlockResearcherMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unlockResearcher>>, TError,{data: BodyType<UnlockRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof unlockResearcher>>, TError,{data: BodyType<UnlockRequest>}, TContext> => {
+
+const mutationKey = ['unlockResearcher'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof unlockResearcher>>, {data: BodyType<UnlockRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  unlockResearcher(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UnlockResearcherMutationResult = NonNullable<Awaited<ReturnType<typeof unlockResearcher>>>
+    export type UnlockResearcherMutationBody = BodyType<UnlockRequest>
+    export type UnlockResearcherMutationError = ErrorType<Error>
+
+    /**
+ * @summary Unlock a researcher for the signed-in member
+ */
+export const useUnlockResearcher = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unlockResearcher>>, TError,{data: BodyType<UnlockRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof unlockResearcher>>,
+        TError,
+        {data: BodyType<UnlockRequest>},
+        TContext
+      > => {
+      return useMutation(getUnlockResearcherMutationOptions(options));
+    }
+
 export const getCreateCheckoutUrl = () => {
 
 
@@ -210,7 +284,7 @@ export const getCreateCheckoutUrl = () => {
 }
 
 /**
- * Creates a Stripe Checkout session (mode=subscription) for the $10/year full-access membership and returns its hosted URL. If the account is already entitled, returns alreadyEntitled=true and no URL.
+ * Creates a Stripe Checkout session (mode=subscription) for the $7/year full-access membership and returns its hosted URL. If the account is already entitled, returns alreadyEntitled=true and no URL.
 
  * @summary Start the membership subscription checkout
  */
