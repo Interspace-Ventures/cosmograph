@@ -26,3 +26,11 @@ When the api-server is bundled by esbuild, the library code is inlined into `dis
 **How to apply:** any node library that reads files relative to its own `__dirname` at runtime (migrations, .proto, templates) must be externalized from the esbuild bundle, or it will silently no-op after bundling.
 
 **Verify success:** `SELECT table_name FROM information_schema.tables WHERE table_schema='stripe'` should list ~29 tables; `stripe._managed_webhooks` should hold the `/api/stripe/webhook` URL and `stripe.accounts` the connected `acct_...`.
+
+## 3. The app's own `users`/entitlement table reaches prod ONLY via Publish
+
+`initStripe()`'s `runMigrations` creates the `stripe.*` SCHEMA only — it does **not** create the app-owned `public.users` table (`hasPaid`). That table is Drizzle-managed (`lib/db/src/schema/users.ts`); `pnpm --filter @workspace/db run push` applies it to the **dev** DB only. It reaches production solely through Replit's Publish diff flow (dev→prod), which also *creates the production Neon DB on first deploy* — before any deploy, prod has no DB at all (`executeSql({environment:"production"})` errors `does not have a production Neon database`).
+
+**Why:** if prod is missing `public.users`, the Stripe webhook + confirm-on-redirect throw `relation "users" does not exist` and paid unlocks silently never persist even though endpoints respond.
+
+**How to apply:** do NOT add startup-time `CREATE TABLE` DDL or a prod migration script to "self-heal" — both are forbidden. The only fix is: keep the Drizzle schema correct, `push` it to dev, then have the user **Publish** (Reserved VM) so the diff creates the table in prod.
