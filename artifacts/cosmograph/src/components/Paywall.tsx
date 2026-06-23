@@ -1,18 +1,30 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Heart, Telescope } from "lucide-react";
+import { X, Heart, Telescope, Orbit, Share2, Sparkles, Rocket, Zap } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { useAppState } from "@/lib/store";
 import { MembershipActions } from "@/components/MembershipActions";
 import { MembershipPitch } from "@/components/MembershipPitch";
 
 const SPONSOR_URL = "https://github.com/sponsors/heyinterspace";
 
-export const PERKS = [
-  "Explore 3 researchers' full galaxies on your membership",
-  "Rich, detailed, fully explorable galaxy view with every sun and planet reflecting the researcher's body of work",
-  "A dedicated, shareable URL for each researcher's galaxy with its own guided tour",
-  "Ask Cosmos: ask questions about a researcher's work and watch matching papers light up",
-  "Interactive first-person fly-through of any unlocked galaxy",
-  "Every new feature and product update as it ships, instantly",
+// Each perk carries an icon that reflects the feature itself — exploration,
+// orbits, sharing, the AI "star" (Sparkles), fly-through, and shipping updates.
+export const PERKS: { icon: LucideIcon; text: string }[] = [
+  { icon: Telescope, text: "Explore 3 researchers' full galaxies on your membership" },
+  {
+    icon: Orbit,
+    text: "Rich, detailed, fully explorable galaxy view with every sun and planet reflecting the researcher's body of work",
+  },
+  {
+    icon: Share2,
+    text: "A dedicated, shareable URL for each researcher's galaxy with its own guided tour",
+  },
+  {
+    icon: Sparkles,
+    text: "Ask Cosmos: ask questions about a researcher's work and watch matching papers light up",
+  },
+  { icon: Rocket, text: "Interactive first-person fly-through of any unlocked galaxy" },
+  { icon: Zap, text: "Every new feature and product update as it ships, instantly" },
 ];
 
 export function Paywall() {
@@ -47,18 +59,18 @@ export function Paywall() {
             <MembershipPitch />
 
             <ul className="mt-4 space-y-2">
-              {PERKS.map((perk) => (
-                <li
-                  key={perk}
-                  className="flex items-start gap-2 text-[13px] text-ink"
-                >
-                  <Telescope
-                    size={14}
-                    className="mt-0.5 shrink-0 text-accent"
-                  />
-                  <span>{perk}</span>
-                </li>
-              ))}
+              {PERKS.map((perk) => {
+                const Icon = perk.icon;
+                return (
+                  <li
+                    key={perk.text}
+                    className="flex items-start gap-2 text-[13px] text-ink"
+                  >
+                    <Icon size={14} className="mt-0.5 shrink-0 text-accent" />
+                    <span>{perk.text}</span>
+                  </li>
+                );
+              })}
             </ul>
 
             <div className="mt-5 flex flex-col gap-2">

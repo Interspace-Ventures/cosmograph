@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { Loader2, Telescope, Copy, Check, Heart, ArrowLeft } from "lucide-react";
+import { Loader2, Copy, Check, Heart, ArrowLeft } from "lucide-react";
 import { useAppState } from "@/lib/store";
 import { Scene } from "@/components/Scene";
 import { PERKS } from "@/components/Paywall";
@@ -138,15 +138,18 @@ export function ScreenshotGate() {
           <MembershipPitch />
 
           <ul className="mt-4 space-y-2">
-            {PERKS.map((perk) => (
-              <li
-                key={perk}
-                className="flex items-start gap-2 text-[13px] text-ink"
-              >
-                <Telescope size={14} className="mt-0.5 shrink-0 text-accent" />
-                <span>{perk}</span>
-              </li>
-            ))}
+            {PERKS.map((perk) => {
+              const Icon = perk.icon;
+              return (
+                <li
+                  key={perk.text}
+                  className="flex items-start gap-2 text-[13px] text-ink"
+                >
+                  <Icon size={14} className="mt-0.5 shrink-0 text-accent" />
+                  <span>{perk.text}</span>
+                </li>
+              );
+            })}
           </ul>
 
           {/* Copy the share card and Subscribe, side by side. */}
