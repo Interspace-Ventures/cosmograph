@@ -353,7 +353,7 @@ export function ScrollIntro() {
       {introStarted && !atEnd && (
         <button
           onClick={finishExplore}
-          className="pointer-events-auto absolute bottom-6 left-1/2 z-50 -translate-x-1/2 font-mono text-[11px] uppercase tracking-[0.3em] text-ink-dim transition-colors hover:text-ink"
+          className="pointer-events-auto absolute top-6 left-1/2 z-50 -translate-x-1/2 font-mono text-[11px] uppercase tracking-[0.3em] text-ink-dim transition-colors hover:text-ink"
         >
           Skip intro ›
         </button>
