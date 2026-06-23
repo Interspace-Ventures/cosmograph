@@ -17,7 +17,6 @@ import {
   LayoutGrid,
   Rocket,
   Telescope,
-  Crown,
 } from "lucide-react";
 import { useAppState } from "@/lib/store";
 import { isFiltersActive } from "@/data/galaxy";
@@ -87,12 +86,7 @@ export function Sidebar() {
 
             {/* Scroll body */}
             <div className="flex flex-col gap-4 overflow-y-auto custom-scrollbar p-3">
-              {/* Info, Ask, then Sign in — pinned at the top, no section wrapper */}
-              <ConsoleButton
-                onClick={() => setInfoOpen(true)}
-                icon={<Info size={14} />}
-                label="Info"
-              />
+              {/* Ask — pinned at the top, the primary query action */}
               <ConsoleButton
                 active={filtersActive}
                 onClick={() => setAskOpen(true)}
@@ -104,42 +98,8 @@ export function Sidebar() {
                 }
                 label="Ask"
               />
-              <AccountIndicator />
 
-              {/* Customize — its own premium tab */}
-              <CollapsibleSection
-                icon={<Telescope size={15} />}
-                title="Customize"
-                isOpen={openSections.customize}
-                onToggle={() => toggleSection("customize")}
-                right={<PremiumBadge />}
-              >
-                <div className="flex flex-col gap-2">
-                  <p className="text-[11px] leading-relaxed text-ink-dim">
-                    Customize the cosmograph with your own scientist.
-                  </p>
-                  <ConsoleButton
-                    onClick={() => setCustomizeOpen(true)}
-                    icon={<Telescope size={14} />}
-                    label="Choose a scientist"
-                  />
-                </div>
-              </CollapsibleSection>
-
-              {/* Share */}
-              <CollapsibleSection
-                icon={<Share2 size={15} />}
-                title="Share"
-                isOpen={openSections.share}
-                onToggle={() => toggleSection("share")}
-              >
-                <div className="flex flex-col gap-1.5">
-                  <GitHubLink full />
-                  <ShareButton full />
-                </div>
-              </CollapsibleSection>
-
-              {/* Platform */}
+              {/* Platform — info, account & meta, pinned up top */}
               <CollapsibleSection
                 icon={<LayoutGrid size={15} />}
                 title="Platform"
@@ -147,6 +107,12 @@ export function Sidebar() {
                 onToggle={() => toggleSection("platform")}
               >
                 <div className="flex flex-col gap-1.5">
+                  <ConsoleButton
+                    onClick={() => setInfoOpen(true)}
+                    icon={<Info size={14} />}
+                    label="Info"
+                  />
+                  <AccountIndicator />
                   <ConsoleButton
                     onClick={() => setChangelogOpen(true)}
                     icon={<Rocket size={14} />}
@@ -168,6 +134,31 @@ export function Sidebar() {
                       className="ml-auto shrink-0 text-white/60"
                     />
                   </a>
+
+                  {/* Personalize */}
+                  <div className="flex flex-col gap-2 border-t-2 border-edge pt-3">
+                    <p className="text-[11px] leading-relaxed text-ink-dim">
+                      Personalize your cosmograph
+                    </p>
+                    <ConsoleButton
+                      onClick={() => setCustomizeOpen(true)}
+                      icon={<Telescope size={14} />}
+                      label="Choose scientist"
+                    />
+                  </div>
+                </div>
+              </CollapsibleSection>
+
+              {/* Share */}
+              <CollapsibleSection
+                icon={<Share2 size={15} />}
+                title="Share"
+                isOpen={openSections.share}
+                onToggle={() => toggleSection("share")}
+              >
+                <div className="flex flex-col gap-1.5">
+                  <GitHubLink full />
+                  <ShareButton full />
                 </div>
               </CollapsibleSection>
 
@@ -221,34 +212,19 @@ export function Sidebar() {
               <ChevronLeft size={16} />
             </RailButton>
             <Divider />
-            {/* Info + Ask + Profile */}
-            <RailButton onClick={() => setInfoOpen(true)} label="Info">
-              <Info size={16} />
-            </RailButton>
+            {/* Ask — primary query action */}
             <RailButton active={filtersActive} onClick={() => setAskOpen(true)} label="Ask">
               <MessageCircleStar size={15} />
               {filtersActive && (
                 <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-accent ring-2 ring-black" />
               )}
             </RailButton>
-            <AccountIndicatorRail />
             <Divider />
-            {/* Share */}
-            <RailTip label="GitHub">
-              <GitHubLink compact />
-            </RailTip>
-            <RailTip label="Share">
-              <ShareButton />
-            </RailTip>
-            <Divider />
-            {/* Customize (premium) */}
-            <RailButton onClick={() => setCustomizeOpen(true)} label="Customize · Premium">
-              <Telescope size={15} />
-              <span className="absolute -top-1.5 -right-1.5 grid h-3.5 w-3.5 place-items-center rounded-full bg-accent text-black ring-2 ring-black">
-                <Crown size={8} />
-              </span>
+            {/* Platform — info, account & meta */}
+            <RailButton onClick={() => setInfoOpen(true)} label="Info">
+              <Info size={16} />
             </RailButton>
-            {/* Platform */}
+            <AccountIndicatorRail />
             <RailButton onClick={() => setChangelogOpen(true)} label="Changelog">
               <Rocket size={15} />
             </RailButton>
@@ -262,6 +238,17 @@ export function Sidebar() {
               >
                 <Heart size={15} />
               </a>
+            </RailTip>
+            <RailButton onClick={() => setCustomizeOpen(true)} label="Personalize">
+              <Telescope size={15} />
+            </RailButton>
+            <Divider />
+            {/* Share */}
+            <RailTip label="GitHub">
+              <GitHubLink compact />
+            </RailTip>
+            <RailTip label="Share">
+              <ShareButton />
             </RailTip>
             <Divider />
             {/* Navigate */}
@@ -294,11 +281,10 @@ export function Sidebar() {
   );
 }
 
-type SectionKey = "customize" | "share" | "navigate" | "platform";
+type SectionKey = "share" | "navigate" | "platform";
 
 const SECTION_STORAGE_KEY = "galaxy.console.sections";
 const DEFAULT_SECTIONS: Record<SectionKey, boolean> = {
-  customize: true,
   share: true,
   navigate: true,
   platform: true,
@@ -334,20 +320,16 @@ function CollapsibleSection({
   title,
   isOpen,
   onToggle,
-  right,
-  first = false,
   children,
 }: {
   icon?: React.ReactNode;
   title: string;
   isOpen: boolean;
   onToggle: () => void;
-  right?: React.ReactNode;
-  first?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <div className={first ? "" : "border-t-2 border-edge pt-3"}>
+    <div className="border-t-2 border-edge pt-3">
       <button
         type="button"
         onClick={onToggle}
@@ -356,7 +338,6 @@ function CollapsibleSection({
       >
         <SectionLabel icon={icon}>{title}</SectionLabel>
         <span className="flex items-center gap-2">
-          {right}
           <ChevronDown
             size={14}
             className={`shrink-0 text-ink-dim transition-transform ${
@@ -367,14 +348,6 @@ function CollapsibleSection({
       </button>
       {isOpen && <div className="mt-3">{children}</div>}
     </div>
-  );
-}
-
-function PremiumBadge() {
-  return (
-    <span className="flex items-center gap-1 border border-accent/60 bg-accent/10 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-widest text-accent">
-      <Crown size={9} /> Premium
-    </span>
   );
 }
 

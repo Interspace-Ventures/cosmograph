@@ -17,6 +17,16 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.7.0",
+    codename: "Control Tower",
+    date: "2026-06-23",
+    summary: "Mission Control gets a cleaner layout — Platform sits up top.",
+    changes: [
+      "Reorganized the console: a single Platform section now sits at the top with Info, Sign In, Changelog, Donate, and Personalize all in one place.",
+      "Renamed the old Customize section to Personalize — 'Choose scientist' to open up someone new.",
+    ],
+  },
+  {
     version: "3.6.0",
     codename: "Postcard",
     date: "2026-06-23",
