@@ -156,7 +156,7 @@ export function Sidebar() {
                       sideOffset={8}
                       className="rounded-none border-2 border-edge bg-black/90 px-2 py-1 font-display text-[10px] uppercase tracking-wider text-ink"
                     >
-                      Choose scientist for cosmograph
+                      Choose researcher for cosmograph
                     </TooltipContent>
                   </Tooltip>
                 </div>

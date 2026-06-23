@@ -150,7 +150,7 @@ interface AskTurn {
 // come from `r` (the deterministic run), not from the model.
 function composeAnswer(q: AskQuery, r: AskResult): string {
   if (q.unsupported) {
-    return "I can only answer questions about this scientist's papers — try topics, years, citation counts, or co-authors. Spotted a bug or have an idea? Just say so (e.g. “I want to report a bug…”) and I'll file it with the team.";
+    return "I can only answer questions about this researcher's papers — try topics, years, citation counts, or co-authors. Spotted a bug or have an idea? Just say so (e.g. “I want to report a bug…”) and I'll file it with the team.";
   }
   if (r.count === 0) {
     return `No papers match that — searched all ${r.total}.`;

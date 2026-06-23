@@ -63,7 +63,7 @@ export function EntitlementBridge() {
               queryKey: getGetEntitlementQueryKey(),
             });
             if (res.entitled) {
-              toast.success("Unlocked — explore any scientist's full galaxy.");
+              toast.success("Unlocked — explore any researcher's full galaxy.");
             }
           },
           onError: () => {

@@ -232,7 +232,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           ? 'OpenAlex is rate-limiting requests right now — please try again in a little while.'
           : err instanceof Error
             ? err.message
-            : 'Could not load this scientist from OpenAlex.',
+            : 'Could not load this researcher from OpenAlex.',
       );
       setLoadProgress(null);
     }

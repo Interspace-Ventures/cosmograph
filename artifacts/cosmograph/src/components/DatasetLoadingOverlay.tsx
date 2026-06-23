@@ -36,7 +36,7 @@ export function DatasetLoadingOverlay() {
                   Charting a new galaxy
                 </h2>
                 <p className="mt-2 text-[13px] leading-relaxed text-ink-dim">
-                  Pulling this scientist's lifetime of work from OpenAlex and
+                  Pulling this researcher's lifetime of work from OpenAlex and
                   rebuilding the universe around them.
                 </p>
 
@@ -67,7 +67,7 @@ export function DatasetLoadingOverlay() {
                 </h2>
                 <p className="mt-2 text-[13px] leading-relaxed text-ink-dim">
                   {datasetError ??
-                    "Something went wrong loading this scientist from OpenAlex."}
+                    "Something went wrong loading this researcher from OpenAlex."}
                 </p>
                 <button
                   onClick={dismissDatasetError}

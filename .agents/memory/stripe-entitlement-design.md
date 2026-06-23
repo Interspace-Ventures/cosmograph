@@ -3,11 +3,20 @@ name: Stripe membership entitlement (Cosmograph full access)
 description: How the $10/year membership entitlement is granted/revoked without fighting stripe-replit-sync.
 ---
 
-# $10/year membership entitlement
+# $7/year membership entitlement
 
-The app gates exploring *searched* (non-default) scientists behind a **$10/year recurring
+The app gates exploring *searched* (non-default) researchers behind a **$7/year recurring
 Stripe subscription** ("Cosmograph — Full Access"), tied to a Clerk user. The default
-scientist is always free. Donations are **GitHub Sponsors** (link-out), NOT Stripe.
+researcher is always free. Donations are **GitHub Sponsors** (link-out), NOT Stripe.
+
+**Planned model change (decided, not yet built):** move from "unlock ANY researcher" to a
+**capped** model — base $7/yr includes **3 researchers**, then **+$1/yr per additional**.
+Each unlocked researcher gets a **dedicated unique URL**. Abuse stance (user-confirmed):
+**protect the experience** (server-verified entitlement, capped unlocks, rate limiting), NOT
+the data — OpenAlex is public/free and is fair game to re-derive; the moat is the render.
+This requires per-account unlocked-researcher rows + server-side cap enforcement (today's
+`has_paid` global bool is insufficient for the cap). Billing mechanic for the +$1 add-on
+(proration vs. charge-at-renewal) is the open decision.
 
 ## Shape (as actually shipped)
 - Entitlement lives on `users.has_paid` (bool) in the public schema — repurposed to mean

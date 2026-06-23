@@ -170,7 +170,7 @@ function ClerkProviderWithRoutes() {
         signUp: {
           start: {
             title: "Create your account",
-            subtitle: "One account, every scientist's galaxy",
+            subtitle: "One account, every researcher's galaxy",
           },
         },
       }}

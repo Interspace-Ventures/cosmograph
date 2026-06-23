@@ -68,12 +68,12 @@ export function CustomizeDrawer() {
               id="customize-drawer-title"
               className="mt-1 mb-2 text-2xl font-title font-bold tracking-tight text-ink"
             >
-              Point the ship at a new scientist
+              Point the ship at a new researcher
             </h2>
             <p className="mb-6 text-[13px] leading-relaxed text-ink-dim">
               Cosmograph can map anyone with a public research record. Search for a
               name below and the entire universe rebuilds around their work — live,
-              with nothing to install. Deep exploration of a custom scientist (Fly,
+              with nothing to install. Deep exploration of a custom researcher (Fly,
               Tour, and full paper details) is a one-time premium unlock.
             </p>
 

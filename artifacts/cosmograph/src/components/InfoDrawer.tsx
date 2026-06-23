@@ -75,7 +75,7 @@ export function InfoDrawer() {
 
             <div className="space-y-4 text-[13px] leading-relaxed text-ink-dim">
               <p>
-                Cosmograph turns a scientist's lifetime of research into a universe you can fly
+                Cosmograph turns a researcher's lifetime of research into a universe you can fly
                 through. Every <span className="text-ink">sun</span> is a field they helped shape,
                 every <span className="text-ink">planet</span> a paper they published, and every{" "}
                 <span className="text-ink">moon</span> a collaborator who worked alongside them.

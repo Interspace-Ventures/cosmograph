@@ -1,19 +1,18 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Show, useClerk } from "@clerk/react";
+import { Show } from "@clerk/react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { X, Lock, Heart, Rocket, Loader2, Telescope } from "lucide-react";
 import { useCreateCheckout } from "@workspace/api-client-react";
 import { useAppState } from "@/lib/store";
 
-const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 const SPONSOR_URL = "https://github.com/sponsors/heyinterspace";
 
 export const PERKS = [
-  "Rich detailed cosmos view with every sun and planet reflecting the researcher's body of work",
-  "Dedicated scientist cosmos URL with customized dedication and unique guided tour, shareable with up to 3 cosmonauts",
-  "Ask Cosmos: ask questions about any researcher's work or metrics and get a view of every paper in their cosmos",
-  "Interactive visualization with first-person fly-through for any scientist's cosmos",
+  "Rich detailed galaxy view with every sun and planet reflecting the researcher's body of work",
+  "Dedicated researcher galaxy URL with customized dedication and unique guided tour, shareable with up to 3 cosmonauts",
+  "Ask the galaxy: ask questions about any researcher's work or metrics and get a view of every paper in their galaxy",
+  "Interactive visualization with first-person fly-through for any researcher's galaxy",
   "Every new feature and product update as it ships, instantly",
 ];
 
