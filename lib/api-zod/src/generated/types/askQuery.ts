@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AskQueryFeedbackKind } from './askQueryFeedbackKind';
 import type { AskQueryIntent } from './askQueryIntent';
 import type { AskQuerySortBy } from './askQuerySortBy';
 import type { AskQuerySortDir } from './askQuerySortDir';
@@ -14,8 +15,12 @@ import type { AskQuerySortDir } from './askQuerySortDir';
 
  */
 export interface AskQuery {
-  /** Whether the visitor wants a count or a list of matching papers. */
+  /** What the visitor wants: "count" for a number/how-many, "list" for matching papers, or "feedback" when they are reporting a bug or requesting a feature/improvement rather than asking about the corpus.
+   */
   intent: AskQueryIntent;
+  /** When intent is "feedback", whether the message is a bug report or a feature request. Null otherwise.
+   */
+  feedbackKind?: AskQueryFeedbackKind;
   /** Keyword to match across a paper's title, topic, field and venue. */
   text?: string | null;
   /** Co-author name substring to match. */

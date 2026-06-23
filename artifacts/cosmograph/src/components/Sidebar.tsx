@@ -15,7 +15,6 @@ import {
   Sparkles,
   Heart,
   Lock,
-  UserRound,
   MessageCircleQuestion,
   SendHorizontal,
   Loader2,
@@ -126,24 +125,13 @@ export function Sidebar() {
 
             {/* Scroll body */}
             <div className="flex flex-col gap-4 overflow-y-auto custom-scrollbar p-3">
-              {/* Info */}
+              {/* Info, then Sign in — pinned at the top, no section wrapper */}
               <ConsoleButton
                 onClick={() => setInfoOpen(true)}
                 icon={<Info size={14} />}
                 label="Info"
               />
-
-              {/* Profile */}
-              <CollapsibleSection
-                icon={<UserRound size={15} />}
-                title="Profile"
-                isOpen={openSections.account}
-                onToggle={() => toggleSection("account")}
-              >
-                <div className="flex flex-col gap-1.5">
-                  <AccountIndicator />
-                </div>
-              </CollapsibleSection>
+              <AccountIndicator />
 
               {/* Share */}
               <CollapsibleSection
@@ -305,11 +293,10 @@ export function Sidebar() {
   );
 }
 
-type SectionKey = "account" | "share" | "navigate" | "ask";
+type SectionKey = "share" | "navigate" | "ask";
 
 const SECTION_STORAGE_KEY = "galaxy.console.sections";
 const DEFAULT_SECTIONS: Record<SectionKey, boolean> = {
-  account: true,
   share: true,
   navigate: true,
   ask: true,
@@ -514,8 +501,8 @@ type AskMode = "ask" | "bug" | "feature";
 
 // A single conversation turn. For "ask" turns the answer + papers are computed
 // deterministically by runAskQuery (the model never returns numbers or lists).
-// For "bug"/"feature" turns the message is filed to Linear and the turn carries
-// the resulting issue link.
+// For "bug"/"feature" turns the translator detected feedback, the message was
+// filed to Linear, and the turn carries the resulting issue link.
 interface AskTurn {
   id: number;
   mode: AskMode;
@@ -532,7 +519,7 @@ interface AskTurn {
 // come from `r` (the deterministic run), not from the model.
 function composeAnswer(q: AskQuery, r: AskResult): string {
   if (q.unsupported) {
-    return "I can only answer questions about this scientist's papers — try topics, years, citation counts, or co-authors. If something's missing, switch to Bug or Feature above to tell the team.";
+    return "I can only answer questions about this scientist's papers — try topics, years, citation counts, or co-authors. Spotted a bug or have an idea? Just say so (e.g. “I want to report a bug…”) and I'll file it with the team.";
   }
   if (r.count === 0) {
     return `No papers match that — searched all ${r.total}.`;
@@ -556,7 +543,6 @@ function AskPanel({
   onPickPaper: (id: string) => void;
 }) {
   const { setFilters, resetFilters } = useAppState();
-  const [mode, setMode] = useState<AskMode>("ask");
   const [input, setInput] = useState("");
   const [turns, setTurns] = useState<AskTurn[]>([]);
   const turnId = useRef(0);
@@ -566,12 +552,60 @@ function AskPanel({
   const domainNames = useMemo(() => galaxyData.domains.map((d) => d.name), []);
   const busy = translate.isPending || report.isPending;
 
-  // Ask mode: translate → run the deterministic query → light up matches.
-  const runAsk = async (question: string, id: number) => {
+  // File a translator-detected bug report / feature request to Linear, then
+  // append a turn linking the created issue.
+  const fileFeedback = async (
+    kind: "bug" | "feature",
+    message: string,
+    id: number,
+  ) => {
+    try {
+      const issue = await report.mutateAsync({ data: { kind, message } });
+      setTurns((prev) => [
+        ...prev,
+        {
+          id,
+          mode: kind,
+          question: message,
+          status: "ok",
+          answer:
+            kind === "bug"
+              ? "Thanks — I filed that as a bug report. The team will take a look."
+              : "Thanks — I filed that as a feature request. The team will take a look.",
+          papers: [],
+          count: 0,
+          issueUrl: issue.url,
+          issueNumber: issue.number,
+        },
+      ]);
+    } catch {
+      setTurns((prev) => [
+        ...prev,
+        {
+          id,
+          mode: kind,
+          question: message,
+          status: "error",
+          answer: "Couldn't file that just now. Please try again later.",
+          papers: [],
+          count: 0,
+        },
+      ]);
+    }
+  };
+
+  // One input does it all: translate → if the translator detected a bug/feature
+  // report, file it to Linear; otherwise run the deterministic query + light up
+  // matches.
+  const ask = async (question: string, id: number) => {
     try {
       const spec = await translate.mutateAsync({
         data: { question, fields: [...ASK_FIELDS], domains: domainNames },
       });
+      if (spec.intent === "feedback") {
+        await fileFeedback(spec.feedbackKind ?? "bug", question, id);
+        return;
+      }
       const result = runAskQuery(spec);
       if (spec.unsupported) resetFilters();
       else setFilters(result.filters);
@@ -603,50 +637,12 @@ function AskPanel({
     }
   };
 
-  // Bug/Feature mode: file the message straight to Linear, link the issue.
-  const runReport = async (kind: "bug" | "feature", message: string, id: number) => {
-    try {
-      const issue = await report.mutateAsync({ data: { kind, message } });
-      setTurns((prev) => [
-        ...prev,
-        {
-          id,
-          mode: kind,
-          question: message,
-          status: "ok",
-          answer:
-            kind === "bug"
-              ? "Thanks — filed as a bug report. The team will take a look."
-              : "Thanks — filed as a feature request. The team will take a look.",
-          papers: [],
-          count: 0,
-          issueUrl: issue.url,
-          issueNumber: issue.number,
-        },
-      ]);
-    } catch {
-      setTurns((prev) => [
-        ...prev,
-        {
-          id,
-          mode: kind,
-          question: message,
-          status: "error",
-          answer: "Couldn't file that just now. Please try again later.",
-          papers: [],
-          count: 0,
-        },
-      ]);
-    }
-  };
-
   const send = () => {
     const text = input.trim();
     if (!text || busy) return;
     setInput("");
     const id = ++turnId.current;
-    if (mode === "ask") void runAsk(text, id);
-    else void runReport(mode, text, id);
+    void ask(text, id);
   };
 
   const clear = () => {
@@ -654,40 +650,25 @@ function AskPanel({
     resetFilters();
   };
 
-  const placeholder =
-    mode === "ask"
-      ? "Ask about this work…"
-      : mode === "bug"
-        ? "Describe the bug — steps to reproduce help…"
-        : "Describe the feature you'd like…";
-
-  const InputIcon = mode === "ask" ? Sparkles : mode === "bug" ? Bug : Lightbulb;
-
   return (
     <div className="flex flex-col gap-3">
-      {/* Mode pills — Ask the galaxy, or send a bug / feature report */}
-      <div className="grid grid-cols-3 gap-1.5">
-        <ModePill active={mode === "ask"} onClick={() => setMode("ask")} icon={<Sparkles size={12} />} label="Ask" />
-        <ModePill active={mode === "bug"} onClick={() => setMode("bug")} icon={<Bug size={12} />} label="Bug" />
-        <ModePill active={mode === "feature"} onClick={() => setMode("feature")} icon={<Lightbulb size={12} />} label="Feature" />
-      </div>
 
       {/* Input */}
       <div className="flex items-center gap-2 border-2 border-edge bg-white/5 px-2 focus-within:border-accent">
-        <InputIcon size={15} className="shrink-0 text-accent" />
+        <Sparkles size={15} className="shrink-0 text-accent" />
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter") send();
           }}
-          placeholder={placeholder}
+          placeholder="Ask about this work, or report a bug…"
           className="min-w-0 flex-1 bg-transparent py-2 text-sm text-ink placeholder:text-ink-dim/70 focus:outline-none"
         />
         <button
           onClick={send}
           disabled={!input.trim() || busy}
-          aria-label={mode === "ask" ? "Ask" : "Send report"}
+          aria-label="Send"
           className="shrink-0 text-ink-dim transition-colors hover:text-accent disabled:opacity-40"
         >
           {busy ? (
@@ -700,11 +681,10 @@ function AskPanel({
 
       {turns.length === 0 ? (
         <p className="px-1 text-xs leading-relaxed text-ink-dim">
-          {mode === "ask"
-            ? "Try “most cited papers”, “work on stem cells since 2010”, or “how many papers with more than 100 citations”. Answers are computed from the baked data — never invented. Switch to Bug or Feature to send feedback to the team."
-            : mode === "bug"
-              ? "Spotted something broken? Describe it and we'll file it for the team."
-              : "Have an idea to make this better? Send it and we'll file it for the team."}
+          Try “most cited papers”, “work on stem cells since 2010”, or “how many
+          papers with more than 100 citations”. Answers are computed from the
+          baked data — never invented. Spotted a bug or have an idea? Just say so
+          (e.g. “I want to report a bug…”) and I'll file it with the team.
         </p>
       ) : (
         <div className="flex items-center justify-between">
@@ -793,33 +773,5 @@ function AskPanel({
       ))}
 
     </div>
-  );
-}
-
-// Segmented control selecting the chat mode: ask the galaxy, report a bug, or
-// request a feature.
-function ModePill({
-  active,
-  onClick,
-  icon,
-  label,
-}: {
-  active: boolean;
-  onClick: () => void;
-  icon: React.ReactNode;
-  label: string;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      aria-pressed={active}
-      style={active ? { background: "var(--accent)" } : undefined}
-      className={`flex items-center justify-center gap-1 border-2 border-edge px-2 py-1.5 text-[10px] font-display uppercase tracking-wider transition-all ${
-        active ? "text-accent-foreground" : "bg-white/5 text-ink hover:bg-white/10"
-      }`}
-    >
-      {icon}
-      {label}
-    </button>
   );
 }

@@ -7,7 +7,8 @@
  */
 
 /**
- * Whether the visitor wants a count or a list of matching papers.
+ * What the visitor wants: "count" for a number/how-many, "list" for matching papers, or "feedback" when they are reporting a bug or requesting a feature/improvement rather than asking about the corpus.
+
  */
 export type AskQueryIntent = typeof AskQueryIntent[keyof typeof AskQueryIntent];
 
@@ -15,4 +16,5 @@ export type AskQueryIntent = typeof AskQueryIntent[keyof typeof AskQueryIntent];
 export const AskQueryIntent = {
   count: 'count',
   list: 'list',
+  feedback: 'feedback',
 } as const;

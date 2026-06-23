@@ -8,6 +8,7 @@
 
 export * from './askField';
 export * from './askQuery';
+export * from './askQueryFeedbackKind';
 export * from './askQueryIntent';
 export * from './askQuerySortBy';
 export * from './askQuerySortDir';

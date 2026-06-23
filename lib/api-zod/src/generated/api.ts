@@ -70,7 +70,8 @@ export const TranslateAskBody = zod.object({
 })
 
 export const TranslateAskResponse = zod.object({
-  "intent": zod.enum(['count', 'list']).describe('Whether the visitor wants a count or a list of matching papers.'),
+  "intent": zod.enum(['count', 'list', 'feedback']).describe('What the visitor wants: \"count\" for a number\/how-many, \"list\" for matching papers, or \"feedback\" when they are reporting a bug or requesting a feature\/improvement rather than asking about the corpus.\n'),
+  "feedbackKind": zod.enum(['bug', 'feature']).nullish().describe('When intent is \"feedback\", whether the message is a bug report or a feature request. Null otherwise.\n'),
   "text": zod.string().nullish().describe('Keyword to match across a paper\'s title, topic, field and venue.'),
   "coAuthor": zod.string().nullish().describe('Co-author name substring to match.'),
   "minYear": zod.number().nullish(),

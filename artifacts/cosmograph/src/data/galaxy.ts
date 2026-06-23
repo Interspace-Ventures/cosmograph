@@ -260,7 +260,8 @@ export function getMatchingPapers(f: Filters): Paper[] {
 // AskQuery contract (zod TranslateAskResponse) but stays a local type so the
 // data layer has no dependency on generated server code.
 export interface AskQuery {
-  intent: "count" | "list";
+  intent: "count" | "list" | "feedback";
+  feedbackKind?: "bug" | "feature" | null;
   text?: string | null;
   coAuthor?: string | null;
   minYear?: number | null;

@@ -28,7 +28,8 @@ ${fields}
 Research domains (categories) in this corpus: ${domains}
 
 Return ONLY a JSON object with these keys (omit a key or use null when not relevant):
-- intent: "count" when the user wants a number/how-many, "list" when they want to see matching papers (including superlatives like "most cited" / "top N").
+- intent: "count" when the user wants a number/how-many, "list" when they want to see matching papers (including superlatives like "most cited" / "top N"), or "feedback" when the user is NOT asking about the corpus but is reporting a bug or requesting a feature/improvement (e.g. "I want to report a bug — fly mode doesn't work", "it would be great if you added dark mode", "the share button is broken").
+- feedbackKind: when intent is "feedback", "bug" if the user is reporting something broken/not working, or "feature" if they are requesting a new capability or improvement. null when intent is not "feedback".
 - text: a single keyword/topic to match across a paper's title, topic, subfield, field, domain name and venue (e.g. "cancer", "stem cell"). Use the user's topic word; prefer a domain name when the user clearly means a domain. null if no topic.
 - coAuthor: a co-author name substring to match, or null.
 - minYear / maxYear: inclusive publication-year bounds, or null. "since 2010" => minYear 2010. "before 2005" => maxYear 2004. "in the 1990s" => minYear 1990, maxYear 1999.
@@ -37,12 +38,13 @@ Return ONLY a JSON object with these keys (omit a key or use null when not relev
 - sortBy: "citations" | "year" | "coAuthors" | null. For "most cited" use "citations"; for "newest/latest" use "year"; for "most collaborative" use "coAuthors".
 - sortDir: "asc" | "desc" | null. "most"/"newest"/"highest" => "desc"; "least"/"oldest"/"fewest" => "asc".
 - limit: integer max papers for a list (e.g. "top 5" => 5), or null.
-- unsupported: true ONLY when the question cannot be expressed with the slots above (e.g. asks for something not in the data shape).
+- unsupported: true ONLY when the question is about the corpus but cannot be expressed with the slots above (e.g. asks for something not in the data shape). Do NOT set unsupported for bug reports / feature requests — use intent "feedback" for those.
 
 Rules:
 - Output valid JSON only, no prose, no markdown.
 - Never put a computed count or any answer text in the JSON.
-- When in doubt between count and list, choose "list".`;
+- When in doubt between count and list, choose "list".
+- Only use intent "feedback" for genuine bug reports or feature requests about the app/site itself, not for questions about the scientist's work.`;
 }
 
 // Clamp + coerce a model field to a non-negative integer or null.
@@ -67,10 +69,13 @@ function toStrOrNull(v: unknown): string | null {
 // missing/extra/malformed fields so a sloppy model response never breaks the UI.
 function normalize(raw: unknown): AskQuery {
   const o = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
-  const intent = pickEnum(o.intent, ["count", "list"] as const) ?? "list";
+  const intent = pickEnum(o.intent, ["count", "list", "feedback"] as const) ?? "list";
+  const feedbackKind = pickEnum(o.feedbackKind, ["bug", "feature"] as const);
   const limit = toIntOrNull(o.limit);
   const query: AskQuery = {
     intent,
+    // A feedback intent must carry a kind; default to "bug" if the model omits it.
+    feedbackKind: intent === "feedback" ? (feedbackKind ?? "bug") : null,
     text: toStrOrNull(o.text),
     coAuthor: toStrOrNull(o.coAuthor),
     minYear: toIntOrNull(o.minYear),

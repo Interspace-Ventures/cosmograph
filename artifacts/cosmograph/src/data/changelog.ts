@@ -17,6 +17,16 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.3.0",
+    codename: "Just Ask",
+    date: "2026-06-23",
+    summary: "One input, zero modes — Ask reads your intent.",
+    changes: [
+      "Dropped the Ask/Bug/Feature toggle: just type. Asking about the work runs a search; saying something's broken or wished-for files it with the team automatically.",
+      "Tidied the console — Info and Sign in now sit right at the top, no Profile drawer to open.",
+    ],
+  },
+  {
     version: "3.2.0",
     codename: "One Console",
     date: "2026-06-23",

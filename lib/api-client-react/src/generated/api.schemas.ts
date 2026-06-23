@@ -47,7 +47,8 @@ export interface AskRequest {
 }
 
 /**
- * Whether the visitor wants a count or a list of matching papers.
+ * What the visitor wants: "count" for a number/how-many, "list" for matching papers, or "feedback" when they are reporting a bug or requesting a feature/improvement rather than asking about the corpus.
+
  */
 export type AskQueryIntent = typeof AskQueryIntent[keyof typeof AskQueryIntent];
 
@@ -55,6 +56,19 @@ export type AskQueryIntent = typeof AskQueryIntent[keyof typeof AskQueryIntent];
 export const AskQueryIntent = {
   count: 'count',
   list: 'list',
+  feedback: 'feedback',
+} as const;
+
+/**
+ * When intent is "feedback", whether the message is a bug report or a feature request. Null otherwise.
+
+ */
+export type AskQueryFeedbackKind = typeof AskQueryFeedbackKind[keyof typeof AskQueryFeedbackKind] | null;
+
+
+export const AskQueryFeedbackKind = {
+  bug: 'bug',
+  feature: 'feature',
 } as const;
 
 export type AskQuerySortBy = typeof AskQuerySortBy[keyof typeof AskQuerySortBy] | null;
@@ -79,8 +93,12 @@ export const AskQuerySortDir = {
 
  */
 export interface AskQuery {
-  /** Whether the visitor wants a count or a list of matching papers. */
+  /** What the visitor wants: "count" for a number/how-many, "list" for matching papers, or "feedback" when they are reporting a bug or requesting a feature/improvement rather than asking about the corpus.
+   */
   intent: AskQueryIntent;
+  /** When intent is "feedback", whether the message is a bug report or a feature request. Null otherwise.
+   */
+  feedbackKind?: AskQueryFeedbackKind;
   /** Keyword to match across a paper's title, topic, field and venue. */
   text?: string | null;
   /** Co-author name substring to match. */
