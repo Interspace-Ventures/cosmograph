@@ -17,7 +17,6 @@ export function GitHubLink({
       target="_blank"
       rel="noopener noreferrer"
       aria-label="View source on GitHub"
-      title="View source on GitHub"
       className={`flex items-center border-2 border-edge bg-white/5 text-ink transition-all hover:bg-white/10 pointer-events-auto ${
         compact
           ? "h-9 w-9 justify-center"

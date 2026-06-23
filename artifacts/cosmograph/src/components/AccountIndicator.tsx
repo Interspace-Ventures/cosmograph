@@ -2,6 +2,7 @@ import { Show, UserButton } from "@clerk/react";
 import { useLocation } from "wouter";
 import { LogIn, ShieldCheck, Sparkles } from "lucide-react";
 import { useAppState } from "@/lib/store";
+import { Tooltip, TooltipTrigger, TooltipContent } from "./ui/tooltip";
 
 // Lightweight auth state in the console: signed-out shows a Sign in button,
 // signed-in shows Clerk's UserButton (avatar + sign-out menu) plus whether the
@@ -48,15 +49,25 @@ export function AccountIndicatorRail() {
   return (
     <>
       <Show when="signed-out">
-        <button
-          type="button"
-          aria-label="Sign in"
-          title="Sign in"
-          onClick={() => setLocation("/sign-in")}
-          className="flex h-9 w-9 items-center justify-center border-2 border-edge bg-white/5 text-ink transition-all hover:bg-white/10"
-        >
-          <LogIn size={15} />
-        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              aria-label="Sign in"
+              onClick={() => setLocation("/sign-in")}
+              className="flex h-9 w-9 items-center justify-center border-2 border-edge bg-white/5 text-ink transition-all hover:bg-white/10"
+            >
+              <LogIn size={15} />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent
+            side="left"
+            sideOffset={8}
+            className="rounded-none border-2 border-edge bg-black/90 px-2 py-1 font-display text-[10px] uppercase tracking-wider text-ink"
+          >
+            Sign in
+          </TooltipContent>
+        </Tooltip>
       </Show>
       <Show when="signed-in">
         <div className="flex h-9 w-9 items-center justify-center">

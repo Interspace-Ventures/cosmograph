@@ -10,7 +10,6 @@ export function ShareButton({ full = false }: { full?: boolean }) {
       <button
         onClick={() => setOpen(true)}
         aria-label="Share this Cosmograph"
-        title="Share this Cosmograph"
         className={`flex items-center border-2 border-edge bg-white/5 text-ink transition-all hover:bg-white/10 pointer-events-auto ${
           full ? "h-9 w-full gap-2 px-3" : "h-11 w-11 justify-center md:h-9 md:w-9"
         }`}

@@ -37,6 +37,12 @@ import { SITE } from "@/config/site";
 import { ShareButton } from "./ShareButton";
 import { GitHubLink } from "./GitHubLink";
 import { AccountIndicator, AccountIndicatorRail } from "./AccountIndicator";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+} from "./ui/tooltip";
 
 interface SearchResult {
   type: "sun" | "planet";
@@ -175,6 +181,7 @@ export function Sidebar() {
   };
 
   return (
+    <TooltipProvider delayDuration={150} skipDelayDuration={400}>
     <div
       className={`console-panel absolute right-0 top-0 z-30 flex h-full flex-col overflow-hidden transition-[width] duration-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)] will-change-[width] ${
         open ? "w-[min(14rem,80vw)]" : "w-14"
@@ -539,20 +546,25 @@ export function Sidebar() {
             <AccountIndicatorRail />
             <Divider />
             {/* Customize */}
-            <a
-              href={SITE.github.sponsors}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Donate via GitHub Sponsors"
-              title="Donate via GitHub Sponsors"
-              className="relative flex h-9 w-9 items-center justify-center border-2 border-edge bg-white/5 text-accent transition-all hover:bg-white/10"
-            >
-              <Heart size={15} />
-            </a>
+            <RailTip label="Donate">
+              <a
+                href={SITE.github.sponsors}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Donate via GitHub Sponsors"
+                className="relative flex h-9 w-9 items-center justify-center border-2 border-edge bg-white/5 text-accent transition-all hover:bg-white/10"
+              >
+                <Heart size={15} />
+              </a>
+            </RailTip>
             <Divider />
             {/* Share */}
-            <GitHubLink compact />
-            <ShareButton />
+            <RailTip label="GitHub">
+              <GitHubLink compact />
+            </RailTip>
+            <RailTip label="Share">
+              <ShareButton />
+            </RailTip>
             <Divider />
             {/* Navigate */}
             <RailButton onClick={() => setInfoOpen(true)} label="Info">
@@ -594,6 +606,7 @@ export function Sidebar() {
         )}
       </AnimatePresence>
     </div>
+    </TooltipProvider>
   );
 }
 
@@ -719,6 +732,32 @@ function ConsoleButton({
   );
 }
 
+function RailTipContent({ children }: { children: React.ReactNode }) {
+  return (
+    <TooltipContent
+      side="left"
+      sideOffset={8}
+      className="rounded-none border-2 border-edge bg-black/90 px-2 py-1 font-display text-[10px] uppercase tracking-wider text-ink"
+    >
+      {children}
+    </TooltipContent>
+  );
+}
+
+// Tooltip wrapper for rail items that render their own root element
+// (links, the share button, the account glyph). The span trigger receives the
+// hover handlers so we don't depend on each child forwarding refs/props.
+function RailTip({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="inline-flex">{children}</span>
+      </TooltipTrigger>
+      <RailTipContent>{label}</RailTipContent>
+    </Tooltip>
+  );
+}
+
 function RailButton({
   active = false,
   onClick,
@@ -732,24 +771,29 @@ function RailButton({
   children: React.ReactNode;
   locked?: boolean;
 }) {
+  const tip = locked ? `${label} — unlock to explore` : label;
   return (
-    <button
-      onClick={onClick}
-      aria-pressed={active}
-      aria-label={locked ? `${label} — unlock to explore` : label}
-      title={locked ? `${label} — unlock to explore` : label}
-      style={active ? { background: "var(--accent)" } : undefined}
-      className={`relative flex h-9 w-9 items-center justify-center border-2 border-edge transition-all ${
-        active ? "text-accent-foreground" : "bg-white/5 text-ink hover:bg-white/10"
-      }`}
-    >
-      {children}
-      {locked && (
-        <span className="absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-accent text-accent-foreground">
-          <Lock size={8} />
-        </span>
-      )}
-    </button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          onClick={onClick}
+          aria-pressed={active}
+          aria-label={tip}
+          style={active ? { background: "var(--accent)" } : undefined}
+          className={`relative flex h-9 w-9 items-center justify-center border-2 border-edge transition-all ${
+            active ? "text-accent-foreground" : "bg-white/5 text-ink hover:bg-white/10"
+          }`}
+        >
+          {children}
+          {locked && (
+            <span className="absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-accent text-accent-foreground">
+              <Lock size={8} />
+            </span>
+          )}
+        </button>
+      </TooltipTrigger>
+      <RailTipContent>{tip}</RailTipContent>
+    </Tooltip>
   );
 }
 
