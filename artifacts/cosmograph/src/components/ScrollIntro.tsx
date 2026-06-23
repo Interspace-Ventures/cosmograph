@@ -240,7 +240,7 @@ export function ScrollIntro() {
                 A Journey of Scientific Exploration
               </p>
               <p className="font-mono text-base tracking-widest text-ink-dim md:text-xl">
-                by {galaxyData.author.name}
+                | {galaxyData.author.name}
               </p>
             </motion.div>
 
