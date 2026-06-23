@@ -5,7 +5,7 @@ import { logger } from "../lib/logger";
 // hit at most once per TTL no matter how many visitors load the site — so the
 // 60 req/hr unauthenticated rate limit can never be tripped by traffic.
 
-const REPO = process.env.GITHUB_REPO || "heyinterspace/galactic";
+const REPO = process.env.GITHUB_REPO || "heyinterspace/cosmograph";
 const TTL_MS = 5 * 60 * 1000;
 
 let cache: { stars: number | null; url: string; fetchedAt: number } = {

@@ -5,8 +5,6 @@ import {
   Sun,
   Globe2,
   X,
-  Filter,
-  ListFilter,
   Info,
   Orbit,
   Compass,
@@ -17,19 +15,27 @@ import {
   ChevronRight,
   ChevronLeft,
   ChevronDown,
-  Check,
+  Sparkles,
   Heart,
   Lock,
   UserRound,
+  MessageCircleQuestion,
+  SendHorizontal,
+  Loader2,
+  Bug,
+  Lightbulb,
+  ExternalLink,
 } from "lucide-react";
+import { useTranslateAsk, useReportFeedback } from "@workspace/api-client-react";
 import { useAppState } from "@/lib/store";
 import {
   galaxyData,
-  yearRange,
-  maxCitations,
   isFiltersActive,
   countMatchingPapers,
-  getMatchingPapers,
+  runAskQuery,
+  type AskQuery,
+  type AskResult,
+  type Paper,
 } from "@/data/galaxy";
 import { getDomainColorStr } from "@/lib/colors";
 import { SITE } from "@/config/site";
@@ -57,11 +63,8 @@ export function Sidebar() {
     setCameraMode,
     cameraMode,
     setSelectedObject,
-    selectedObject,
     setSearchActive,
     filters,
-    setFilters,
-    resetFilters,
     setInfoOpen,
     replayIntro,
     startTour,
@@ -114,15 +117,6 @@ export function Sidebar() {
     () => (filtersActive ? countMatchingPapers(filters) : totalPapers),
     [filters, filtersActive, totalPapers],
   );
-  const matchingPapers = useMemo(
-    () => (filtersActive ? getMatchingPapers(filters) : []),
-    [filters, filtersActive],
-  );
-
-  const minYear = filters.minYear ?? yearRange.min;
-  const maxYear = filters.maxYear ?? yearRange.max;
-  const numInputCls =
-    "bg-white/5 border-2 border-edge px-2 py-1 font-mono text-xs text-ink outline-none focus:border-accent [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
 
   const results: SearchResult[] = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -161,21 +155,11 @@ export function Sidebar() {
     setSelectedObject({ type: "planet", id });
   };
 
-  const toggleDomain = (id: string) => {
-    const next = new Set(filters.domainIds);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    setFilters({ domainIds: [...next] });
-  };
-  const allDomainsSelected = galaxyData.domains.every((d) =>
-    filters.domainIds.includes(d.id),
-  );
-
   const expandWithSearch = () => {
     focusOnOpen.current = true;
     setOpen(true);
   };
-  const expandWithFilters = () => {
+  const expandWithAsk = () => {
     setOpen(true);
   };
 
@@ -291,230 +275,79 @@ export function Sidebar() {
                 </div>
               </CollapsibleSection>
 
-              {/* Filter */}
+              {/* Find — quick jump search */}
+              <CollapsibleSection
+                icon={<Search size={15} className="text-ink-dim" />}
+                title="Find"
+                isOpen={openSections.find}
+                onToggle={() => toggleSection("find")}
+              >
+                <div>
+                  <div className="flex items-center gap-2 border-2 border-edge bg-white/5 px-2 focus-within:border-accent">
+                    <Search size={15} className="shrink-0 text-ink-dim" />
+                    <input
+                      ref={inputRef}
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder="Jump to a paper or domain…"
+                      className="min-w-0 flex-1 bg-transparent py-2 text-sm text-ink placeholder:text-ink-dim/70 focus:outline-none"
+                    />
+                    {query && (
+                      <button
+                        onClick={() => setQuery("")}
+                        className="shrink-0 text-ink-dim hover:text-ink"
+                        aria-label="Clear search"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+                  {results.length > 0 && (
+                    <div className="mt-1.5 max-h-[34vh] overflow-y-auto custom-scrollbar border-2 border-edge">
+                      {results.map((r) => (
+                        <button
+                          key={`${r.type}-${r.id}`}
+                          onClick={() => pick(r)}
+                          className="flex w-full items-center gap-2.5 border-b border-white/8 px-3 py-2.5 text-left transition-colors last:border-0 hover:bg-accent/15"
+                        >
+                          {r.type === "sun" ? (
+                            <Sun size={14} className="shrink-0 text-accent" />
+                          ) : (
+                            <Globe2 size={14} className="shrink-0 text-ink-dim" />
+                          )}
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm text-ink">{r.title}</span>
+                            <span className="block truncate font-mono text-[10px] uppercase tracking-wider text-ink-dim">
+                              {r.subtitle}
+                            </span>
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </CollapsibleSection>
+
+              {/* Ask the galaxy */}
               <CollapsibleSection
                 icon={
-                  <Filter
+                  <MessageCircleQuestion
                     size={15}
                     className={filtersActive ? "text-accent" : "text-ink-dim"}
                   />
                 }
-                title="Filter"
-                isOpen={openSections.filter}
-                onToggle={() => toggleSection("filter")}
+                title="Ask"
+                isOpen={openSections.ask}
+                onToggle={() => toggleSection("ask")}
                 right={
-                  <span
-                    className={`font-mono text-[11px] ${filtersActive ? "text-accent" : "text-ink-dim"}`}
-                  >
-                    {filtersActive ? `${matchCount}/${totalPapers}` : `${totalPapers} papers`}
-                  </span>
+                  filtersActive ? (
+                    <span className="font-mono text-[11px] text-accent">
+                      {matchCount}/{totalPapers}
+                    </span>
+                  ) : undefined
                 }
               >
-                <div className="flex flex-col gap-3">
-                  {/* Search */}
-                  <div>
-                    <div className="flex items-center gap-2 border-2 border-edge bg-white/5 px-2 focus-within:border-accent">
-                      <Search size={15} className="shrink-0 text-ink-dim" />
-                      <input
-                        ref={inputRef}
-                        value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                        placeholder="Search papers, domains…"
-                        className="min-w-0 flex-1 bg-transparent py-2 text-sm text-ink placeholder:text-ink-dim/70 focus:outline-none"
-                      />
-                      {query && (
-                        <button
-                          onClick={() => setQuery("")}
-                          className="shrink-0 text-ink-dim hover:text-ink"
-                          aria-label="Clear search"
-                        >
-                          <X size={14} />
-                        </button>
-                      )}
-                    </div>
-                    {results.length > 0 && (
-                      <div className="mt-1.5 max-h-[34vh] overflow-y-auto custom-scrollbar border-2 border-edge">
-                        {results.map((r) => (
-                          <button
-                            key={`${r.type}-${r.id}`}
-                            onClick={() => pick(r)}
-                            className="flex w-full items-center gap-2.5 border-b border-white/8 px-3 py-2.5 text-left transition-colors last:border-0 hover:bg-accent/15"
-                          >
-                            {r.type === "sun" ? (
-                              <Sun size={14} className="shrink-0 text-accent" />
-                            ) : (
-                              <Globe2 size={14} className="shrink-0 text-ink-dim" />
-                            )}
-                            <span className="min-w-0 flex-1">
-                              <span className="block truncate text-sm text-ink">{r.title}</span>
-                              <span className="block truncate font-mono text-[10px] uppercase tracking-wider text-ink-dim">
-                                {r.subtitle}
-                              </span>
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Citations — single line: [#] Min citations */}
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      aria-label="Minimum citations"
-                      min={0}
-                      max={maxCitations}
-                      value={filters.minCitations}
-                      onChange={(e) => {
-                        const v = parseInt(e.target.value, 10);
-                        setFilters({
-                          minCitations: Number.isNaN(v)
-                            ? 0
-                            : Math.min(Math.max(v, 0), maxCitations),
-                        });
-                      }}
-                      className={`w-16 ${numInputCls}`}
-                    />
-                    <span className="font-mono text-[11px] uppercase tracking-widest text-ink-dim">
-                      Min citations
-                    </span>
-                  </div>
-
-                  {/* Year range — single line: [YYYY] – [YYYY] Years */}
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      aria-label="Start year"
-                      min={yearRange.min}
-                      max={maxYear}
-                      value={minYear}
-                      onChange={(e) => {
-                        const v = parseInt(e.target.value, 10);
-                        if (Number.isNaN(v)) return;
-                        const c = Math.min(Math.max(v, yearRange.min), maxYear);
-                        setFilters({ minYear: c <= yearRange.min ? null : c });
-                      }}
-                      className={`w-14 ${numInputCls}`}
-                    />
-                    <span className="font-mono text-xs text-ink-dim">–</span>
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      aria-label="End year"
-                      min={minYear}
-                      max={yearRange.max}
-                      value={maxYear}
-                      onChange={(e) => {
-                        const v = parseInt(e.target.value, 10);
-                        if (Number.isNaN(v)) return;
-                        const c = Math.max(Math.min(v, yearRange.max), minYear);
-                        setFilters({ maxYear: c >= yearRange.max ? null : c });
-                      }}
-                      className={`w-14 ${numInputCls}`}
-                    />
-                    <span className="font-mono text-[11px] uppercase tracking-widest text-ink-dim">
-                      Years
-                    </span>
-                  </div>
-
-                  {/* Domain — inline multi-select */}
-                  <div>
-                    <span className="mb-1.5 block font-mono text-[11px] uppercase tracking-widest text-ink-dim">
-                      Domain
-                    </span>
-                    <div className="max-h-[16rem] overflow-y-auto custom-scrollbar border-2 border-edge bg-white/5">
-                      <DomainOption
-                        checked={allDomainsSelected}
-                        onClick={() =>
-                          setFilters({
-                            domainIds: allDomainsSelected
-                              ? []
-                              : galaxyData.domains.map((d) => d.id),
-                          })
-                        }
-                      >
-                        All domains
-                      </DomainOption>
-                      {galaxyData.domains.map((d) => (
-                        <DomainOption
-                          key={d.id}
-                          checked={filters.domainIds.includes(d.id)}
-                          swatch={getDomainColorStr(domainIndexById[d.id] ?? 0)}
-                          onClick={() => toggleDomain(d.id)}
-                        >
-                          {d.name}
-                        </DomainOption>
-                      ))}
-                    </div>
-                  </div>
-
-                  {filtersActive && (
-                    <div className="flex flex-col border-2 border-edge">
-                      <div className="flex items-center gap-2 px-3 py-2">
-                        <ListFilter size={14} className="text-accent" />
-                        <span className="font-display text-[11px] uppercase tracking-wider text-ink">
-                          Matching
-                        </span>
-                        <span className="font-mono text-[11px] text-ink-dim">
-                          {matchingPapers.length}
-                        </span>
-                        <button
-                          onClick={resetFilters}
-                          title="Clear filters"
-                          className="ml-auto flex items-center gap-1 font-display text-[11px] uppercase tracking-wider text-ink-dim transition-colors hover:text-ink"
-                        >
-                          Clear <X size={12} />
-                        </button>
-                      </div>
-                      <div className="max-h-[30vh] overflow-y-auto custom-scrollbar border-t-2 border-edge">
-                        {matchingPapers.length === 0 ? (
-                          <div className="px-3 py-5 text-center text-sm text-ink-dim">
-                            No papers match these filters.
-                          </div>
-                        ) : (
-                          matchingPapers.map((p) => {
-                            const isSelected =
-                              selectedObject?.type === "planet" && selectedObject.id === p.id;
-                            return (
-                              <button
-                                key={p.id}
-                                onClick={() => pickPaper(p.id)}
-                                className={`flex w-full flex-col gap-1.5 border-b border-white/8 px-3 py-2.5 text-left transition-colors last:border-0 ${
-                                  isSelected ? "bg-accent/20" : "hover:bg-accent/15"
-                                }`}
-                              >
-                                <span className="block text-sm leading-snug text-ink line-clamp-2">
-                                  {p.title}
-                                </span>
-                                <span className="flex flex-wrap items-center gap-2 font-mono text-[10px] uppercase tracking-wider text-ink-dim">
-                                  {p.year != null && <span>{p.year}</span>}
-                                  <span className="text-accent">
-                                    {p.citations.toLocaleString()} cites
-                                  </span>
-                                  {p.domainName && (
-                                    <span className="flex min-w-0 items-center gap-1">
-                                      <span
-                                        className="h-2 w-2 shrink-0 border border-edge"
-                                        style={{
-                                          background: getDomainColorStr(
-                                            domainIndexById[p.domainId] ?? 0,
-                                          ),
-                                        }}
-                                      />
-                                      <span className="truncate">{p.domainName}</span>
-                                    </span>
-                                  )}
-                                </span>
-                              </button>
-                            );
-                          })
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <AskPanel domainIndexById={domainIndexById} onPickPaper={pickPaper} />
               </CollapsibleSection>
             </div>
           </motion.div>
@@ -580,12 +413,12 @@ export function Sidebar() {
               <Rewind size={16} />
             </RailButton>
             <Divider />
-            {/* Filter (search lives in this section when expanded) */}
-            <RailButton onClick={expandWithSearch} label="Search">
+            {/* Find + Ask */}
+            <RailButton onClick={expandWithSearch} label="Find">
               <Search size={16} />
             </RailButton>
-            <RailButton active={filtersActive} onClick={expandWithFilters} label="Filters">
-              <Filter size={15} />
+            <RailButton active={filtersActive} onClick={expandWithAsk} label="Ask">
+              <MessageCircleQuestion size={15} />
               {filtersActive && (
                 <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-accent ring-2 ring-black" />
               )}
@@ -598,14 +431,15 @@ export function Sidebar() {
   );
 }
 
-type SectionKey = "account" | "share" | "navigate" | "filter";
+type SectionKey = "account" | "share" | "navigate" | "find" | "ask";
 
 const SECTION_STORAGE_KEY = "galaxy.console.sections";
 const DEFAULT_SECTIONS: Record<SectionKey, boolean> = {
   account: true,
   share: true,
   navigate: true,
-  filter: true,
+  find: true,
+  ask: true,
 };
 
 function useSectionState() {
@@ -788,39 +622,320 @@ function Divider() {
   return <div className="my-0.5 h-px w-6 bg-edge/60" />;
 }
 
-function DomainOption({
-  checked,
-  swatch,
-  onClick,
-  children,
+// The paper-record shape sent to the translator. Field names + types only —
+// never any actual paper data (everything stays local in the browser).
+const ASK_FIELDS = [
+  { name: "title", type: "string" },
+  { name: "year", type: "number", description: "Publication year." },
+  { name: "citations", type: "number", description: "Total citation count." },
+  { name: "topic", type: "string", description: "Fine-grained OpenAlex topic." },
+  { name: "subfield", type: "string" },
+  { name: "field", type: "string" },
+  { name: "domainName", type: "string", description: "The research domain (sun) this paper orbits." },
+  { name: "venue", type: "string", description: "Journal or conference." },
+  { name: "coAuthors", type: "string[]", description: "Names of collaborators." },
+  { name: "coAuthorCount", type: "number", description: "Number of collaborators." },
+] as const;
+
+// A single Q&A turn. The answer text and papers are computed deterministically
+// by runAskQuery — the model never returns numbers or paper lists.
+interface AskTurn {
+  id: number;
+  question: string;
+  status: "ok" | "unsupported" | "error";
+  answer: string;
+  papers: Paper[];
+  count: number;
+}
+
+// Compose the answer text from the locally-computed result. ALL numbers here
+// come from `r` (the deterministic run), not from the model.
+function composeAnswer(q: AskQuery, r: AskResult): string {
+  if (q.unsupported) {
+    return "I can only answer questions about this scientist's papers — try topics, years, citation counts, or co-authors. If something's missing, report it below.";
+  }
+  if (r.count === 0) {
+    return `No papers match that — searched all ${r.total}.`;
+  }
+  if (q.intent === "count") {
+    return `${r.count} of ${r.total} papers match — they're lit up in the galaxy.`;
+  }
+  const shown = r.matched.length;
+  const noun = r.count === 1 ? "paper" : "papers";
+  if (shown < r.count) {
+    return `${r.count} ${noun} match — showing the top ${shown}, lit up in the galaxy.`;
+  }
+  return `${r.count} ${noun} match — lit up in the galaxy.`;
+}
+
+function AskPanel({
+  domainIndexById,
+  onPickPaper,
 }: {
-  checked: boolean;
-  swatch?: string;
-  onClick: () => void;
-  children: React.ReactNode;
+  domainIndexById: Record<string, number>;
+  onPickPaper: (id: string) => void;
 }) {
+  const { setFilters, resetFilters } = useAppState();
+  const [input, setInput] = useState("");
+  const [turns, setTurns] = useState<AskTurn[]>([]);
+  const turnId = useRef(0);
+  const translate = useTranslateAsk();
+
+  const domainNames = useMemo(() => galaxyData.domains.map((d) => d.name), []);
+
+  const ask = async () => {
+    const question = input.trim();
+    if (!question || translate.isPending) return;
+    setInput("");
+    const id = ++turnId.current;
+    try {
+      const spec = await translate.mutateAsync({
+        data: { question, fields: [...ASK_FIELDS], domains: domainNames },
+      });
+      const result = runAskQuery(spec);
+      // Drive the existing dim/highlight path: matched papers light up.
+      if (spec.unsupported) resetFilters();
+      else setFilters(result.filters);
+      setTurns((prev) => [
+        ...prev,
+        {
+          id,
+          question,
+          status: spec.unsupported ? "unsupported" : "ok",
+          answer: composeAnswer(spec, result),
+          papers: result.matched,
+          count: result.count,
+        },
+      ]);
+    } catch {
+      setTurns((prev) => [
+        ...prev,
+        {
+          id,
+          question,
+          status: "error",
+          answer: "Couldn't reach the translator just now. Please try again.",
+          papers: [],
+          count: 0,
+        },
+      ]);
+    }
+  };
+
+  const clear = () => {
+    setTurns([]);
+    resetFilters();
+  };
+
   return (
-    <button
-      type="button"
-      role="menuitemcheckbox"
-      aria-checked={checked}
-      onClick={onClick}
-      className="flex w-full items-center gap-2 border-b border-white/8 px-2 py-1.5 text-left text-xs text-ink transition-colors last:border-0 hover:bg-accent/15"
-    >
-      <span
-        className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center border-2 border-edge ${
-          checked ? "bg-accent" : ""
-        }`}
-      >
-        {checked && <Check size={10} className="text-accent-foreground" />}
-      </span>
-      {swatch && (
-        <span
-          className="h-2 w-2 shrink-0 border border-edge"
-          style={{ background: swatch }}
+    <div className="flex flex-col gap-3">
+      {/* Ask input */}
+      <div className="flex items-center gap-2 border-2 border-edge bg-white/5 px-2 focus-within:border-accent">
+        <Sparkles size={15} className="shrink-0 text-accent" />
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") ask();
+          }}
+          placeholder="Ask about this work…"
+          className="min-w-0 flex-1 bg-transparent py-2 text-sm text-ink placeholder:text-ink-dim/70 focus:outline-none"
         />
+        <button
+          onClick={ask}
+          disabled={!input.trim() || translate.isPending}
+          aria-label="Ask"
+          className="shrink-0 text-ink-dim transition-colors hover:text-accent disabled:opacity-40"
+        >
+          {translate.isPending ? (
+            <Loader2 size={16} className="animate-spin" />
+          ) : (
+            <SendHorizontal size={16} />
+          )}
+        </button>
+      </div>
+
+      {turns.length === 0 ? (
+        <p className="px-1 text-xs leading-relaxed text-ink-dim">
+          Try “most cited papers”, “work on stem cells since 2010”, or “how many
+          papers with more than 100 citations”. Answers are computed from the
+          baked data — never invented.
+        </p>
+      ) : (
+        <div className="flex items-center justify-between">
+          <span className="font-mono text-[11px] uppercase tracking-widest text-ink-dim">
+            Conversation
+          </span>
+          <button
+            onClick={clear}
+            title="Clear conversation"
+            className="flex items-center gap-1 font-display text-[11px] uppercase tracking-wider text-ink-dim transition-colors hover:text-ink"
+          >
+            Clear <X size={12} />
+          </button>
+        </div>
       )}
-      <span className="min-w-0 flex-1 truncate">{children}</span>
-    </button>
+
+      {turns.map((t) => (
+        <div key={t.id} className="flex flex-col gap-1.5">
+          {/* Question */}
+          <div className="self-end max-w-[90%] border-2 border-edge bg-accent/15 px-2.5 py-1.5 text-sm text-ink">
+            {t.question}
+          </div>
+          {/* Answer */}
+          <div
+            className={`max-w-[95%] border-2 px-2.5 py-1.5 text-sm leading-snug ${
+              t.status === "error"
+                ? "border-edge text-ink-dim"
+                : "border-edge bg-white/5 text-ink"
+            }`}
+          >
+            {t.answer}
+          </div>
+          {/* Matching papers */}
+          {t.papers.length > 0 && (
+            <div className="max-h-[28vh] overflow-y-auto custom-scrollbar border-2 border-edge">
+              {t.papers.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => onPickPaper(p.id)}
+                  className="flex w-full flex-col gap-1.5 border-b border-white/8 px-3 py-2.5 text-left transition-colors last:border-0 hover:bg-accent/15"
+                >
+                  <span className="block text-sm leading-snug text-ink line-clamp-2">
+                    {p.title}
+                  </span>
+                  <span className="flex flex-wrap items-center gap-2 font-mono text-[10px] uppercase tracking-wider text-ink-dim">
+                    {p.year != null && <span>{p.year}</span>}
+                    <span className="text-accent">
+                      {p.citations.toLocaleString()} cites
+                    </span>
+                    {p.domainName && (
+                      <span className="flex min-w-0 items-center gap-1">
+                        <span
+                          className="h-2 w-2 shrink-0 border border-edge"
+                          style={{
+                            background: getDomainColorStr(
+                              domainIndexById[p.domainId] ?? 0,
+                            ),
+                          }}
+                        />
+                        <span className="truncate">{p.domainName}</span>
+                      </span>
+                    )}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+
+      <FeedbackForm />
+    </div>
+  );
+}
+
+// "Report a bug / request a feature" — files a public GitHub issue via the API.
+function FeedbackForm() {
+  const [open, setOpen] = useState(false);
+  const [kind, setKind] = useState<"bug" | "feature">("bug");
+  const [message, setMessage] = useState("");
+  const report = useReportFeedback();
+  const created = report.data;
+
+  const submit = async () => {
+    const msg = message.trim();
+    if (!msg || report.isPending) return;
+    try {
+      await report.mutateAsync({ data: { kind, message: msg } });
+      setMessage("");
+    } catch {
+      /* error surfaced via report.isError below */
+    }
+  };
+
+  return (
+    <div className="border-t-2 border-edge pt-3">
+      {!open ? (
+        <button
+          onClick={() => setOpen(true)}
+          className="flex w-full items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-ink-dim transition-colors hover:text-ink"
+        >
+          <Bug size={13} /> Report a bug / request a feature
+        </button>
+      ) : (
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <span className="font-mono text-[11px] uppercase tracking-widest text-ink-dim">
+              Report
+            </span>
+            <button
+              onClick={() => setOpen(false)}
+              aria-label="Close report form"
+              className="text-ink-dim hover:text-ink"
+            >
+              <X size={13} />
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-1.5">
+            <button
+              onClick={() => setKind("bug")}
+              aria-pressed={kind === "bug"}
+              style={kind === "bug" ? { background: "var(--accent)" } : undefined}
+              className={`flex items-center justify-center gap-1.5 border-2 border-edge px-2 py-1.5 text-[11px] font-display uppercase tracking-wider transition-all ${
+                kind === "bug" ? "text-accent-foreground" : "bg-white/5 text-ink hover:bg-white/10"
+              }`}
+            >
+              <Bug size={12} /> Bug
+            </button>
+            <button
+              onClick={() => setKind("feature")}
+              aria-pressed={kind === "feature"}
+              style={kind === "feature" ? { background: "var(--accent)" } : undefined}
+              className={`flex items-center justify-center gap-1.5 border-2 border-edge px-2 py-1.5 text-[11px] font-display uppercase tracking-wider transition-all ${
+                kind === "feature" ? "text-accent-foreground" : "bg-white/5 text-ink hover:bg-white/10"
+              }`}
+            >
+              <Lightbulb size={12} /> Feature
+            </button>
+          </div>
+          <textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            rows={3}
+            placeholder={
+              kind === "bug"
+                ? "What went wrong? Steps to reproduce help."
+                : "What would you like to see?"
+            }
+            className="resize-none border-2 border-edge bg-white/5 px-2 py-1.5 text-sm text-ink outline-none placeholder:text-ink-dim/70 focus:border-accent"
+          />
+          {created ? (
+            <a
+              href={created.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 border-2 border-edge bg-white/5 px-2 py-1.5 text-[11px] font-display uppercase tracking-wider text-accent transition-colors hover:bg-white/10"
+            >
+              <ExternalLink size={12} /> Filed #{created.number} — view on GitHub
+            </a>
+          ) : (
+            <button
+              onClick={submit}
+              disabled={!message.trim() || report.isPending}
+              className="flex items-center justify-center gap-1.5 border-2 border-edge bg-white/5 px-2 py-1.5 text-[11px] font-display uppercase tracking-wider text-ink transition-all hover:bg-white/10 disabled:opacity-40"
+            >
+              {report.isPending ? <Loader2 size={12} className="animate-spin" /> : null}
+              {report.isPending ? "Filing…" : "Submit"}
+            </button>
+          )}
+          {report.isError && (
+            <span className="text-[11px] text-ink-dim">
+              Couldn't file that right now. Please try again later.
+            </span>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

@@ -54,3 +54,46 @@ export const ConfirmCheckoutResponse = zod.object({
 })
 
 
+/**
+ * Uses the LLM purely as a translator: it converts a plain-English question about a scientist's corpus into a validated, structured query spec. The model never computes counts or lists — the browser runs the returned spec deterministically over the locally-baked data. Only the question text and a description of the data shape are sent; no actual paper data leaves the browser.
+
+ * @summary Translate a natural-language question into a structured query spec
+ */
+export const TranslateAskBody = zod.object({
+  "question": zod.string().describe('The visitor\'s plain-English question about the corpus.'),
+  "fields": zod.array(zod.object({
+  "name": zod.string(),
+  "type": zod.string(),
+  "description": zod.string().optional()
+}).describe('A single field of the data shape (name + type), no actual data.')).optional().describe('The shape of a paper record (field names and types only).'),
+  "domains": zod.array(zod.string()).optional().describe('The research-domain (category) names present in this galaxy.')
+})
+
+export const TranslateAskResponse = zod.object({
+  "intent": zod.enum(['count', 'list']).describe('Whether the visitor wants a count or a list of matching papers.'),
+  "text": zod.string().nullish().describe('Keyword to match across a paper\'s title, topic, field and venue.'),
+  "coAuthor": zod.string().nullish().describe('Co-author name substring to match.'),
+  "minYear": zod.number().nullish(),
+  "maxYear": zod.number().nullish(),
+  "minCitations": zod.number().nullish(),
+  "maxCitations": zod.number().nullish(),
+  "minCoAuthors": zod.number().nullish().describe('Minimum number of co-authors (collaborators) on a paper.'),
+  "maxCoAuthors": zod.number().nullish(),
+  "sortBy": zod.enum(['citations', 'year', 'coAuthors']).nullish(),
+  "sortDir": zod.enum(['asc', 'desc']).nullish(),
+  "limit": zod.number().nullish().describe('Max papers to show for a list answer.'),
+  "unsupported": zod.boolean().optional().describe('True when the question cannot be expressed as a query over this data.')
+}).describe('A structured query the browser executes deterministically over the local data. The model only fills these slots; it never returns numbers or lists.\n')
+
+
+/**
+ * Creates a public issue on the project's GitHub repository from a visitor's message. Used by the Ask panel's "report a bug / request a feature" affordance.
+
+ * @summary File a bug report or feature request as a public GitHub issue
+ */
+export const ReportFeedbackBody = zod.object({
+  "kind": zod.enum(['bug', 'feature']).describe('Whether this is a bug report or a feature request.'),
+  "message": zod.string().describe('The visitor\'s message.')
+})
+
+

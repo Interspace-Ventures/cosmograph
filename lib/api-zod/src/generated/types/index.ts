@@ -6,8 +6,17 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './askField';
+export * from './askQuery';
+export * from './askQueryIntent';
+export * from './askQuerySortBy';
+export * from './askQuerySortDir';
+export * from './askRequest';
 export * from './checkoutSession';
 export * from './confirmRequest';
 export * from './entitlement';
 export * from './error';
+export * from './feedbackRequest';
+export * from './feedbackRequestKind';
+export * from './feedbackResult';
 export * from './healthStatus';

@@ -130,6 +130,15 @@ export interface Filters {
   maxYear: number | null;
   domainIds: string[];
   minCitations: number;
+  // "Ask" extensions — all optional so existing callers stay unaffected. They let
+  // a natural-language query express richer predicates over the same data.
+  maxCitations?: number | null;
+  minCoAuthors?: number | null;
+  maxCoAuthors?: number | null;
+  // Free-text keyword matched across a paper's title/topic/subfield/field/domain/venue.
+  text?: string | null;
+  // Co-author name substring.
+  coAuthor?: string | null;
 }
 
 // Default = every domain selected (explicit "all on"). Computed from the live
@@ -140,6 +149,11 @@ export function makeDefaultFilters(): Filters {
     maxYear: null,
     domainIds: galaxyData.domains.map((d) => d.id),
     minCitations: 0,
+    maxCitations: null,
+    minCoAuthors: null,
+    maxCoAuthors: null,
+    text: null,
+    coAuthor: null,
   };
 }
 
@@ -154,15 +168,37 @@ export function isFiltersActive(f: Filters): boolean {
     f.minYear != null ||
     f.maxYear != null ||
     !allDomainsSelected ||
-    f.minCitations > 0
+    f.minCitations > 0 ||
+    f.maxCitations != null ||
+    f.minCoAuthors != null ||
+    f.maxCoAuthors != null ||
+    !!f.text ||
+    !!f.coAuthor
   );
+}
+
+// The text fields a free-text keyword is matched against.
+function paperText(p: Paper): string {
+  return [p.title, p.topic, p.subfield, p.field, p.domainName, p.venue]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
 }
 
 export function paperMatchesFilters(p: Paper, f: Filters): boolean {
   if (!f.domainIds.includes(p.domainId)) return false;
   if (f.minCitations > 0 && p.citations < f.minCitations) return false;
+  if (f.maxCitations != null && p.citations > f.maxCitations) return false;
   if (f.minYear != null && (p.year == null || p.year < f.minYear)) return false;
   if (f.maxYear != null && (p.year == null || p.year > f.maxYear)) return false;
+  if (f.minCoAuthors != null && p.coAuthorCount < f.minCoAuthors) return false;
+  if (f.maxCoAuthors != null && p.coAuthorCount > f.maxCoAuthors) return false;
+  if (f.text && !paperText(p).includes(f.text.toLowerCase())) return false;
+  if (
+    f.coAuthor &&
+    !p.coAuthors.some((a) => a.toLowerCase().includes(f.coAuthor!.toLowerCase()))
+  )
+    return false;
   return true;
 }
 
@@ -218,4 +254,82 @@ export function getMatchingPapers(f: Filters): Paper[] {
   return galaxyData.papers
     .filter((p) => paperMatchesFilters(p, f))
     .sort((a, b) => b.citations - a.citations);
+}
+
+// A structured query produced by the "Ask" translator. Mirrors the server's
+// AskQuery contract (zod TranslateAskResponse) but stays a local type so the
+// data layer has no dependency on generated server code.
+export interface AskQuery {
+  intent: "count" | "list";
+  text?: string | null;
+  coAuthor?: string | null;
+  minYear?: number | null;
+  maxYear?: number | null;
+  minCitations?: number | null;
+  maxCitations?: number | null;
+  minCoAuthors?: number | null;
+  maxCoAuthors?: number | null;
+  sortBy?: "citations" | "year" | "coAuthors" | null;
+  sortDir?: "asc" | "desc" | null;
+  limit?: number | null;
+  unsupported?: boolean;
+}
+
+// Convert an AskQuery into the Filters predicate. Domains always start "all on";
+// the query narrows via the optional predicate fields.
+export function askQueryToFilters(q: AskQuery): Filters {
+  return {
+    ...makeDefaultFilters(),
+    minYear: q.minYear ?? null,
+    maxYear: q.maxYear ?? null,
+    minCitations: q.minCitations ?? 0,
+    maxCitations: q.maxCitations ?? null,
+    minCoAuthors: q.minCoAuthors ?? null,
+    maxCoAuthors: q.maxCoAuthors ?? null,
+    text: q.text ?? null,
+    coAuthor: q.coAuthor ?? null,
+  };
+}
+
+export interface AskResult {
+  matched: Paper[];
+  count: number;
+  total: number;
+  filters: Filters;
+}
+
+// Run a translated query deterministically over the local corpus. ALL numbers
+// and lists come from here — the model never returns counts or papers.
+export function runAskQuery(q: AskQuery): AskResult {
+  const filters = askQueryToFilters(q);
+  const matched = galaxyData.papers.filter((p) => paperMatchesFilters(p, filters));
+
+  const dir = q.sortDir === "asc" ? 1 : -1;
+  const sortBy = q.sortBy ?? "citations";
+  matched.sort((a, b) => {
+    let av: number;
+    let bv: number;
+    if (sortBy === "year") {
+      av = a.year ?? -Infinity;
+      bv = b.year ?? -Infinity;
+    } else if (sortBy === "coAuthors") {
+      av = a.coAuthorCount;
+      bv = b.coAuthorCount;
+    } else {
+      av = a.citations;
+      bv = b.citations;
+    }
+    if (av === bv) return b.citations - a.citations;
+    return (av - bv) * dir;
+  });
+
+  const limited =
+    q.intent === "list" && q.limit != null ? matched.slice(0, q.limit) : matched;
+
+  return {
+    matched: limited,
+    count: matched.length,
+    total: galaxyData.papers.length,
+    filters,
+  };
 }

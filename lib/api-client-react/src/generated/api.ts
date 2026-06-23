@@ -20,10 +20,14 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AskQuery,
+  AskRequest,
   CheckoutSession,
   ConfirmRequest,
   Entitlement,
   Error,
+  FeedbackRequest,
+  FeedbackResult,
   HealthStatus
 } from './api.schemas';
 
@@ -339,5 +343,151 @@ export const useConfirmCheckout = <TError = ErrorType<Error>,
         TContext
       > => {
       return useMutation(getConfirmCheckoutMutationOptions(options));
+    }
+
+export const getTranslateAskUrl = () => {
+
+
+
+
+  return `/api/ask/translate`
+}
+
+/**
+ * Uses the LLM purely as a translator: it converts a plain-English question about a scientist's corpus into a validated, structured query spec. The model never computes counts or lists — the browser runs the returned spec deterministically over the locally-baked data. Only the question text and a description of the data shape are sent; no actual paper data leaves the browser.
+
+ * @summary Translate a natural-language question into a structured query spec
+ */
+export const translateAsk = async (askRequest: AskRequest, options?: RequestInit): Promise<AskQuery> => {
+
+  return customFetch<AskQuery>(getTranslateAskUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      askRequest,)
+  }
+);}
+
+
+
+
+export const getTranslateAskMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof translateAsk>>, TError,{data: BodyType<AskRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof translateAsk>>, TError,{data: BodyType<AskRequest>}, TContext> => {
+
+const mutationKey = ['translateAsk'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof translateAsk>>, {data: BodyType<AskRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  translateAsk(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type TranslateAskMutationResult = NonNullable<Awaited<ReturnType<typeof translateAsk>>>
+    export type TranslateAskMutationBody = BodyType<AskRequest>
+    export type TranslateAskMutationError = ErrorType<Error>
+
+    /**
+ * @summary Translate a natural-language question into a structured query spec
+ */
+export const useTranslateAsk = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof translateAsk>>, TError,{data: BodyType<AskRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof translateAsk>>,
+        TError,
+        {data: BodyType<AskRequest>},
+        TContext
+      > => {
+      return useMutation(getTranslateAskMutationOptions(options));
+    }
+
+export const getReportFeedbackUrl = () => {
+
+
+
+
+  return `/api/feedback/issue`
+}
+
+/**
+ * Creates a public issue on the project's GitHub repository from a visitor's message. Used by the Ask panel's "report a bug / request a feature" affordance.
+
+ * @summary File a bug report or feature request as a public GitHub issue
+ */
+export const reportFeedback = async (feedbackRequest: FeedbackRequest, options?: RequestInit): Promise<FeedbackResult> => {
+
+  return customFetch<FeedbackResult>(getReportFeedbackUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      feedbackRequest,)
+  }
+);}
+
+
+
+
+export const getReportFeedbackMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reportFeedback>>, TError,{data: BodyType<FeedbackRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reportFeedback>>, TError,{data: BodyType<FeedbackRequest>}, TContext> => {
+
+const mutationKey = ['reportFeedback'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reportFeedback>>, {data: BodyType<FeedbackRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  reportFeedback(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReportFeedbackMutationResult = NonNullable<Awaited<ReturnType<typeof reportFeedback>>>
+    export type ReportFeedbackMutationBody = BodyType<FeedbackRequest>
+    export type ReportFeedbackMutationError = ErrorType<Error>
+
+    /**
+ * @summary File a bug report or feature request as a public GitHub issue
+ */
+export const useReportFeedback = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reportFeedback>>, TError,{data: BodyType<FeedbackRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reportFeedback>>,
+        TError,
+        {data: BodyType<FeedbackRequest>},
+        TContext
+      > => {
+      return useMutation(getReportFeedbackMutationOptions(options));
     }
 

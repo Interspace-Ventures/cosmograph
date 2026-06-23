@@ -28,6 +28,103 @@ export interface ConfirmRequest {
   sessionId: string;
 }
 
+/**
+ * A single field of the data shape (name + type), no actual data.
+ */
+export interface AskField {
+  name: string;
+  type: string;
+  description?: string;
+}
+
+export interface AskRequest {
+  /** The visitor's plain-English question about the corpus. */
+  question: string;
+  /** The shape of a paper record (field names and types only). */
+  fields?: AskField[];
+  /** The research-domain (category) names present in this galaxy. */
+  domains?: string[];
+}
+
+/**
+ * Whether the visitor wants a count or a list of matching papers.
+ */
+export type AskQueryIntent = typeof AskQueryIntent[keyof typeof AskQueryIntent];
+
+
+export const AskQueryIntent = {
+  count: 'count',
+  list: 'list',
+} as const;
+
+export type AskQuerySortBy = typeof AskQuerySortBy[keyof typeof AskQuerySortBy] | null;
+
+
+export const AskQuerySortBy = {
+  citations: 'citations',
+  year: 'year',
+  coAuthors: 'coAuthors',
+} as const;
+
+export type AskQuerySortDir = typeof AskQuerySortDir[keyof typeof AskQuerySortDir] | null;
+
+
+export const AskQuerySortDir = {
+  asc: 'asc',
+  desc: 'desc',
+} as const;
+
+/**
+ * A structured query the browser executes deterministically over the local data. The model only fills these slots; it never returns numbers or lists.
+
+ */
+export interface AskQuery {
+  /** Whether the visitor wants a count or a list of matching papers. */
+  intent: AskQueryIntent;
+  /** Keyword to match across a paper's title, topic, field and venue. */
+  text?: string | null;
+  /** Co-author name substring to match. */
+  coAuthor?: string | null;
+  minYear?: number | null;
+  maxYear?: number | null;
+  minCitations?: number | null;
+  maxCitations?: number | null;
+  /** Minimum number of co-authors (collaborators) on a paper. */
+  minCoAuthors?: number | null;
+  maxCoAuthors?: number | null;
+  sortBy?: AskQuerySortBy;
+  sortDir?: AskQuerySortDir;
+  /** Max papers to show for a list answer. */
+  limit?: number | null;
+  /** True when the question cannot be expressed as a query over this data. */
+  unsupported?: boolean;
+}
+
+/**
+ * Whether this is a bug report or a feature request.
+ */
+export type FeedbackRequestKind = typeof FeedbackRequestKind[keyof typeof FeedbackRequestKind];
+
+
+export const FeedbackRequestKind = {
+  bug: 'bug',
+  feature: 'feature',
+} as const;
+
+export interface FeedbackRequest {
+  /** Whether this is a bug report or a feature request. */
+  kind: FeedbackRequestKind;
+  /** The visitor's message. */
+  message: string;
+}
+
+export interface FeedbackResult {
+  /** The public URL of the created GitHub issue. */
+  url: string;
+  /** The GitHub issue number. */
+  number: number;
+}
+
 export interface Error {
   error: string;
 }

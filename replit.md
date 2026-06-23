@@ -40,7 +40,7 @@ Disambiguate by research cluster (institution + co-author), **not** by year alon
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - Required env: `DATABASE_URL` — Postgres connection string
-- Optional env: `GITHUB_REPO` — `owner/repo` for the footer star count (default `heyinterspace/galactic`)
+- Optional env: `GITHUB_REPO` — `owner/repo` for the footer star count (default `heyinterspace/cosmograph`)
 
 ## Realtime presence (api-server)
 
@@ -50,6 +50,15 @@ Disambiguate by research cluster (institution + co-author), **not** by year alon
 - **Deployment:** `api-server` must run as an always-on **Reserved VM** deployment, not a static/scale-to-zero (autoscale) one. Two things now depend on a long-lived process: the in-memory presence WebSocket **and** the paid-unlock layer (`/api/stripe/webhook`, `/api/me/entitlement`, `/api/billing/checkout`). On autoscale the webhook + presence are unreachable and paid unlocks silently fail. The galaxy itself is still static and works without it.
   - **The deployment type is set in the Publishing/Deployments pane, not in code.** `.replit` currently has `deploymentTarget = "autoscale"` and the agent cannot edit `.replit` — when publishing, switch the deployment type to **Reserved VM** in the Publishing pane. The api-server `artifact.toml` is already configured for it (production `run`, `build`, and `/api/healthz` startup probe).
   - **Stripe moves from sandbox to live on deploy.** On boot `initStripe()` finds-or-creates the managed webhook against the first host in `REPLIT_DOMAINS` (the production domain in prod), so the live webhook binds automatically — no manual webhook URL setup. Make sure the production Stripe connection/keys are the live ones before/after the first publish.
+
+## Ask the galaxy (chat) (api-server)
+
+- The Sidebar console's old Filter panel is now an **Ask** chat panel: the visitor asks a natural-language question about the scientist's work and matching papers light up in the galaxy.
+- **The LLM is only a translator.** `POST /api/ask/translate` (`src/routes/ask.ts` → `src/lib/ask.ts`, OpenAI via the `@workspace/integrations-openai-ai-server` integration) turns the question into a small, validated structured query spec (`TranslateAskResponse` Zod schema). It never returns counts, paper lists, or prose — only a spec like `{intent, text, minYear, minCitations, sortBy, ... , unsupported}`.
+- **All answers are computed deterministically in-browser** by `runAskQuery` (`artifacts/cosmograph/src/data/galaxy.ts`) over the locally-baked `galaxyData.json`. Counts and matched papers are real, never hallucinated. The spec is converted to the existing `Filters` shape and pushed through the normal `filters → matchingIds` dim/highlight path in `GalaxySystem` — no separate highlight state.
+- **Report a bug / request a feature** files a public GitHub issue: `POST /api/feedback/issue` (`src/routes/feedback.ts` → `src/lib/github.ts`) via the GitHub connector. Repo defaults to `GITHUB_REPO` (`heyinterspace/cosmograph`).
+- Both routes are public and contract-first (OpenAPI → codegen → Zod → `useTranslateAsk`/`useReportFeedback` hooks). They degrade gracefully: if the server/translator is unreachable the galaxy still works, the Ask panel just shows an error.
+- Requires the **OpenAI AI integration** (`AI_INTEGRATIONS_OPENAI_*` env, auto-provisioned) and a bound **GitHub connector** connection for issue filing.
 
 ## Stack
 

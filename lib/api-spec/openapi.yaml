@@ -12,6 +12,10 @@ tags:
     description: Health operations
   - name: billing
     description: Accounts, entitlement and membership subscription
+  - name: ask
+    description: Natural-language question translation
+  - name: feedback
+    description: Bug reports and feature requests
 paths:
   /healthz:
     get:
@@ -97,6 +101,71 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /ask/translate:
+    post:
+      operationId: translateAsk
+      tags: [ask]
+      summary: Translate a natural-language question into a structured query spec
+      description: >
+        Uses the LLM purely as a translator: it converts a plain-English
+        question about a scientist's corpus into a validated, structured query
+        spec. The model never computes counts or lists — the browser runs the
+        returned spec deterministically over the locally-baked data. Only the
+        question text and a description of the data shape are sent; no actual
+        paper data leaves the browser.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AskRequest"
+      responses:
+        "200":
+          description: A structured query spec for the browser to execute
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AskQuery"
+        "502":
+          description: The translation model is unreachable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /feedback/issue:
+    post:
+      operationId: reportFeedback
+      tags: [feedback]
+      summary: File a bug report or feature request as a public GitHub issue
+      description: >
+        Creates a public issue on the project's GitHub repository from a
+        visitor's message. Used by the Ask panel's "report a bug / request a
+        feature" affordance.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FeedbackRequest"
+      responses:
+        "201":
+          description: The GitHub issue was created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeedbackResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "502":
+          description: GitHub is unreachable or issue creation failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 components:
   schemas:
     HealthStatus:
@@ -138,6 +207,116 @@ components:
           description: The Stripe Checkout session id returned on the success redirect.
       required:
         - sessionId
+    AskField:
+      type: object
+      description: A single field of the data shape (name + type), no actual data.
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        description:
+          type: string
+      required:
+        - name
+        - type
+    AskRequest:
+      type: object
+      properties:
+        question:
+          type: string
+          description: The visitor's plain-English question about the corpus.
+        fields:
+          type: array
+          description: The shape of a paper record (field names and types only).
+          items:
+            $ref: "#/components/schemas/AskField"
+        domains:
+          type: array
+          description: The research-domain (category) names present in this galaxy.
+          items:
+            type: string
+      required:
+        - question
+    AskQuery:
+      type: object
+      description: >
+        A structured query the browser executes deterministically over the local
+        data. The model only fills these slots; it never returns numbers or lists.
+      properties:
+        intent:
+          type: string
+          enum: [count, list]
+          description: Whether the visitor wants a count or a list of matching papers.
+        text:
+          type: string
+          nullable: true
+          description: Keyword to match across a paper's title, topic, field and venue.
+        coAuthor:
+          type: string
+          nullable: true
+          description: Co-author name substring to match.
+        minYear:
+          type: integer
+          nullable: true
+        maxYear:
+          type: integer
+          nullable: true
+        minCitations:
+          type: integer
+          nullable: true
+        maxCitations:
+          type: integer
+          nullable: true
+        minCoAuthors:
+          type: integer
+          nullable: true
+          description: Minimum number of co-authors (collaborators) on a paper.
+        maxCoAuthors:
+          type: integer
+          nullable: true
+        sortBy:
+          type: string
+          enum: [citations, year, coAuthors]
+          nullable: true
+        sortDir:
+          type: string
+          enum: [asc, desc]
+          nullable: true
+        limit:
+          type: integer
+          nullable: true
+          description: Max papers to show for a list answer.
+        unsupported:
+          type: boolean
+          description: True when the question cannot be expressed as a query over this data.
+      required:
+        - intent
+    FeedbackRequest:
+      type: object
+      properties:
+        kind:
+          type: string
+          enum: [bug, feature]
+          description: Whether this is a bug report or a feature request.
+        message:
+          type: string
+          description: The visitor's message.
+      required:
+        - kind
+        - message
+    FeedbackResult:
+      type: object
+      properties:
+        url:
+          type: string
+          description: The public URL of the created GitHub issue.
+        number:
+          type: integer
+          description: The GitHub issue number.
+      required:
+        - url
+        - number
     Error:
       type: object
       properties:
