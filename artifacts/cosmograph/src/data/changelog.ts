@@ -17,6 +17,18 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.1.0",
+    codename: "Orbital Pass",
+    date: "2026-06-23",
+    summary: "Membership goes yearly — and Ask Cosmo comes aboard.",
+    changes: [
+      "Full access is now a $10/year membership: fly, tour, and deep-dive any scientist you search, with every new feature included.",
+      "Ask Cosmo headlines membership — ask questions about any researcher's work, answered from their galaxy.",
+      "Fellow explorers are now 'cosmonauts' — watch the live headcount streaming the stars with you.",
+      "Every voyage now ends with a personal welcome: \"Welcome to the [scientist] cosmos.\"",
+    ],
+  },
+  {
     version: "3.0.0",
     codename: "Cosmograph",
     date: "2026-06-22",

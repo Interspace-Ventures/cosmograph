@@ -10,9 +10,11 @@ const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 const SPONSOR_URL = "https://github.com/sponsors/heyinterspace";
 
 const PERKS = [
+  "Ask Cosmo — ask questions about any researcher's work, answered from their galaxy",
   "Fly the spaceship through any researcher's galaxy",
   "Take the guided tour of their domains and landmark papers",
   "Open rich planet detail — venue, every co-author, source link",
+  "Every new feature as it ships, included",
 ];
 
 export function Paywall() {
@@ -32,7 +34,7 @@ export function Paywall() {
         if (res.alreadyEntitled) {
           setEntitlement(true);
           setPaywallOpen(false);
-          toast.success("You're already unlocked — explore away.");
+          toast.success("You're already a member — explore away.");
           return;
         }
         if (res.url) {
@@ -79,7 +81,7 @@ export function Paywall() {
               </div>
               <div>
                 <span className="font-mono text-[10px] uppercase tracking-widest text-accent">
-                  One-time unlock · $10
+                  Membership · $10 / year
                 </span>
                 <h2 className="text-xl font-title font-bold leading-tight tracking-tight text-ink">
                   Explore the full galaxy
@@ -89,10 +91,10 @@ export function Paywall() {
 
             <p className="mt-3 text-[13px] leading-relaxed text-ink-dim">
               The stats and shareable view for{" "}
-              <span className="text-ink">{activeAuthorLabel}</span> are free. A
-              single $10 unlock opens deep exploration for{" "}
-              <span className="text-ink">any</span> scientist you search — yours
-              forever, no subscription.
+              <span className="text-ink">{activeAuthorLabel}</span> are free. A{" "}
+              <span className="text-ink">$10/year</span> membership opens deep
+              exploration for <span className="text-ink">any</span> scientist you
+              search — plus Ask Cosmo and every new feature as it ships.
             </p>
 
             <ul className="mt-4 space-y-2">
@@ -117,7 +119,7 @@ export function Paywall() {
                   className="glass-panel glass-panel-interactive flex items-center justify-center gap-2 w-full py-3 font-display text-xs uppercase tracking-widest text-ink"
                 >
                   <Rocket size={14} />
-                  <span>Sign in to unlock</span>
+                  <span>Sign in to subscribe</span>
                 </button>
               </Show>
 
@@ -134,7 +136,9 @@ export function Paywall() {
                     <Lock size={14} />
                   )}
                   <span>
-                    {checkout.isPending ? "Starting checkout…" : "Unlock for $10"}
+                    {checkout.isPending
+                      ? "Starting checkout…"
+                      : "Subscribe · $10/year"}
                   </span>
                 </button>
               </Show>
@@ -151,7 +155,7 @@ export function Paywall() {
             </div>
 
             <p className="mt-3 text-center font-mono text-[10px] leading-relaxed text-ink-dim/70">
-              Secure checkout by Stripe · one-time payment
+              Secure checkout by Stripe · $10/year, renews annually
             </p>
           </motion.div>
         </motion.div>

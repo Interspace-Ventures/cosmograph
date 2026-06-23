@@ -126,7 +126,7 @@ export const getGetEntitlementUrl = () => {
 }
 
 /**
- * Returns whether the signed-in account has unlocked full exploration (the one-time purchase). Requires an authenticated session; the galaxy default scientist never calls this since it is always free.
+ * Returns whether the signed-in account has an active full-access membership. Requires an authenticated session; the galaxy default scientist never calls this since it is always free.
 
  * @summary Current account entitlement
  */
@@ -205,9 +205,9 @@ export const getCreateCheckoutUrl = () => {
 }
 
 /**
- * Creates a Stripe Checkout session (mode=payment) for the one-time full-exploration unlock and returns its hosted URL. If the account is already entitled, returns alreadyEntitled=true and no URL.
+ * Creates a Stripe Checkout session (mode=subscription) for the $10/year full-access membership and returns its hosted URL. If the account is already entitled, returns alreadyEntitled=true and no URL.
 
- * @summary Start the one-time unlock checkout
+ * @summary Start the membership subscription checkout
  */
 export const createCheckout = async ( options?: RequestInit): Promise<CheckoutSession> => {
 
@@ -255,7 +255,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type CreateCheckoutMutationError = ErrorType<Error>
 
     /**
- * @summary Start the one-time unlock checkout
+ * @summary Start the membership subscription checkout
  */
 export const useCreateCheckout = <TError = ErrorType<Error>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCheckout>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}

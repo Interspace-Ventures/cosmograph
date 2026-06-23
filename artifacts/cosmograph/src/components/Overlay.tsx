@@ -123,7 +123,7 @@ function LivePresence() {
         <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75" />
         <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-accent" />
       </span>
-      <span className="text-ink">{count}</span> cosmographer{count === 1 ? "" : "s"} streaming now
+      <span className="text-ink">{count}</span> cosmonaut{count === 1 ? "" : "s"} streaming now
     </div>
   );
 }

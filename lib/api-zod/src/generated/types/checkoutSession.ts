@@ -9,6 +9,6 @@
 export interface CheckoutSession {
   /** Hosted Stripe Checkout URL to redirect to, when a session was created. */
   url?: string | null;
-  /** True when the account already owns the unlock; no checkout was created. */
+  /** True when the account is already an active member; no checkout was created. */
   alreadyEntitled: boolean;
 }

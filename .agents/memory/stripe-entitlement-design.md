@@ -1,36 +1,42 @@
 ---
-name: Stripe one-time entitlement (galactic unlock)
-description: How the $10 one-time unlock entitlement is derived without fighting stripe-replit-sync.
+name: Stripe membership entitlement (Cosmograph full access)
+description: How the $10/year membership entitlement is granted/revoked without fighting stripe-replit-sync.
 ---
 
-# $10 one-time unlock entitlement
+# $10/year membership entitlement
 
-The app gates exploring *searched* (non-default) scientists behind a $10 one-time Stripe
-payment, tied to a Clerk user. Donations are **GitHub Sponsors** (link-out), NOT Stripe —
-Stripe is unlock-only.
+The app gates exploring *searched* (non-default) scientists behind a **$10/year recurring
+Stripe subscription** ("Cosmograph — Full Access"), tied to a Clerk user. The default
+scientist is always free. Donations are **GitHub Sponsors** (link-out), NOT Stripe.
 
-## Rule
-Entitlement (`has_paid`) is derived from Stripe's synced data + a live confirm, never from
-custom webhook-signature parsing.
+## Shape (as actually shipped)
+- Entitlement lives on `users.has_paid` (bool) in the public schema — repurposed to mean
+  "active member" (NOT a one-time flag). No per-author rows; no separate `entitlements`
+  table. `stripe_customer_id` ties the account to its Stripe customer.
+- Price is created just-in-time (`getOrCreateMembershipPrice`): product looked up by
+  `metadata['galactic_unlock']='true'` (legacy key kept to reuse the product), then a
+  **recurring yearly** price (`recurring.interval='year'`, $10) is found-or-created. Filter
+  by `p.recurring?.interval==='year'` so an old one-time price on the same product is never
+  reused. Product name/desc are back-filled via `products.update` to stay on-brand.
+- Checkout: `mode:"subscription"`, `subscription_data.metadata.userId` (NOT
+  `payment_intent_data`, which is invalid in subscription mode). Session also carries
+  `metadata.userId`.
+- Grant paths (both require **payment actually settled**):
+  - Confirm-on-redirect: live `checkout.sessions.retrieve`; grant if
+    `payment_status==='paid'` and the session's `metadata.userId` matches.
+  - Webhook: `checkout.session.completed` / `async_payment_succeeded` → grant ONLY when
+    `payment_status==='paid'`. Do NOT also accept `status==='complete'` — it can precede
+    settlement for some payment methods (delayed cases arrive via async_payment_succeeded).
+- Revoke path (webhook): `customer.subscription.deleted` always revokes;
+  `customer.subscription.updated` revokes only on terminal statuses (canceled / unpaid /
+  incomplete_expired) — stay lenient on `past_due` retries. Find the user by the
+  subscription's `metadata.userId`, else by `stripe_customer_id`.
 
-- App table `entitlements` (public schema): `clerk_user_id` PK, `stripe_customer_id`,
-  `has_paid` bool, `updated_at`. This is the cached source of truth the gate reads.
-- Checkout: signed-in user → ensure a Stripe Customer (store id) → Checkout Session
-  `mode: payment`, the seeded $10 unlock price, `client_reference_id` + `metadata.clerkUserId`
-  + `metadata.kind=galactic_unlock`, `success_url=...?unlock=success&session_id={CHECKOUT_SESSION_ID}`.
-- Confirm-on-redirect: frontend posts the `session_id`; server does a **live**
-  `stripe.checkout.sessions.retrieve`, and if `payment_status==='paid'` and it belongs to this
-  Clerk user → set `has_paid=true`. Gives instant unlock without waiting on a webhook.
-- Backstop: `GET /entitlement` — if `has_paid` is still false, query the synced
-  `stripe.checkout_sessions` for a paid `galactic_unlock` session for that customer; if found,
-  flip `has_paid=true`. Covers users who close the tab before redirect (webhook syncs the row).
+**Why:** `stripe-replit-sync.processWebhook` resolves the webhook secret itself; a
+boot-captured secret is unreliable, so grant/revoke parse the already-verified payload (or
+live-retrieve) instead of our own `constructEvent`.
 
-**Why:** `stripe-replit-sync.processWebhook(payload, sig)` resolves the webhook secret itself;
-`findOrCreateManagedWebhook` only returns `.secret` on first *creation* (Stripe never returns it
-on later "find"), so a boot-time-captured secret is unreliable for our own
-`constructEvent` verification. Reading the synced `stripe.*` tables (kept fresh by the sync) +
-a live retrieve on redirect avoids needing that secret at all.
-
-**How to apply:** Keep the webhook handler minimal (just `sync.processWebhook`). Put all
-entitlement logic in the confirm endpoint and the `/entitlement` read path. Never INSERT into
-the `stripe` schema — only query it.
+**Known limitation:** `GET /me/entitlement` is a pure DB read of `has_paid` (resilient if
+Stripe is down). There is **no live re-check / periodic reconciliation**, so a *missed
+revoke webhook* leaves a lapsed member entitled. If this matters, add a reconciliation
+against synced `stripe.subscriptions` (read-only) — never INSERT into the `stripe` schema.

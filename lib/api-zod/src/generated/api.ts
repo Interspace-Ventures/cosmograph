@@ -18,24 +18,24 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
- * Returns whether the signed-in account has unlocked full exploration (the one-time purchase). Requires an authenticated session; the galaxy default scientist never calls this since it is always free.
+ * Returns whether the signed-in account has an active full-access membership. Requires an authenticated session; the galaxy default scientist never calls this since it is always free.
 
  * @summary Current account entitlement
  */
 export const GetEntitlementResponse = zod.object({
-  "entitled": zod.boolean().describe('Whether full exploration is unlocked for this account.'),
+  "entitled": zod.boolean().describe('Whether the account has an active full-access membership.'),
   "email": zod.string().nullish().describe('The account\'s primary email, when known.')
 })
 
 
 /**
- * Creates a Stripe Checkout session (mode=payment) for the one-time full-exploration unlock and returns its hosted URL. If the account is already entitled, returns alreadyEntitled=true and no URL.
+ * Creates a Stripe Checkout session (mode=subscription) for the $10/year full-access membership and returns its hosted URL. If the account is already entitled, returns alreadyEntitled=true and no URL.
 
- * @summary Start the one-time unlock checkout
+ * @summary Start the membership subscription checkout
  */
 export const CreateCheckoutResponse = zod.object({
   "url": zod.string().nullish().describe('Hosted Stripe Checkout URL to redirect to, when a session was created.'),
-  "alreadyEntitled": zod.boolean().describe('True when the account already owns the unlock; no checkout was created.')
+  "alreadyEntitled": zod.boolean().describe('True when the account is already an active member; no checkout was created.')
 })
 
 
@@ -49,7 +49,7 @@ export const ConfirmCheckoutBody = zod.object({
 })
 
 export const ConfirmCheckoutResponse = zod.object({
-  "entitled": zod.boolean().describe('Whether full exploration is unlocked for this account.'),
+  "entitled": zod.boolean().describe('Whether the account has an active full-access membership.'),
   "email": zod.string().nullish().describe('The account\'s primary email, when known.')
 })
 

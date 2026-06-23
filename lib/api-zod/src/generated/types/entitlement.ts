@@ -7,7 +7,7 @@
  */
 
 export interface Entitlement {
-  /** Whether full exploration is unlocked for this account. */
+  /** Whether the account has an active full-access membership. */
   entitled: boolean;
   /** The account's primary email, when known. */
   email?: string | null;

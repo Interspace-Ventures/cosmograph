@@ -326,7 +326,7 @@ export function ScrollIntro() {
           >
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.78)_0%,rgba(0,0,0,0.5)_38%,transparent_72%)]" />
             <p className="relative mb-12 font-display text-xs uppercase tracking-[0.35em] text-accent [text-shadow:0_2px_18px_rgba(0,0,0,0.9)] md:text-sm">
-              You have arrived
+              Welcome to the {galaxyData.author.name} cosmos
             </p>
             <div className="pointer-events-auto relative flex flex-col items-center gap-4 sm:flex-row">
               <button

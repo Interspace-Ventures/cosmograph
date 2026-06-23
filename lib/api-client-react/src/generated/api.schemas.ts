@@ -10,7 +10,7 @@ export interface HealthStatus {
 }
 
 export interface Entitlement {
-  /** Whether full exploration is unlocked for this account. */
+  /** Whether the account has an active full-access membership. */
   entitled: boolean;
   /** The account's primary email, when known. */
   email?: string | null;
@@ -19,7 +19,7 @@ export interface Entitlement {
 export interface CheckoutSession {
   /** Hosted Stripe Checkout URL to redirect to, when a session was created. */
   url?: string | null;
-  /** True when the account already owns the unlock; no checkout was created. */
+  /** True when the account is already an active member; no checkout was created. */
   alreadyEntitled: boolean;
 }
 

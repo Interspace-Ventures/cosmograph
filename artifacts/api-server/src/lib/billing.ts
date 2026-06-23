@@ -5,14 +5,16 @@ import { db, usersTable, type User } from "@workspace/db";
 import { clerkClient } from "@clerk/express";
 import { getUncachableStripeClient } from "./stripeClient";
 
-// One-time, account-level unlock: a single $10 purchase grants full exploration
-// of ANY searched scientist. We model it as a boolean on the user (hasPaid),
-// not per-author, because the product is a one-time unlock.
-const UNLOCK_PRODUCT_NAME = "Galactic — Full Exploration";
-const UNLOCK_DESCRIPTION =
-  "One-time unlock to fully explore any researcher's galaxy — guided tour, spaceship fly-through, and rich paper detail.";
-const UNLOCK_AMOUNT = 1000; // $10.00 in cents
-const UNLOCK_CURRENCY = "usd";
+// Account-level membership: a $10/year subscription grants full exploration of
+// ANY searched scientist plus member-only features (Ask Cosmo, every new
+// feature as it ships). We model it as a boolean on the user (hasPaid = active
+// member), flipped on checkout/renewal and cleared when the subscription ends.
+const MEMBERSHIP_PRODUCT_NAME = "Cosmograph — Full Access";
+const MEMBERSHIP_DESCRIPTION =
+  "Yearly membership: fully explore any researcher's galaxy — guided tour, spaceship fly-through, rich paper detail, and Ask Cosmo — plus every new feature as it ships.";
+const MEMBERSHIP_AMOUNT = 1000; // $10.00 / year in cents
+const MEMBERSHIP_CURRENCY = "usd";
+const MEMBERSHIP_INTERVAL = "year" as const;
 
 export interface EntitlementResult {
   entitled: boolean;
@@ -91,19 +93,31 @@ async function ensureCustomer(stripe: Stripe, user: User): Promise<string> {
   return customer.id;
 }
 
-// Finds the one-time unlock price, creating the product + price on first use so
-// the flow works as soon as Stripe is connected (no separate seeding step
-// required). Idempotent: subsequent calls reuse the existing product/price.
-async function getOrCreateUnlockPrice(stripe: Stripe): Promise<Stripe.Price> {
+// Finds the yearly membership price, creating the product + recurring price on
+// first use so the flow works as soon as Stripe is connected (no separate
+// seeding step required). Idempotent: subsequent calls reuse the existing
+// product/price, and the product name/description are kept on-brand even if it
+// was first created under the old one-time naming.
+async function getOrCreateMembershipPrice(
+  stripe: Stripe,
+): Promise<Stripe.Price> {
   const found = await stripe.products.search({
     query: "metadata['galactic_unlock']:'true' AND active:'true'",
   });
   let product = found.data[0];
   if (!product) {
     product = await stripe.products.create({
-      name: UNLOCK_PRODUCT_NAME,
-      description: UNLOCK_DESCRIPTION,
+      name: MEMBERSHIP_PRODUCT_NAME,
+      description: MEMBERSHIP_DESCRIPTION,
       metadata: { galactic_unlock: "true" },
+    });
+  } else if (
+    product.name !== MEMBERSHIP_PRODUCT_NAME ||
+    product.description !== MEMBERSHIP_DESCRIPTION
+  ) {
+    product = await stripe.products.update(product.id, {
+      name: MEMBERSHIP_PRODUCT_NAME,
+      description: MEMBERSHIP_DESCRIPTION,
     });
   }
   const prices = await stripe.prices.list({
@@ -113,15 +127,16 @@ async function getOrCreateUnlockPrice(stripe: Stripe): Promise<Stripe.Price> {
   });
   const existing = prices.data.find(
     (p) =>
-      !p.recurring &&
-      p.unit_amount === UNLOCK_AMOUNT &&
-      p.currency === UNLOCK_CURRENCY,
+      p.recurring?.interval === MEMBERSHIP_INTERVAL &&
+      p.unit_amount === MEMBERSHIP_AMOUNT &&
+      p.currency === MEMBERSHIP_CURRENCY,
   );
   if (existing) return existing;
   return stripe.prices.create({
     product: product.id,
-    unit_amount: UNLOCK_AMOUNT,
-    currency: UNLOCK_CURRENCY,
+    unit_amount: MEMBERSHIP_AMOUNT,
+    currency: MEMBERSHIP_CURRENCY,
+    recurring: { interval: MEMBERSHIP_INTERVAL },
   });
 }
 
@@ -136,19 +151,22 @@ export async function createCheckout(
 
   const stripe = await getUncachableStripeClient();
   const customerId = await ensureCustomer(stripe, user);
-  const price = await getOrCreateUnlockPrice(stripe);
+  const price = await getOrCreateMembershipPrice(stripe);
 
   const session = await stripe.checkout.sessions.create({
-    mode: "payment",
+    mode: "subscription",
     customer: customerId,
     line_items: [{ price: price.id, quantity: 1 }],
     success_url: `${origin}/?unlocked=1&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${origin}/?unlock_cancelled=1`,
     metadata: { userId },
-    payment_intent_data: { metadata: { userId } },
+    subscription_data: { metadata: { userId } },
   });
 
-  log.info({ userId, sessionId: session.id }, "created unlock checkout session");
+  log.info(
+    { userId, sessionId: session.id },
+    "created membership checkout session",
+  );
   return { alreadyEntitled: false, url: session.url };
 }
 
@@ -160,6 +178,23 @@ async function markPaid(userId: string): Promise<void> {
       target: usersTable.id,
       set: { hasPaid: true },
     });
+}
+
+async function markUnpaid(userId: string): Promise<void> {
+  await db
+    .update(usersTable)
+    .set({ hasPaid: false })
+    .where(eq(usersTable.id, userId));
+}
+
+async function userIdForStripeCustomer(
+  customerId: string,
+): Promise<string | null> {
+  const [user] = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.stripeCustomerId, customerId));
+  return user?.id ?? null;
 }
 
 // Authoritative confirmation on the success redirect: verify the session
@@ -182,10 +217,10 @@ export async function confirmCheckout(
   return getEntitlement(userId);
 }
 
-// Best-effort entitlement grant straight from the webhook, covering the case
-// where the buyer never returns to the success URL. The signature is already
-// verified by StripeSync.processWebhook before this runs, so the parsed payload
-// is trusted.
+// Best-effort membership sync straight from the webhook, covering buyers who
+// never return to the success URL and members whose subscription later lapses.
+// The signature is already verified by StripeSync.processWebhook before this
+// runs, so the parsed payload is trusted.
 export async function markUnlockedFromWebhook(
   payload: Buffer,
   log: Logger,
@@ -195,21 +230,52 @@ export async function markUnlockedFromWebhook(
       type?: string;
       data?: { object?: Record<string, unknown> };
     };
+    const obj = event.data?.object ?? {};
+
     if (
       event.type === "checkout.session.completed" ||
       event.type === "checkout.session.async_payment_succeeded"
     ) {
-      const obj = event.data?.object ?? {};
       const metadata = obj.metadata as { userId?: string } | undefined;
       const userId = metadata?.userId;
-      const paid =
-        obj.payment_status === "paid" || obj.status === "complete";
+      // Only grant once funds have actually settled. A session can reach
+      // status="complete" before payment_status flips to "paid" for some
+      // payment methods, so we key strictly on payment_status here (the
+      // delayed-settlement case arrives via async_payment_succeeded).
+      const paid = obj.payment_status === "paid";
       if (userId && paid) {
         await markPaid(userId);
-        log.info({ userId }, "unlock granted via webhook");
+        log.info({ userId }, "membership granted via webhook");
+      }
+      return;
+    }
+
+    // Revoke access when the yearly subscription ends or fully lapses. Stay
+    // lenient on transient states (e.g. past_due retries); only clear the flag
+    // on terminal statuses or outright deletion.
+    if (
+      event.type === "customer.subscription.deleted" ||
+      event.type === "customer.subscription.updated"
+    ) {
+      const status = obj.status as string | undefined;
+      const ended =
+        event.type === "customer.subscription.deleted" ||
+        status === "canceled" ||
+        status === "unpaid" ||
+        status === "incomplete_expired";
+      if (!ended) return;
+      const metadata = obj.metadata as { userId?: string } | undefined;
+      const customer =
+        typeof obj.customer === "string" ? obj.customer : undefined;
+      const userId =
+        metadata?.userId ??
+        (customer ? await userIdForStripeCustomer(customer) : null);
+      if (userId) {
+        await markUnpaid(userId);
+        log.info({ userId, status }, "membership revoked via webhook");
       }
     }
   } catch (err) {
-    log.warn({ err }, "failed to process unlock from webhook payload");
+    log.warn({ err }, "failed to process membership change from webhook");
   }
 }
