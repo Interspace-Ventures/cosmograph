@@ -149,9 +149,7 @@ export function Sidebar() {
               >
                 <div className="flex flex-col gap-2">
                   <p className="text-[11px] leading-relaxed text-ink-dim">
-                    Re-map the galaxy around any researcher — a parent, a mentor,
-                    a hero, or yourself. Deep exploration of a custom scientist is a
-                    premium unlock.
+                    Customize the cosmograph with your own scientist.
                   </p>
                   <ConsoleButton
                     onClick={() => setCustomizeOpen(true)}
