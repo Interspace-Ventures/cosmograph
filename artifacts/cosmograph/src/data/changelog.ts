@@ -17,6 +17,17 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.11.0",
+    codename: "Spectral Worlds",
+    date: "2026-06-24",
+    summary:
+      "Planets now come in many more colours and kinds — molten, frozen, verdant, ocean, and exotic gas giants.",
+    changes: [
+      "Greatly widened planet variety: alongside the real solar-system worlds, papers can now appear as molten lava worlds with glowing magma veins, frozen ice worlds, verdant Earth-likes, amber deserts, turquoise oceans, carbon rock worlds, and violet, rose, and emerald gas giants.",
+      "The galaxy reads with far richer colour instead of mostly red, off-white, and blue.",
+    ],
+  },
+  {
     version: "3.10.2",
     codename: "Open Hatch",
     date: "2026-06-24",

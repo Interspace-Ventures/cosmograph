@@ -28,10 +28,99 @@ const EARTH_IDX = 2;
 const SATURN_IDX = 5;
 const URANUS_IDX = 6;
 const NEPTUNE_IDX = 7;
+
+// The nine real solar-system maps skew muted grey/tan, so at a glance the galaxy
+// reads as only "red / off-white / blue". To widen the palette we synthesize a
+// set of vivid-but-plausible exoplanet "biomes" on a canvas (deterministic,
+// headless-safe — same approach as gasGiantTexture): molten, frozen, verdant,
+// desert, ocean, carbon, and exotic-hued gas giants.
+type ProcPlanet =
+  | { kind: "gas"; palette: string[]; seed: number }
+  | {
+      kind: "terran";
+      ocean: string;
+      land: string[];
+      cap?: string;
+      seed: number;
+    }
+  | { kind: "lava"; seed: number };
+
+const PROC_PLANETS: ProcPlanet[] = [
+  // molten / basalt world with glowing magma veins
+  { kind: "lava", seed: 211 },
+  // verdant Earth-like — green continents, deep-blue ocean, ice caps
+  {
+    kind: "terran",
+    ocean: "#0c3b63",
+    land: ["#15663f", "#239b57", "#36b56e"],
+    cap: "#eaf6ff",
+    seed: 17,
+  },
+  // amber desert world
+  {
+    kind: "terran",
+    ocean: "#6e3410",
+    land: ["#b06a25", "#d7984a", "#ecc684"],
+    cap: "#f4e3c4",
+    seed: 29,
+  },
+  // turquoise ocean world
+  {
+    kind: "terran",
+    ocean: "#06304f",
+    land: ["#0e8a8c", "#19c2b4", "#7df0db"],
+    cap: "#f0ffff",
+    seed: 41,
+  },
+  // frozen ice world
+  {
+    kind: "terran",
+    ocean: "#6fa9cf",
+    land: ["#cfeefb", "#eef9ff", "#a9d6ee"],
+    cap: "#ffffff",
+    seed: 59,
+  },
+  // violet gas giant
+  {
+    kind: "gas",
+    palette: ["#caa9ff", "#9b78ee", "#dccaff", "#7d54d6", "#b79bff"],
+    seed: 83,
+  },
+  // rose gas giant
+  {
+    kind: "gas",
+    palette: ["#ff9ec4", "#e85f9c", "#ffc6dd", "#c63f82", "#ff86ba"],
+    seed: 97,
+  },
+  // emerald gas giant
+  {
+    kind: "gas",
+    palette: ["#b6f2c0", "#5fcf86", "#dafbe0", "#37a865", "#8fe6a6"],
+    seed: 109,
+  },
+  // carbon / obsidian rock world
+  {
+    kind: "terran",
+    ocean: "#241f26",
+    land: ["#46414c", "#6b6675", "#9a96a6"],
+    seed: 127,
+  },
+];
+
+const REAL_PLANET_COUNT = PLANET_TEXTURES.length;
+const PLANET_TYPE_COUNT = REAL_PLANET_COUNT + PROC_PLANETS.length;
+const LAVA_IDX = REAL_PLANET_COUNT; // first procedural slot
+const LAVA_EMISSIVE = new THREE.Color("#ffd9b0");
+
 // Rocky bodies get fake relief by reusing the colour map as a bump map.
 const ROCKY = new Set([0, 1, 3, 8]);
 // Gas giants stay smooth (atmospheric banding, no terrain).
 const GAS = new Set([4, 5, 6, 7]);
+// Classify the procedural biomes so bump/relief still applies: gas giants stay
+// in GAS, everything terrestrial (terran + lava) gets rocky relief.
+PROC_PLANETS.forEach((p, i) => {
+  (p.kind === "gas" ? GAS : ROCKY).add(REAL_PLANET_COUNT + i);
+});
 
 // deterministic rng
 const mulberry32 = (a: number) => () => {
@@ -141,6 +230,177 @@ function gasGiantTexture(
   }
   ctx.globalAlpha = 1;
 
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = THREE.RepeatWrapping;
+  t.anisotropy = 4;
+  return t;
+}
+
+// Terrestrial world: a base "ocean" colour with irregular continent blobs in the
+// land palette, terrain speckle, and optional polar ice caps. Driving it purely
+// by palette lets one routine paint verdant, desert, turquoise-ocean, frozen, and
+// carbon worlds — far more hue variety than the muted real photos.
+function terranTexture(
+  spec: { ocean: string; land: string[]; cap?: string },
+  seed: number,
+): THREE.Texture | null {
+  if (typeof document === "undefined") return null;
+  const w = 1024;
+  const h = 512;
+  const c = document.createElement("canvas");
+  c.width = w;
+  c.height = h;
+  const ctx = c.getContext("2d");
+  if (!ctx) return null;
+  const rng = mulberry32(seed);
+
+  ctx.fillStyle = spec.ocean;
+  ctx.fillRect(0, 0, w, h);
+
+  // Subtle depth variation in the base layer.
+  for (let i = 0; i < 60; i++) {
+    ctx.globalAlpha = 0.04 + rng() * 0.05;
+    ctx.fillStyle = rng() > 0.5 ? "#000000" : "#ffffff";
+    const x = rng() * w;
+    const y = rng() * h;
+    const r = 30 + rng() * 120;
+    ctx.beginPath();
+    ctx.ellipse(x, y, r, r * 0.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Continents: clusters of overlapping ellipses in the land palette.
+  const continents = 7 + Math.floor(rng() * 6);
+  for (let i = 0; i < continents; i++) {
+    const baseX = rng() * w;
+    const baseY = h * (0.15 + rng() * 0.7);
+    const col = spec.land[Math.floor(rng() * spec.land.length)];
+    const blobs = 14 + Math.floor(rng() * 20);
+    for (let b = 0; b < blobs; b++) {
+      ctx.globalAlpha = 0.5 + rng() * 0.4;
+      ctx.fillStyle = col;
+      const x = baseX + (rng() - 0.5) * 200;
+      const y = baseY + (rng() - 0.5) * 110;
+      const rx = 12 + rng() * 46;
+      const ry = 10 + rng() * 34;
+      ctx.beginPath();
+      ctx.ellipse(x, y, rx, ry, rng() * Math.PI, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Fine terrain speckle for texture.
+  for (let i = 0; i < 1400; i++) {
+    const x = rng() * w;
+    const y = rng() * h;
+    ctx.globalAlpha = 0.05 + rng() * 0.08;
+    ctx.fillStyle = rng() > 0.5 ? "#ffffff" : "#000000";
+    ctx.fillRect(x, y, 1.6, 1.6);
+  }
+
+  // Polar ice caps fading toward the equator.
+  if (spec.cap) {
+    const capH = h * (0.06 + rng() * 0.05) * 1.8;
+    const gTop = ctx.createLinearGradient(0, 0, 0, capH);
+    gTop.addColorStop(0, spec.cap);
+    gTop.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = gTop;
+    ctx.fillRect(0, 0, w, capH);
+    const gBot = ctx.createLinearGradient(0, h - capH, 0, h);
+    gBot.addColorStop(0, "rgba(255,255,255,0)");
+    gBot.addColorStop(1, spec.cap);
+    ctx.fillStyle = gBot;
+    ctx.fillRect(0, h - capH, w, capH);
+  }
+
+  ctx.globalAlpha = 1;
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = THREE.RepeatWrapping;
+  t.anisotropy = 4;
+  return t;
+}
+
+// Molten world: dark basalt base, cooled crust plates, branching glowing magma
+// veins, and a few bright hot pools. Used as both the colour map and (via the
+// material's emissiveMap) a self-illumination map so the veins actually glow.
+function lavaTexture(seed: number): THREE.Texture | null {
+  if (typeof document === "undefined") return null;
+  const w = 1024;
+  const h = 512;
+  const c = document.createElement("canvas");
+  c.width = w;
+  c.height = h;
+  const ctx = c.getContext("2d");
+  if (!ctx) return null;
+  const rng = mulberry32(seed);
+
+  const g = ctx.createLinearGradient(0, 0, 0, h);
+  g.addColorStop(0, "#1b0f10");
+  g.addColorStop(0.5, "#2a1213");
+  g.addColorStop(1, "#160a0b");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, w, h);
+
+  // Cooled crust plates.
+  for (let i = 0; i < 70; i++) {
+    ctx.globalAlpha = 0.15 + rng() * 0.2;
+    ctx.fillStyle = rng() > 0.5 ? "#000000" : "#3a2422";
+    const x = rng() * w;
+    const y = rng() * h;
+    const r = 18 + rng() * 70;
+    ctx.beginPath();
+    ctx.ellipse(
+      x,
+      y,
+      r,
+      r * (0.5 + rng() * 0.6),
+      rng() * Math.PI,
+      0,
+      Math.PI * 2,
+    );
+    ctx.fill();
+  }
+
+  // Branching magma veins.
+  for (let v = 0; v < 26; v++) {
+    let x = rng() * w;
+    let y = rng() * h;
+    const steps = 18 + Math.floor(rng() * 30);
+    ctx.strokeStyle = rng() > 0.5 ? "#ffd24a" : "#ff6a1f";
+    ctx.globalAlpha = 0.5 + rng() * 0.4;
+    ctx.lineWidth = 1 + rng() * 2.5;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    let ang = rng() * Math.PI * 2;
+    for (let s = 0; s < steps; s++) {
+      ang += (rng() - 0.5) * 1.0;
+      x += Math.cos(ang) * (6 + rng() * 10);
+      y += Math.sin(ang) * (6 + rng() * 10);
+      ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+
+  // Bright hot pools.
+  for (let i = 0; i < 16; i++) {
+    const x = rng() * w;
+    const y = rng() * h;
+    const r = 6 + rng() * 22;
+    const rg = ctx.createRadialGradient(x, y, 0, x, y, r);
+    rg.addColorStop(0, "rgba(255,240,170,0.95)");
+    rg.addColorStop(0.4, "rgba(255,120,30,0.6)");
+    rg.addColorStop(1, "rgba(255,80,20,0)");
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = rg;
+    ctx.beginPath();
+    ctx.ellipse(x, y, r, r, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.globalAlpha = 1;
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   t.wrapS = THREE.RepeatWrapping;
@@ -432,7 +692,7 @@ export function rebuildLayout(): void {
         8,
         Math.max(1.2, Math.sqrt(p.citations) * 0.16 + 1.2),
       );
-      const texIndex = Math.abs(hashString(p.id)) % PLANET_TEXTURES.length;
+      const texIndex = Math.abs(hashString(p.id)) % PLANET_TYPE_COUNT;
       planetOrbits[p.id] = {
         a,
         e,
@@ -603,6 +863,15 @@ export function GalaxySystem() {
     );
     if (uranus) arr[URANUS_IDX] = uranus;
     if (neptune) arr[NEPTUNE_IDX] = neptune;
+    // Append the procedural exoplanet biomes (indices REAL_PLANET_COUNT..).
+    // Fall back to a real map if a canvas isn't available so indices stay aligned.
+    for (const spec of PROC_PLANETS) {
+      let t: THREE.Texture | null = null;
+      if (spec.kind === "gas") t = gasGiantTexture(spec.palette, spec.seed);
+      else if (spec.kind === "lava") t = lavaTexture(spec.seed);
+      else t = terranTexture(spec, spec.seed);
+      arr.push(t ?? planetTex[0]);
+    }
     return arr;
   }, [planetTex]);
 
@@ -921,6 +1190,7 @@ const PlanetSystem = React.memo(function PlanetSystem({
   const tex = planetTex[o.texIndex];
   const isSaturn = o.texIndex === SATURN_IDX;
   const isEarth = o.texIndex === EARTH_IDX;
+  const isLava = o.texIndex === LAVA_IDX;
   const isRocky = ROCKY.has(o.texIndex);
   const isGas = GAS.has(o.texIndex);
 
@@ -971,8 +1241,11 @@ const PlanetSystem = React.memo(function PlanetSystem({
           bumpScale={isGas ? 0.05 : isRocky ? 0.04 : 0}
           roughness={isGas ? 0.72 : 0.92}
           metalness={0.0}
-          emissive={color}
-          emissiveIntensity={highlighted ? 0.5 : 0.05}
+          emissive={isLava ? LAVA_EMISSIVE : color}
+          emissiveMap={isLava ? tex : undefined}
+          emissiveIntensity={
+            isLava ? (dimmed ? 0.12 : 0.7) : highlighted ? 0.5 : 0.05
+          }
           transparent={dimmed}
           opacity={dimmed ? 0.12 : 1}
         />
