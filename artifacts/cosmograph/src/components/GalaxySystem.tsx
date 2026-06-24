@@ -1,8 +1,13 @@
-import React, { useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { useTexture } from "@react-three/drei";
 import * as THREE from "three";
-import { galaxyData, papersByDomain, isFiltersActive, paperMatchesFilters } from "@/data/galaxy";
+import {
+  galaxyData,
+  papersByDomain,
+  isFiltersActive,
+  paperMatchesFilters,
+} from "@/data/galaxy";
 import { getStellarColor } from "@/lib/colors";
 import { useAppState } from "@/lib/store";
 
@@ -37,7 +42,8 @@ const mulberry32 = (a: number) => () => {
 };
 function hashString(str: string) {
   let hash = 0;
-  for (let i = 0; i < str.length; i++) hash = (Math.imul(31, hash) + str.charCodeAt(i)) | 0;
+  for (let i = 0; i < str.length; i++)
+    hash = (Math.imul(31, hash) + str.charCodeAt(i)) | 0;
   return hash;
 }
 
@@ -51,7 +57,14 @@ function glowTexture(): THREE.Texture | null {
   c.width = c.height = size;
   const ctx = c.getContext("2d");
   if (!ctx) return null;
-  const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  const g = ctx.createRadialGradient(
+    size / 2,
+    size / 2,
+    0,
+    size / 2,
+    size / 2,
+    size / 2,
+  );
   g.addColorStop(0, "rgba(255,255,255,1)");
   g.addColorStop(0.18, "rgba(255,255,255,0.7)");
   g.addColorStop(0.4, "rgba(255,244,214,0.28)");
@@ -68,7 +81,10 @@ function glowTexture(): THREE.Texture | null {
 // Real Uranus/Neptune photos are nearly featureless, so the shipped maps read as
 // flat untextured spheres. We synthesize banded gas-giant detail deterministically
 // on a canvas (no GLSL, headless-safe) so every planet visibly reads as textured.
-function gasGiantTexture(palette: string[], seed: number): THREE.Texture | null {
+function gasGiantTexture(
+  palette: string[],
+  seed: number,
+): THREE.Texture | null {
   if (typeof document === "undefined") return null;
   const w = 1024;
   const h = 512;
@@ -102,7 +118,8 @@ function gasGiantTexture(palette: string[], seed: number): THREE.Texture | null 
       x === 0 ? ctx.moveTo(x, yy) : ctx.lineTo(x, yy);
     }
     for (let x = w; x >= 0; x -= 8) {
-      const yy = yc + bh + Math.sin((x / w) * Math.PI * 2 * freq + phase + 1.3) * amp;
+      const yy =
+        yc + bh + Math.sin((x / w) * Math.PI * 2 * freq + phase + 1.3) * amp;
       ctx.lineTo(x, yy);
     }
     ctx.closePath();
@@ -128,6 +145,148 @@ function gasGiantTexture(palette: string[], seed: number): THREE.Texture | null 
   t.colorSpace = THREE.SRGBColorSpace;
   t.wrapS = THREE.RepeatWrapping;
   t.anisotropy = 4;
+  return t;
+}
+
+// The shipped sunmap.jpg is a flat orange photo, so each sun reads as a plain
+// bright orb and its warm tint fights the per-domain stellar colour. We instead
+// synthesize a NEUTRAL luminance map of convective granulation + a few sunspots
+// on a canvas (no GLSL, headless-safe, shared by every sun). Because it's neutral
+// grey-white, the per-domain emissive colour still tints each sun cleanly while
+// the surface now shows boiling granule cells instead of a featureless disc.
+let _sunSurfaceTex: THREE.Texture | null = null;
+function sunSurfaceTexture(): THREE.Texture | null {
+  if (_sunSurfaceTex) return _sunSurfaceTex;
+  if (typeof document === "undefined") return null;
+  const w = 1024;
+  const h = 512;
+  const c = document.createElement("canvas");
+  c.width = w;
+  c.height = h;
+  const ctx = c.getContext("2d");
+  if (!ctx) return null;
+  const rng = mulberry32(20260624);
+
+  // Bright near-white base so the multiply by per-domain colour stays luminous.
+  ctx.fillStyle = "rgb(214,214,214)";
+  ctx.fillRect(0, 0, w, h);
+
+  const blob = (x: number, y: number, r: number, col: string) => {
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, col);
+    g.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  };
+  // Wrap blobs across the seam so granulation tiles around the sphere.
+  const wrapBlob = (x: number, y: number, r: number, col: string) => {
+    blob(x, y, r, col);
+    if (x < 28) blob(x + w, y, r, col);
+    else if (x > w - 28) blob(x - w, y, r, col);
+  };
+
+  // Hot granule centres (additive so cells glow brighter than the base).
+  ctx.globalCompositeOperation = "lighter";
+  for (let i = 0; i < 2600; i++) {
+    const a = (0.18 + rng() * 0.22).toFixed(3);
+    wrapBlob(rng() * w, rng() * h, 4 + rng() * 11, `rgba(255,255,255,${a})`);
+  }
+  // Darker intergranular network between the cells.
+  ctx.globalCompositeOperation = "source-over";
+  for (let i = 0; i < 1500; i++) {
+    const a = (0.1 + rng() * 0.16).toFixed(3);
+    wrapBlob(rng() * w, rng() * h, 2 + rng() * 5, `rgba(0,0,0,${a})`);
+  }
+  // A handful of sunspots: dark umbra inside a softer penumbra.
+  const spots = 4 + Math.floor(rng() * 4);
+  for (let s = 0; s < spots; s++) {
+    const sx = rng() * w;
+    const sy = h * (0.22 + rng() * 0.56);
+    const r = 12 + rng() * 24;
+    wrapBlob(sx, sy, r * 1.9, "rgba(0,0,0,0.45)");
+    wrapBlob(sx, sy, r, "rgba(0,0,0,0.82)");
+  }
+
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = THREE.RepeatWrapping;
+  t.anisotropy = 4;
+  _sunSurfaceTex = t;
+  return t;
+}
+
+// THREE's RingGeometry maps a texture as a flat square the annulus is cut from,
+// so the shipped saturnringcolor.jpg ends up smeared into a "weird texture in a
+// ring shape". We instead bake a 1-D radial strip (inner edge → outer edge) of
+// many fine ringlets, real gaps (incl. the Cassini division) carried in the
+// alpha channel, and a slow cool↔warm colour drift. Paired with the radial UV
+// remap in <SaturnRings>, the strip becomes concentric ringlets the right way.
+let _ringStripTex: THREE.Texture | null = null;
+function saturnRingTexture(): THREE.Texture | null {
+  if (_ringStripTex) return _ringStripTex;
+  if (typeof document === "undefined") return null;
+  const w = 1024;
+  const h = 8;
+  const c = document.createElement("canvas");
+  c.width = w;
+  c.height = h;
+  const ctx = c.getContext("2d");
+  if (!ctx) return null;
+  const rng = mulberry32(990077);
+  const img = ctx.createImageData(w, h);
+  const cool = [206, 214, 226];
+  const warm = [198, 172, 132];
+  // [centre, halfWidth, depth] along the inner→outer axis (0..1).
+  const gaps: Array<[number, number, number]> = [
+    [0.08, 0.012, 0.85],
+    [0.31, 0.01, 0.55],
+    [0.55, 0.032, 0.96], // Cassini division
+    [0.63, 0.008, 0.5],
+    [0.79, 0.013, 0.7],
+  ];
+  for (let x = 0; x < w; x++) {
+    const f = x / (w - 1);
+    let bright =
+      0.56 +
+      0.18 * Math.sin(f * 140 + 0.5) +
+      0.12 * Math.sin(f * 330 + 1.7) +
+      0.08 * Math.sin(f * 68 + 3.1) +
+      (rng() - 0.5) * 0.12;
+    let alpha =
+      0.86 + 0.12 * Math.sin(f * 110 + 2) + 0.08 * Math.sin(f * 260 + 0.4);
+    const mix = 0.5 + 0.5 * Math.sin(f * 18 + 1);
+    for (const [gc, gw, gd] of gaps) {
+      const d = Math.abs(f - gc) / gw;
+      if (d < 1) {
+        const k = (1 - d) * gd;
+        alpha *= 1 - k;
+        bright *= 1 - k * 0.5;
+      }
+    }
+    // Fade both edges so the ring doesn't end on a hard rim.
+    alpha *= Math.min(1, f / 0.05) * Math.min(1, (1 - f) / 0.04);
+    bright = Math.max(0, Math.min(1, bright));
+    alpha = Math.max(0, Math.min(1, alpha));
+    const r = (cool[0] * (1 - mix) + warm[0] * mix) * bright;
+    const g = (cool[1] * (1 - mix) + warm[1] * mix) * bright;
+    const b = (cool[2] * (1 - mix) + warm[2] * mix) * bright;
+    for (let y = 0; y < h; y++) {
+      const i = (y * w + x) * 4;
+      img.data[i] = r;
+      img.data[i + 1] = g;
+      img.data[i + 2] = b;
+      img.data[i + 3] = alpha * 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = THREE.ClampToEdgeWrapping;
+  t.wrapT = THREE.ClampToEdgeWrapping;
+  t.anisotropy = 4;
+  _ringStripTex = t;
   return t;
 }
 
@@ -159,7 +318,8 @@ type Dom = (typeof galaxyData.domains)[number];
 const GAP_IN = 55; // padding between systems inside one field cluster
 const GAP_CL = 130; // padding between field clusters
 
-const sunRadiusFor = (paperCount: number) => Math.max(8, Math.sqrt(paperCount) * 2.6);
+const sunRadiusFor = (paperCount: number) =>
+  Math.max(8, Math.sqrt(paperCount) * 2.6);
 // Full radius a domain's system occupies: sun + outermost planet orbit + margin.
 const domainSpan = (d: Dom) => {
   const n = papersByDomain[d.id]?.length ?? d.paperCount;
@@ -209,7 +369,11 @@ export function rebuildLayout(): void {
       const rho = Math.max(rho1, rho2);
       for (let k = 0; k < m; k++) {
         const a = (k * 2 * Math.PI) / m + 0.4;
-        locals.push({ d: doms[k + 1], lx: Math.cos(a) * rho, lz: Math.sin(a) * rho });
+        locals.push({
+          d: doms[k + 1],
+          lx: Math.cos(a) * rho,
+          lz: Math.sin(a) * rho,
+        });
       }
       footprint = rho + maxRo;
     }
@@ -264,9 +428,21 @@ export function rebuildLayout(): void {
       const node = prng() * Math.PI * 2;
       const initialAngle = prng() * Math.PI * 2;
       const speed = (0.4 + prng() * 0.5) / Math.sqrt(a);
-      const planetRadius = Math.min(8, Math.max(1.2, Math.sqrt(p.citations) * 0.16 + 1.2));
+      const planetRadius = Math.min(
+        8,
+        Math.max(1.2, Math.sqrt(p.citations) * 0.16 + 1.2),
+      );
       const texIndex = Math.abs(hashString(p.id)) % PLANET_TEXTURES.length;
-      planetOrbits[p.id] = { a, e, incl, node, initialAngle, speed, planetRadius, texIndex };
+      planetOrbits[p.id] = {
+        a,
+        e,
+        incl,
+        node,
+        initialAngle,
+        speed,
+        planetRadius,
+        texIndex,
+      };
     });
   });
 
@@ -359,7 +535,13 @@ function WaypointPath() {
 }
 
 export function GalaxySystem() {
-  const { galaxyTilt, selectedObject, setHoveredObject, setSelectedObject, filters } = useAppState();
+  const {
+    galaxyTilt,
+    selectedObject,
+    setHoveredObject,
+    setSelectedObject,
+    filters,
+  } = useAppState();
 
   const filtersActive = isFiltersActive(filters);
 
@@ -383,18 +565,42 @@ export function GalaxySystem() {
 
   useMemo(() => {
     // Colour maps must be sRGB; data maps (normals) must stay linear.
-    [...planetTex, extra.sun, extra.ring, extra.moon, extra.earthClouds].forEach((t) => {
+    [
+      ...planetTex,
+      extra.sun,
+      extra.ring,
+      extra.moon,
+      extra.earthClouds,
+    ].forEach((t) => {
       if (t) t.colorSpace = THREE.SRGBColorSpace;
     });
     if (extra.earthNormal) extra.earthNormal.colorSpace = THREE.NoColorSpace;
   }, [planetTex, extra]);
 
+  // Procedural, headless-safe replacements (fall back to the shipped photos if a
+  // canvas isn't available): a granulated neutral sun surface and a radially-banded
+  // ring strip. Both read far more "tangible" than the flat shipped textures.
+  const sunTexFinal = useMemo(
+    () => sunSurfaceTexture() ?? extra.sun,
+    [extra.sun],
+  );
+  const ringTexFinal = useMemo(
+    () => saturnRingTexture() ?? extra.ring,
+    [extra.ring],
+  );
+
   // Swap the near-blank Uranus/Neptune maps for richly banded procedural ones so
   // every planet shows surface detail (the shipped photos are nearly featureless).
   const planetTexFinal = useMemo(() => {
     const arr = [...planetTex];
-    const uranus = gasGiantTexture(["#d6f0f4", "#a9dde6", "#dcf2f5", "#9ed3dd", "#c2eaef"], 71);
-    const neptune = gasGiantTexture(["#4f7ce4", "#2f5bc4", "#5d88ec", "#23459e", "#3e6cd6"], 131);
+    const uranus = gasGiantTexture(
+      ["#d6f0f4", "#a9dde6", "#dcf2f5", "#9ed3dd", "#c2eaef"],
+      71,
+    );
+    const neptune = gasGiantTexture(
+      ["#4f7ce4", "#2f5bc4", "#5d88ec", "#23459e", "#3e6cd6"],
+      131,
+    );
     if (uranus) arr[URANUS_IDX] = uranus;
     if (neptune) arr[NEPTUNE_IDX] = neptune;
     return arr;
@@ -424,12 +630,12 @@ export function GalaxySystem() {
           index={i}
           position={domainPositions[domain.id]}
           sunRadius={sunRadii[domain.id]}
-          sunTex={extra.sun}
+          sunTex={sunTexFinal}
           planetTex={planetTexFinal}
           earthNormalTex={extra.earthNormal}
           earthCloudsTex={extra.earthClouds}
           moonTex={extra.moon}
-          ringTex={extra.ring}
+          ringTex={ringTexFinal}
           selectedObject={selectedObject}
           setHoveredObject={setHoveredObject}
           setSelectedObject={setSelectedObject}
@@ -481,23 +687,36 @@ const SolarSystem = React.memo(function SolarSystem({
   const color = useMemo(() => getStellarColor(index), [index]);
   const papers = papersByDomain[domainId] || [];
 
-  const domainHasMatch = !filtersActive || !matchingIds || papers.some((p) => matchingIds.has(p.id));
+  const domainHasMatch =
+    !filtersActive || !matchingIds || papers.some((p) => matchingIds.has(p.id));
   const sunDimmed = filtersActive && !domainHasMatch;
 
   return (
-    <group position={position} ref={(el) => { if (el) sunRefs[domainId] = el; }}>
+    <group
+      position={position}
+      ref={(el) => {
+        if (el) sunRefs[domainId] = el;
+      }}
+    >
       <Sun
         radius={sunRadius}
         color={color}
         tex={sunTex}
         dimmed={sunDimmed}
         onSelect={() => setSelectedObject({ type: "sun", id: domainId })}
-        onOver={() => setHoveredObject({ type: "sun", id: domainId, name: domainName })}
+        onOver={() =>
+          setHoveredObject({ type: "sun", id: domainId, name: domainName })
+        }
         onOut={() => setHoveredObject(null)}
       />
       {papers.map((p) => {
-        const isSelected = selectedObject?.type === "planet" && selectedObject.id === p.id;
-        const dimmed = filtersActive && !!matchingIds && !matchingIds.has(p.id) && !isSelected;
+        const isSelected =
+          selectedObject?.type === "planet" && selectedObject.id === p.id;
+        const dimmed =
+          filtersActive &&
+          !!matchingIds &&
+          !matchingIds.has(p.id) &&
+          !isSelected;
         const highlighted = filtersActive && !dimmed;
         return (
           <PlanetSystem
@@ -545,14 +764,18 @@ function Sun({
   const coreMat = useRef<THREE.MeshStandardMaterial>(null);
   const glow = useMemo(() => glowTexture(), []);
   // Warm-shift the halo toward white-hot so the corona reads as plasma, not flat tint.
-  const halo = useMemo(() => color.clone().lerp(new THREE.Color("#fff6e6"), 0.45), [color]);
+  const halo = useMemo(
+    () => color.clone().lerp(new THREE.Color("#fff6e6"), 0.45),
+    [color],
+  );
   const baseIntensity = dimmed ? 0.15 : 1.6;
 
   useFrame((s, d) => {
     if (ref.current) ref.current.rotation.y += d * 0.02;
     if (churn.current) churn.current.rotation.y -= d * 0.035;
     if (coreMat.current && !dimmed) {
-      coreMat.current.emissiveIntensity = baseIntensity + Math.sin(s.clock.elapsedTime * 1.3) * 0.18;
+      coreMat.current.emissiveIntensity =
+        baseIntensity + Math.sin(s.clock.elapsedTime * 1.3) * 0.18;
     }
   });
 
@@ -561,9 +784,19 @@ function Sun({
       {/* Core */}
       <mesh
         ref={ref}
-        onClick={(e) => { e.stopPropagation(); onSelect(); }}
-        onPointerOver={(e) => { e.stopPropagation(); onOver(); document.body.style.cursor = "pointer"; }}
-        onPointerOut={() => { onOut(); document.body.style.cursor = "auto"; }}
+        onClick={(e) => {
+          e.stopPropagation();
+          onSelect();
+        }}
+        onPointerOver={(e) => {
+          e.stopPropagation();
+          onOver();
+          document.body.style.cursor = "pointer";
+        }}
+        onPointerOut={() => {
+          onOut();
+          document.body.style.cursor = "auto";
+        }}
       >
         <sphereGeometry args={[radius, 48, 48]} />
         <meshStandardMaterial
@@ -597,7 +830,12 @@ function Sun({
 
       {/* decay=0 is required: at this scene scale (planets 50-200+ units out)
           any decay >= 1 makes the sun light effectively zero and planets go black. */}
-      <pointLight color={color} intensity={dimmed ? 0.15 : 2.0} distance={radius * 140} decay={0} />
+      <pointLight
+        color={color}
+        intensity={dimmed ? 0.15 : 2.0}
+        distance={radius * 140}
+        decay={0}
+      />
 
       {/* Inner corona */}
       <mesh scale={1.18}>
@@ -695,7 +933,11 @@ const PlanetSystem = React.memo(function PlanetSystem({
       pts.push(new THREE.Vector3(Math.cos(th) * r, 0, Math.sin(th) * r));
     }
     const geo = new THREE.BufferGeometry().setFromPoints(pts);
-    const mat = new THREE.LineBasicMaterial({ color: 0x8b8fa3, transparent: true, opacity: 0.13 });
+    const mat = new THREE.LineBasicMaterial({
+      color: 0x8b8fa3,
+      transparent: true,
+      opacity: 0.13,
+    });
     return new THREE.LineLoop(geo, mat);
   }, [o.a, o.e]);
 
@@ -703,10 +945,22 @@ const PlanetSystem = React.memo(function PlanetSystem({
     <group rotation={[o.incl, o.node, 0]}>
       <primitive object={orbitLine} />
       <mesh
-        ref={(el: THREE.Mesh | null) => { if (el) planetRefs[paperId] = el; }}
-        onClick={(e) => { e.stopPropagation(); setSelectedObject({ type: "planet", id: paperId }); }}
-        onPointerOver={(e) => { e.stopPropagation(); setHoveredObject({ type: "planet", id: paperId, name: paperTitle }); document.body.style.cursor = "pointer"; }}
-        onPointerOut={() => { setHoveredObject(null); document.body.style.cursor = "auto"; }}
+        ref={(el: THREE.Mesh | null) => {
+          if (el) planetRefs[paperId] = el;
+        }}
+        onClick={(e) => {
+          e.stopPropagation();
+          setSelectedObject({ type: "planet", id: paperId });
+        }}
+        onPointerOver={(e) => {
+          e.stopPropagation();
+          setHoveredObject({ type: "planet", id: paperId, name: paperTitle });
+          document.body.style.cursor = "pointer";
+        }}
+        onPointerOut={() => {
+          setHoveredObject(null);
+          document.body.style.cursor = "auto";
+        }}
       >
         <sphereGeometry args={[o.planetRadius, 32, 32]} />
         <meshStandardMaterial
@@ -742,10 +996,11 @@ const PlanetSystem = React.memo(function PlanetSystem({
         )}
 
         {isSaturn && (
-          <mesh rotation={[-Math.PI / 2.3, 0, 0]}>
-            <ringGeometry args={[o.planetRadius * 1.4, o.planetRadius * 2.4, 64]} />
-            <meshBasicMaterial map={ringTex} side={THREE.DoubleSide} transparent opacity={dimmed ? 0.1 : 0.85} />
-          </mesh>
+          <SaturnRings
+            planetRadius={o.planetRadius}
+            tex={ringTex}
+            dimmed={dimmed}
+          />
         )}
         {isSelected &&
           coAuthors.map((a, i) => (
@@ -762,6 +1017,52 @@ const PlanetSystem = React.memo(function PlanetSystem({
     </group>
   );
 });
+
+// Saturn-style rings: a RingGeometry whose UVs are remapped so the radial axis
+// samples the 1-D ring strip (concentric ringlets), not the default flat-square
+// projection. The strip's baked alpha carries the gaps, so the material just
+// rides its transparency.
+function SaturnRings({
+  planetRadius,
+  tex,
+  dimmed,
+}: {
+  planetRadius: number;
+  tex: THREE.Texture;
+  dimmed: boolean;
+}) {
+  const geo = useMemo(() => {
+    const inner = planetRadius * 1.35;
+    const outer = planetRadius * 2.5;
+    const g = new THREE.RingGeometry(inner, outer, 128, 1);
+    const pos = g.attributes.position;
+    const uv = g.attributes.uv;
+    const v = new THREE.Vector3();
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i);
+      const r = v.length();
+      const u = (r - inner) / (outer - inner);
+      const ang = (Math.atan2(v.y, v.x) + Math.PI) / (Math.PI * 2);
+      uv.setXY(i, u, ang);
+    }
+    uv.needsUpdate = true;
+    return g;
+  }, [planetRadius]);
+
+  useEffect(() => () => geo.dispose(), [geo]);
+
+  return (
+    <mesh geometry={geo} rotation={[-Math.PI / 2.3, 0, 0]}>
+      <meshBasicMaterial
+        map={tex}
+        side={THREE.DoubleSide}
+        transparent
+        opacity={dimmed ? 0.12 : 0.95}
+        depthWrite={false}
+      />
+    </mesh>
+  );
+}
 
 function CloudLayer({ tex, radius }: { tex: THREE.Texture; radius: number }) {
   const ref = useRef<THREE.Mesh>(null);
@@ -820,7 +1121,12 @@ function Moon({
   return (
     <mesh ref={ref}>
       <sphereGeometry args={[Math.max(0.14, planetRadius * 0.2), 24, 24]} />
-      <meshStandardMaterial map={tex} bumpMap={tex} bumpScale={0.02} roughness={0.95} />
+      <meshStandardMaterial
+        map={tex}
+        bumpMap={tex}
+        bumpScale={0.02}
+        roughness={0.95}
+      />
     </mesh>
   );
 }
