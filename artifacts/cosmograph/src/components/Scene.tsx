@@ -10,7 +10,9 @@ import { useAppState } from "@/lib/store";
 import { setGalaxyCanvas } from "@/lib/share";
 
 function Background() {
-  const tex = useTexture(`${import.meta.env.BASE_URL}textures/galaxy_starfield.png`);
+  const tex = useTexture(
+    `${import.meta.env.BASE_URL}textures/galaxy_starfield.png`,
+  );
   tex.colorSpace = THREE.SRGBColorSpace;
   return (
     <mesh scale={[-1, 1, 1]}>
@@ -43,13 +45,24 @@ export function Scene({
   return (
     <div className="absolute inset-0 z-0">
       <Canvas
-        camera={{ position: [INTRO_START.x, INTRO_START.y, INTRO_START.z], fov: 55, near: 0.1, far: 60000 }}
-        gl={{ antialias: true, alpha: false, stencil: false, preserveDrawingBuffer: true }}
+        camera={{
+          position: [INTRO_START.x, INTRO_START.y, INTRO_START.z],
+          fov: 55,
+          near: 0.1,
+          far: 60000,
+        }}
+        gl={{
+          antialias: true,
+          alpha: false,
+          stencil: false,
+          preserveDrawingBuffer: true,
+        }}
         dpr={[1, 1.5]}
-        // Debounce the WebGL buffer resize so a window resize doesn't trigger a
-        // per-frame renderer + camera-aspect + bloom-target recompute. (The console
-        // toggle no longer resizes this canvas — the galaxy slides via transform —
-        // so this only coalesces real viewport resizes now.)
+        // Debounce the WebGL buffer resize so neither a window resize NOR the
+        // console push (the canvas is confined to the space left of the console,
+        // so opening/closing it changes the canvas width) triggers a per-frame
+        // renderer + camera-aspect + bloom-target recompute. The debounce coalesces
+        // the whole 450ms push transition into a single snap once the layout settles.
         resize={{ debounce: 150 }}
         onCreated={({ gl }) => {
           gl.toneMapping = THREE.ACESFilmicToneMapping;
@@ -68,7 +81,15 @@ export function Scene({
 
         <Suspense fallback={null}>
           <Background />
-          <Stars radius={6000} depth={1500} count={6000} factor={20} saturation={0} fade speed={0.4} />
+          <Stars
+            radius={6000}
+            depth={1500}
+            count={6000}
+            factor={20}
+            saturation={0}
+            fade
+            speed={0.4}
+          />
 
           <GalaxySystem />
           <CameraController captureTopDown={captureTopDown} />

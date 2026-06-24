@@ -1,42 +1,42 @@
 ---
-name: R3F canvas resize jank on panel toggle
-description: Why animating a flex sibling's width makes the R3F galaxy stutter/snap, and why sliding (transform) beats resizing.
+name: R3F canvas resize vs. transform on console toggle
+description: Why the galaxy canvas is width-confined (resized) on console toggle for a real "push", and why the earlier translate-only approach was reverted.
 ---
 
-# R3F Canvas resize jank when a sibling panel animates width
+# R3F Canvas: console toggle resizes the canvas (real push), it does NOT translate
 
-The galaxy `<Canvas>` (with an EffectComposer/Bloom pass) sits next to the
-collapsible Flight Console (`Sidebar`). If the canvas shares a flex row with the
-console, toggling the console's width resizes the canvas column.
+The galaxy `<Canvas>` (EffectComposer/Bloom) shares the viewport with the right-side
+Mission Control console (`Sidebar`, an `absolute right-0` overlay).
 
-**Two bad outcomes, both rooted in resizing the canvas:**
-- **Resize live (default):** every ResizeObserver tick reallocates the WebGL buffer
-  + bloom render targets + recomputes camera aspect → can't hold 60fps → the shift
-  looks jagged/steppy.
-- **Resize debounced** (`resize={{ debounce: 150 }}`): the buffer only updates after
-  layout settles, so during the transition the frame is CSS-scaled (squished) then
-  *snaps* crisp at the end → reads as "sudden."
+## Current (correct) approach — confine the canvas, accept one debounced snap
+The Scene-wrapping div in `App.tsx` is `absolute inset-y-0 left-0` with an inline
+`right` inset equal to the **live Sidebar width** (`0` during intro,
+`min(12rem,80vw)` when console open, `3.5rem` rail when closed — these must match the
+Sidebar's `w-14` / `w-[min(12rem,80vw)]`). Opening/closing the console changes the
+canvas width, so the galaxy is genuinely **pushed** into the remaining space and never
+hidden under the panel. `<Canvas resize={{ debounce: 150 }}>` coalesces the 450ms
+push transition into a **single buffer snap after layout settles** (minor end-snap is
+the accepted cost). Selected-object occlusion by the top-left floating `DetailPanel`
+is handled separately with a desktop-only `translateX` nudge (`8rem`) on the same
+container — a pure transform (no resize) so picking planets stays smooth.
 
-**Better fix — don't resize the canvas on toggle at all.** Keep the galaxy as a
-full-size `absolute inset-0` layer and **slide it with a GPU `translateX`** while the
-console is an `absolute right-0` overlay (not a flex sibling). The canvas keeps a
-constant size (no buffer realloc, no snap); the transform is GPU-composited and
-buttery. Recenter the galaxy in the space left of the console by translating it half
-the console's width (e.g. `translateX(calc(min(16rem,80vw) * -0.5))` open). Keep the
-2D HUD (`Overlay`/header) *un*-translated so nothing clips off the left edge.
+## Why the earlier translate-only approach was REVERTED — do not flip it back
+Previously the canvas was full-bleed `absolute inset-0` and only slid with
+`translateX(calc(... * -0.5))` to avoid resizing the WebGL/bloom buffers. That is
+smoother (no realloc, no snap) and recenters a centered galaxy correctly **on paper**,
+BUT the full-bleed canvas still extends *under* the console, so its right side / outer
+planets stay hidden behind the panel. Users read this as "the sidebar just hides
+content, it doesn't push it." A translate cannot shrink the galaxy to fit; only
+resizing the canvas (narrower aspect/FOV fit) actually makes room. So we accepted the
+debounced-resize snap as the price of a true push.
 
-`resize={{ debounce: 150 }}` is still worth keeping — but now only to coalesce real
-window/viewport resizes, not the console toggle.
+**Why (root tradeoff):** WebGL/postprocessing buffer reallocation is the expensive,
+janky part — but it is also the ONLY thing that produces genuine content reservation.
+Debouncing makes the realloc happen once (after the transition) instead of per frame.
 
-**State note:** the galaxy slide must sync with the console, so console open/collapse
-state lives in the store (`consoleOpen`), not local to `Sidebar`.
-
-**Why:** WebGL/postprocessing buffer reallocation is the expensive part; if you never
-change the canvas size, there's nothing to stutter or snap. Prefer moving pixels
-(transform) over resizing the drawing buffer.
-
-**How to apply:** any time an R3F Canvas shares layout with an animated/resizable
-panel (collapsible sidebars, drawers, resizable splits), make the canvas full-size and
-translate it; overlay the panel. Reach for canvas resize (debounced) only for true
-viewport changes. Don't reach for a new "dashboard/console" library — this is the
-actual root cause.
+**How to apply:** when an R3F Canvas shares layout with a collapsible panel and the
+product requirement is "push, don't overlay/hide", confine the canvas width and
+debounce its resize. Use transform-only sliding only when recentering (not making
+room) is acceptable. Keep panel-open state in the store (`consoleOpen`) so canvas and
+panel stay in sync. Don't re-introduce a flex sibling (that resizes per frame, no
+debounce) and don't reach for a "dashboard/console" library.

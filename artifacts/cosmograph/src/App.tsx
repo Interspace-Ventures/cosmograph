@@ -7,6 +7,7 @@ import { Toaster as Sonner } from "sonner";
 import { queryClient } from "@/lib/queryClient";
 import { clerkAppearance } from "@/lib/clerkAppearance";
 import { AppStateProvider, useAppState } from "@/lib/store";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Scene } from "@/components/Scene";
 import { Overlay } from "@/components/Overlay";
 import { Sidebar } from "@/components/Sidebar";
@@ -47,27 +48,47 @@ if (!clerkPubKey) {
 // wrapper so loading a new scientist fully remounts the 3D scene and panels,
 // re-registering all object refs against the freshly rebuilt galaxy.
 function GalaxyView() {
-  const { datasetVersion, consoleOpen, introFinished, canExplore } =
-    useAppState();
-  // While the intro/title screen plays the console is hidden entirely, so the
-  // galaxy isn't shifted for it. Once the intro finishes: shift by half the
-  // console width when open, or by the collapsed rail width (1.75rem) when shut.
-  const galaxyShift = !introFinished
+  const {
+    datasetVersion,
+    consoleOpen,
+    introFinished,
+    canExplore,
+    selectedObject,
+  } = useAppState();
+  const isMobile = useIsMobile();
+  // Reserve the Mission Control rail/console width on the RIGHT so the galaxy is
+  // genuinely *pushed* into the remaining width — the canvas shrinks to fit the
+  // open space instead of staying full-bleed and hiding planets under the panel.
+  // During the intro the console is hidden, so the canvas is full-bleed.
+  const rightInset = !introFinished
     ? "0px"
     : consoleOpen
-      ? "calc(min(14rem,80vw) * -0.5)"
-      : "-1.75rem";
+      ? "min(12rem,80vw)"
+      : "3.5rem";
+  // When a detail panel is open it floats over the top-LEFT on desktop, so nudge
+  // the framed (camera-centered) object to the right with a cheap GPU transform
+  // so the panel can never occlude the planet/sun you just selected. Mobile shows
+  // the detail panel as a bottom sheet, so no horizontal nudge is needed there.
+  const selectionShift =
+    introFinished && !isMobile && selectedObject ? "8rem" : "0px";
   return (
-    <div key={datasetVersion} className="relative h-full w-full overflow-hidden">
+    <div
+      key={datasetVersion}
+      className="relative h-full w-full overflow-hidden"
+    >
       {canExplore ? (
         <>
-          {/* The 3D galaxy stays full-size and slides aside with a GPU transform when
-              the console expands — instead of resizing the canvas (which reallocates
-              the WebGL + bloom buffers and made the shift snap). The shift recenters
-              the galaxy in the space left of the console: half the console's width. */}
+          {/* The 3D galaxy is confined to the space left of the console (real push,
+              not an overlay). Changing `right` resizes the canvas, but the debounced
+              <Canvas resize> coalesces it into a single snap once the layout settles.
+              The selection nudge is a pure transform (no resize) so picking planets
+              stays smooth. */}
           <div
-            className="absolute inset-0 transition-transform duration-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)] will-change-transform"
-            style={{ transform: `translateX(${galaxyShift})` }}
+            className="absolute inset-y-0 left-0 transition-[right,transform] duration-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)] will-change-transform"
+            style={{
+              right: rightInset,
+              transform: `translateX(${selectionShift})`,
+            }}
           >
             <Scene />
           </div>
