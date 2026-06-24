@@ -11,3 +11,15 @@ id = "NCkDunO3PXHNWKkp8Ni4C"
 uri = "file://README.md"
 type = "text"
 title = "Cosmograph README"
+
+[[outputs]]
+id = "rBYb_jQyXrE3AweskMWFo"
+uri = "file://artifacts/cosmograph/public/logo-mark.svg"
+type = "image"
+title = "Cosmograph logo — square mark (recommended for Auth)"
+
+[[outputs]]
+id = "OCOvbRZhRjeiP14OKnJJl"
+uri = "file://artifacts/cosmograph/public/logo.svg"
+type = "image"
+title = "Cosmograph logo — wide lockup"
