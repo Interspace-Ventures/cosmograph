@@ -1,6 +1,14 @@
 <svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="50" cy="50" r="40" fill="none" stroke="#9277F0" stroke-width="3"/>
-  <ellipse cx="50" cy="50" rx="40" ry="13" fill="none" stroke="#9277F0" stroke-width="2"/>
-  <ellipse cx="50" cy="50" rx="13" ry="40" fill="none" stroke="#9277F0" stroke-width="2"/>
-  <path d="M50,39.5 Q51.5,48.5 60.5,50 Q51.5,51.5 50,60.5 Q48.5,51.5 39.5,50 Q48.5,48.5 50,39.5 Z" fill="#c2b4fb"/>
+  <g stroke="#9277F0" fill="none" stroke-width="1.5">
+    <ellipse cx="50" cy="50" rx="40" ry="13"/>
+    <ellipse cx="50" cy="30" rx="34.6" ry="11.3"/>
+    <ellipse cx="50" cy="70" rx="34.6" ry="11.3"/>
+    <ellipse cx="50" cy="15.4" rx="20" ry="6.5"/>
+    <ellipse cx="50" cy="84.6" rx="20" ry="6.5"/>
+    <ellipse cx="50" cy="50" rx="20" ry="40"/>
+    <ellipse cx="50" cy="50" rx="34.6" ry="40"/>
+    <line x1="50" y1="10" x2="50" y2="90"/>
+  </g>
+  <circle cx="50" cy="50" r="40" fill="none" stroke="#9277F0" stroke-width="2.4"/>
+  <path d="M50,38 Q51.8,48.2 62,50 Q51.8,51.8 50,62 Q48.2,51.8 38,50 Q48.2,48.2 50,38 Z" fill="#c2b4fb"/>
 </svg>
