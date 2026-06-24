@@ -247,16 +247,23 @@ export function Sidebar() {
 
               {/* Rail body — icon-only mirror of the expanded scroll body */}
               <div className="flex flex-col items-center gap-1 overflow-y-auto custom-scrollbar p-1.5">
-                {/* Platform — info, account, meta & primary actions */}
+                {/* Account — avatar + access status, mirrors the expanded
+                    Account block placed above Platform when signed in. */}
+                <AccountIndicatorRail />
+                {/* Platform — same order as the expanded Platform section.
+                    No active fills, dots, or accent CTAs: the collapsed rail is
+                    a neutral set of working shortcuts, not a state display. */}
                 <RailButton onClick={() => setInfoOpen(true)} label="Info">
                   <Info size={16} />
                 </RailButton>
-                <AccountIndicatorRail />
                 <RailButton
                   onClick={() => setChangelogOpen(true)}
                   label="Changelog"
                 >
                   <Rocket size={15} />
+                </RailButton>
+                <RailButton onClick={() => setAskOpen(true)} label="Ask">
+                  <MessageCircleStar size={15} />
                 </RailButton>
                 <RailTip label="Sponsor">
                   <a
@@ -264,31 +271,18 @@ export function Sidebar() {
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label="Sponsor via GitHub Sponsors (opens in a new tab)"
-                    className="relative flex h-9 w-9 items-center justify-center border-2 border-accent bg-accent/20 text-white transition-all hover:bg-accent/30"
+                    className="relative flex h-9 w-9 items-center justify-center border-2 border-edge bg-white/5 text-ink transition-all hover:bg-white/10"
                   >
                     <Heart size={15} />
                   </a>
                 </RailTip>
-                <RailButton
-                  active={filtersActive}
-                  onClick={() => setAskOpen(true)}
-                  label="Ask"
-                >
-                  <MessageCircleStar size={15} />
-                  {filtersActive && (
-                    <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-accent ring-2 ring-black" />
-                  )}
-                </RailButton>
                 <RailTip label="Personalize">
                   <button
                     type="button"
                     onClick={() => setCustomizeOpen(true)}
-                    className="relative flex h-9 w-9 items-center justify-center border-2 border-accent bg-accent/20 text-white transition-all hover:bg-accent/30"
+                    className="relative flex h-9 w-9 items-center justify-center border-2 border-edge bg-white/5 text-ink transition-all hover:bg-white/10"
                   >
                     <Telescope size={15} />
-                    <span className="absolute -top-1.5 -right-1.5 grid h-4 w-4 place-items-center rounded-full bg-accent leading-none text-black ring-2 ring-black">
-                      <Sparkles size={9} />
-                    </span>
                   </button>
                 </RailTip>
                 <Divider />
@@ -301,15 +295,10 @@ export function Sidebar() {
                 </RailTip>
                 <Divider />
                 {/* Navigate */}
-                <RailButton
-                  active={cameraMode === "god"}
-                  onClick={() => setCameraMode("god")}
-                  label="Orbit"
-                >
+                <RailButton onClick={() => setCameraMode("god")} label="Orbit">
                   <Orbit size={15} />
                 </RailButton>
                 <RailButton
-                  active={cameraMode === "spaceship"}
                   onClick={() => setCameraMode("spaceship")}
                   label="Fly"
                   locked={!canExplore}
