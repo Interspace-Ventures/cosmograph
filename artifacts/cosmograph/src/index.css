@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Outfit:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Outfit:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap");
 
 @layer theme, base, clerk, components, utilities;
 @import "tailwindcss";
@@ -23,7 +23,7 @@
 
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-ink);
-  
+
   --color-bg: var(--bg);
   --color-bg-2: var(--bg-2);
   --color-ink: var(--ink);
@@ -32,10 +32,10 @@
   --color-hard-shadow: var(--hard-shadow);
   --color-neg: var(--neg);
 
-  --font-sans: 'Outfit', sans-serif;
-  --font-display: 'Archivo', sans-serif;
-  --font-title: 'Bricolage Grotesque', sans-serif;
-  --font-mono: 'Space Mono', monospace;
+  --font-sans: "Outfit", sans-serif;
+  --font-display: "Archivo", sans-serif;
+  --font-title: "Bricolage Grotesque", sans-serif;
+  --font-mono: "Space Mono", monospace;
 
   --radius: var(--radius);
 }
@@ -52,9 +52,13 @@
   --neg: #3c3f4b;
   --neg-ink: #f0f0f2;
 
-  --glass-blur: 24px;
+  --glass-blur: 28px;
   --glass-tint: 18 19 26;
-  --glass-alpha: 0.55;
+  --glass-alpha: 0.68;
+  /* Knock the bloom-bright galaxy down *behind* the glass only. The suns stay
+     at full brightness everywhere else; this just keeps text on floating panels
+     readable when a sun drifts behind them. */
+  --glass-backdrop: blur(var(--glass-blur)) brightness(0.6) saturate(1.05);
   --border-w: 2px;
   --hard-x: 7px;
   --hard-y: 7px;
@@ -91,8 +95,13 @@
   body {
     @apply font-sans antialiased bg-bg text-ink overflow-hidden selection:bg-accent/30;
   }
-  
-  h1, h2, h3, h4, h5, h6 {
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-display tracking-tight;
   }
 }
@@ -103,22 +112,26 @@
 
 .glass-panel {
   background: rgba(var(--glass-tint), var(--glass-alpha));
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
+  backdrop-filter: var(--glass-backdrop);
+  -webkit-backdrop-filter: var(--glass-backdrop);
   border: var(--border-w) solid rgb(var(--edge));
   border-radius: var(--radius);
   box-shadow: var(--hard-x) var(--hard-y) 0 0 var(--hard-shadow);
-  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  transition:
+    transform 0.1s ease,
+    box-shadow 0.1s ease;
 }
 
 .glass-panel-interactive:hover {
   transform: translate(1px, 1px);
-  box-shadow: calc(var(--hard-x) - 1px) calc(var(--hard-y) - 1px) 0 0 var(--hard-shadow);
+  box-shadow: calc(var(--hard-x) - 1px) calc(var(--hard-y) - 1px) 0 0
+    var(--hard-shadow);
 }
 
 .glass-panel-interactive:active {
   transform: translate(3px, 3px);
-  box-shadow: calc(var(--hard-x) - 3px) calc(var(--hard-y) - 3px) 0 0 var(--hard-shadow);
+  box-shadow: calc(var(--hard-x) - 3px) calc(var(--hard-y) - 3px) 0 0
+    var(--hard-shadow);
 }
 
 /* Solid console column docked beside the galaxy (the galaxy display is a
@@ -127,8 +140,8 @@
    card floating on top. */
 .console-panel {
   background: rgba(var(--glass-tint), 0.9);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
+  backdrop-filter: var(--glass-backdrop);
+  -webkit-backdrop-filter: var(--glass-backdrop);
   border: var(--border-w) solid rgb(var(--edge));
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.04),
@@ -149,4 +162,3 @@
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: var(--accent);
 }
-
