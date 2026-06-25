@@ -30,7 +30,9 @@ export function Cockpit({
   );
 
   return (
-    <div className={`absolute inset-0 overflow-hidden pointer-events-none font-mono ${className}`}>
+    <div
+      className={`absolute inset-0 overflow-hidden pointer-events-none font-mono ${className}`}
+    >
       {/* Warp streaks emanating from the vanishing point */}
       <div
         ref={warpRef}
@@ -72,23 +74,10 @@ export function Cockpit({
         }}
       />
 
-      {/* Top HUD bar */}
-      <div
-        className="absolute inset-x-0 top-0 flex items-center justify-between px-6 py-3 text-[10px] uppercase tracking-[0.3em] text-ink-dim backdrop-blur-[6px]"
-        style={{
-          borderBottom: `2px solid rgba(${ACCENT},0.5)`,
-          background:
-            "linear-gradient(180deg, rgba(6,7,13,0.85) 0%, rgba(6,7,13,0.55) 55%, rgba(6,7,13,0) 100%)",
-        }}
-      >
-        <span>Cosmograph · Flight Systems</span>
-        <span className="hidden text-accent/80 sm:block">Ad Astra</span>
-        <span>Nav · Online</span>
-      </div>
-
-      {/* Corner brackets framing the viewport */}
-      <Bracket className="left-5 top-16" edges="lt" />
-      <Bracket className="right-5 top-16" edges="rt" />
+      {/* Corner brackets framing the lower canopy only. The top brackets and the
+          old full-width top HUD bar are intentionally omitted so the cockpit frame
+          never sits over the app Header (brand + stats) that lives in the top-left
+          during flight. The flight-status text moved into the bottom console. */}
       <Bracket className="left-5 bottom-[28vh]" edges="lb" />
       <Bracket className="right-5 bottom-[28vh]" edges="rb" />
 
@@ -135,6 +124,13 @@ export function Cockpit({
           }}
         />
 
+        {/* Flight status — relocated here from the old top HUD bar so it never
+            sits over the Cosmograph header during flight. */}
+        <div className="absolute inset-x-0 top-[36%] flex items-center justify-between px-[7%] text-[9px] uppercase tracking-[0.3em] text-ink-dim">
+          <span>Cosmograph · Flight Systems</span>
+          <span className="text-accent/80">Nav · Online</span>
+        </div>
+
         {/* Instrument readouts */}
         <div className="absolute inset-x-0 bottom-[22%] flex items-end justify-between px-[7%]">
           <Readout label="Velocity">
@@ -143,7 +139,9 @@ export function Cockpit({
                 <span
                   key={i}
                   className="h-3.5 w-[3px]"
-                  style={{ background: `rgba(${ACCENT},${i < 9 ? 0.9 : 0.18})` }}
+                  style={{
+                    background: `rgba(${ACCENT},${i < 9 ? 0.9 : 0.18})`,
+                  }}
                 />
               ))}
             </div>
@@ -201,7 +199,9 @@ function Readout({
     <div
       className={`flex flex-col gap-2 ${align === "right" ? "items-end" : "items-start"}`}
     >
-      <span className="text-[9px] uppercase tracking-[0.35em] text-ink-dim">{label}</span>
+      <span className="text-[9px] uppercase tracking-[0.35em] text-ink-dim">
+        {label}
+      </span>
       {children}
     </div>
   );

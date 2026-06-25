@@ -110,6 +110,17 @@
   text-shadow: 0 0 20px currentColor;
 }
 
+/* Paper/title text on the floating glass panels. The panels normally read dark,
+   but a bloomed sun drifting behind a translucent panel washes that area bright,
+   which made the old near-white text vanish. No single fixed gray is high-contrast
+   on BOTH a dark panel and a bright wash, so this pairs a genuinely dark gray
+   (reads against the bright wash) with a faint light halo (keeps the same dark
+   text legible against the dark panel). */
+.paper-ink {
+  color: #30323c;
+  text-shadow: 0 0 5px rgba(233, 235, 243, 0.5);
+}
+
 .glass-panel {
   background: rgba(var(--glass-tint), var(--glass-alpha));
   backdrop-filter: var(--glass-backdrop);

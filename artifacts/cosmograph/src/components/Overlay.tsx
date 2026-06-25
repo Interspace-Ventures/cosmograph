@@ -14,11 +14,14 @@ import { presence } from "@/lib/presence";
 import { useSyncExternalStore } from "react";
 
 export function Overlay() {
-  const { introFinished, selectedObject, hoveredObject, tourActive } = useAppState();
+  const { introFinished, selectedObject, hoveredObject, tourActive } =
+    useAppState();
 
   return (
     <div className="absolute inset-0 pointer-events-none z-10">
-      <AnimatePresence>{!introFinished && <ScrollIntro key="intro" />}</AnimatePresence>
+      <AnimatePresence>
+        {!introFinished && <ScrollIntro key="intro" />}
+      </AnimatePresence>
 
       {introFinished && (
         <>
@@ -37,19 +40,27 @@ export function Overlay() {
                     <span className="font-mono text-[10px] uppercase tracking-widest text-accent mr-2">
                       {hoveredObject.type === "sun" ? "Domain" : "Paper"}
                     </span>
-                    <span className="text-sm text-ink line-clamp-1">{hoveredObject.name}</span>
+                    <span className="text-sm paper-ink line-clamp-1">
+                      {hoveredObject.name}
+                    </span>
                     {hoveredObject.type === "sun" &&
                       (() => {
-                        const d = galaxyData.domains.find((x) => x.id === hoveredObject.id);
+                        const d = galaxyData.domains.find(
+                          (x) => x.id === hoveredObject.id,
+                        );
                         if (!d) return null;
                         return (
                           <div className="mt-1.5 flex items-center justify-center gap-4 font-mono text-[11px] text-ink-dim">
                             <span>
-                              <span className="text-ink">{d.paperCount}</span> papers
+                              <span className="text-ink">{d.paperCount}</span>{" "}
+                              papers
                             </span>
                             <span className="text-ink-dim/40">·</span>
                             <span>
-                              <span className="text-ink">{d.totalCitations.toLocaleString()}</span> citations
+                              <span className="text-ink">
+                                {d.totalCitations.toLocaleString()}
+                              </span>{" "}
+                              citations
                             </span>
                           </div>
                         );
@@ -60,9 +71,7 @@ export function Overlay() {
 
               <AnimatePresence>
                 {selectedObject && (
-                  <div
-                    className="absolute z-30 inset-x-3 bottom-24 max-h-[38vh] md:inset-x-auto md:bottom-auto md:top-36 md:left-5 md:w-[min(384px,calc(100vw-2.5rem))] md:max-h-[calc(100vh-15rem)] md:!block overflow-y-auto custom-scrollbar pointer-events-auto block"
-                  >
+                  <div className="absolute z-30 inset-x-3 bottom-24 max-h-[38vh] md:inset-x-auto md:bottom-auto md:top-36 md:left-5 md:w-[min(384px,calc(100vw-2.5rem))] md:max-h-[calc(100vh-15rem)] md:!block overflow-y-auto custom-scrollbar pointer-events-auto block">
                     <DetailPanel />
                   </div>
                 )}
@@ -94,17 +103,28 @@ function Header() {
           aria-hidden="true"
           className="pointer-events-none h-8 w-8"
         />
-        <h1 className="pointer-events-none text-3xl font-title font-bold tracking-tight text-ink">Cosmograph</h1>
+        <h1 className="pointer-events-none text-3xl font-title font-bold tracking-tight text-ink">
+          Cosmograph
+        </h1>
       </div>
       <p className="pointer-events-none text-ink-dim font-mono text-[11px] mt-1 uppercase tracking-widest">
         A Journey of Scientific Exploration · {galaxyData.author.name}
       </p>
       <div className="pointer-events-none mt-3 flex flex-wrap gap-x-4 gap-y-1">
         <HeaderStat label="Papers" value={stats.totalPapers.toLocaleString()} />
-        <HeaderStat label="Citations" value={stats.totalCitations.toLocaleString()} />
-        <HeaderStat label="Co-authors" value={stats.uniqueCoAuthors.toLocaleString()} />
+        <HeaderStat
+          label="Citations"
+          value={stats.totalCitations.toLocaleString()}
+        />
+        <HeaderStat
+          label="Co-authors"
+          value={stats.uniqueCoAuthors.toLocaleString()}
+        />
         <HeaderStat label="Years" value={String(stats.yearsActive)} />
-        <HeaderStat label="Words" value={`${compactNumber(stats.estimatedWords)}+`} />
+        <HeaderStat
+          label="Words"
+          value={`${compactNumber(stats.estimatedWords)}+`}
+        />
       </div>
       <LivePresence />
     </div>
@@ -121,11 +141,18 @@ function HeaderStat({ label, value }: { label: string; value: string }) {
 }
 
 function compactNumber(n: number): string {
-  return new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 }).format(n);
+  return new Intl.NumberFormat("en", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(n);
 }
 
 function LivePresence() {
-  const count = useSyncExternalStore(presence.subscribe, presence.getCount, () => 0);
+  const count = useSyncExternalStore(
+    presence.subscribe,
+    presence.getCount,
+    () => 0,
+  );
   if (count < 1) return null;
   return (
     <div className="pointer-events-none mt-2 inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-ink-dim">
@@ -133,7 +160,8 @@ function LivePresence() {
         <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75" />
         <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-accent" />
       </span>
-      <span className="text-ink">{count}</span> cosmonaut{count === 1 ? "" : "s"} streaming now
+      <span className="text-ink">{count}</span> cosmonaut
+      {count === 1 ? "" : "s"} streaming now
     </div>
   );
 }
