@@ -16,7 +16,11 @@ export const clerkAppearance = {
     // muddy gray fallback and the mark got squished. Clerk renders the
     // "Cosmograph" name itself, so the crisp icon completes the lockup.
     logoImageUrl: `${window.location.origin}${basePath}/logo-mark.svg`,
-    socialButtonsPlacement: "bottom" as const,
+    // SSO first: full-width, fully-labeled provider buttons are the default
+    // sign-in path; the email form follows below as the alternative. (At the
+    // bottom with 4 providers Clerk compacts them into one row of truncated
+    // "Ap…/Gi…/Go…" buttons you can't read — placement "top" stacks them.)
+    socialButtonsPlacement: "top" as const,
     socialButtonsVariant: "blockButton" as const,
   },
   variables: {
@@ -39,8 +43,12 @@ export const clerkAppearance = {
     footer: "!shadow-none !border-0 !bg-transparent !rounded-none",
     headerTitle: "text-[#e6e6e6] font-display font-extrabold tracking-tight",
     headerSubtitle: "text-[#9da0ab]",
+    // Force one provider per row so each block button is full-width and shows
+    // its complete label ("Continue with Google") instead of being compacted
+    // into a row of unreadable truncated buttons.
+    socialButtons: "!grid !grid-cols-1 !gap-2",
     socialButtonsBlockButton:
-      "border-2 border-[#3c3f4b] bg-white/5 hover:bg-white/10",
+      "border-2 border-[#3c3f4b] bg-white/5 hover:bg-white/10 !w-full justify-center",
     socialButtonsBlockButtonText: "text-[#e6e6e6]",
     formFieldLabel:
       "text-[#9da0ab] font-mono text-[10px] uppercase tracking-widest",
