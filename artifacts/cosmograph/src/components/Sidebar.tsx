@@ -250,7 +250,7 @@ export function Sidebar() {
   return (
     <TooltipProvider delayDuration={150} skipDelayDuration={400}>
       <div
-        className={`console-panel absolute right-0 top-0 z-30 flex h-full flex-col overflow-hidden transition-[width] duration-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)] will-change-[width] ${
+        className={`console-panel absolute right-0 top-0 z-30 flex h-full flex-col overflow-hidden transition-[width] duration-[280ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[width] ${
           open ? "w-[min(12rem,80vw)]" : "w-14"
         }`}
       >
@@ -258,11 +258,11 @@ export function Sidebar() {
           {open ? (
             <motion.div
               key="panel"
-              initial={{ opacity: 0, x: 12 }}
+              initial={{ opacity: 0, x: 8 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 12 }}
-              transition={{ duration: 0.18 }}
-              className="flex h-full w-full flex-col overflow-hidden"
+              exit={{ opacity: 0, x: 8 }}
+              transition={{ duration: 0.14 }}
+              className="flex h-full w-[min(12rem,80vw)] shrink-0 flex-col overflow-hidden"
             >
               {/* Header */}
               <div className="flex shrink-0 items-center justify-between gap-2 border-b-2 border-edge px-3 py-2">
@@ -288,11 +288,11 @@ export function Sidebar() {
           ) : (
             <motion.div
               key="rail"
-              initial={{ opacity: 0, x: 12 }}
+              initial={{ opacity: 0, x: 8 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 12 }}
-              transition={{ duration: 0.18 }}
-              className="flex h-full w-full flex-col overflow-hidden"
+              exit={{ opacity: 0, x: 8 }}
+              transition={{ duration: 0.14 }}
+              className="flex h-full w-14 shrink-0 flex-col overflow-hidden"
             >
               {/* Header — mirrors the expanded console header: same height, bottom
                 border, and a same-size toggle button so the collapse/expand
