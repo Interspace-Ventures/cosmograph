@@ -80,6 +80,30 @@ export const ConfirmCheckoutResponse = zod.object({
 
 
 /**
+ * Returns the seed of the ship the account has saved, or null if none has been saved yet. The ship look is derived deterministically from this seed on the client.
+
+ * @summary The signed-in account's saved ship
+ */
+export const GetShipResponse = zod.object({
+  "shipSeed": zod.string().nullable().describe('The account\'s saved ship seed, or null if none is saved.')
+})
+
+
+/**
+ * Persists the account's chosen ship seed so it follows them across devices and is broadcast to other cosmonauts. The seed is sanitized to a short alphanumeric string server-side.
+
+ * @summary Save the account's ship
+ */
+export const SaveShipBody = zod.object({
+  "seed": zod.string().describe('The ship seed to save (sanitized to short alphanumeric server-side).')
+})
+
+export const SaveShipResponse = zod.object({
+  "shipSeed": zod.string().nullable().describe('The account\'s saved ship seed, or null if none is saved.')
+})
+
+
+/**
  * Uses the LLM purely as a translator: it converts a plain-English question about a scientist's corpus into a validated, structured query spec. The model never computes counts or lists — the browser runs the returned spec deterministically over the locally-baked data. Only the question text and a description of the data shape are sent; no actual paper data leaves the browser.
 
  * @summary Translate a natural-language question into a structured query spec

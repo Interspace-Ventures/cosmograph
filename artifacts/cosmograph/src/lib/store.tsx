@@ -24,6 +24,7 @@ import {
 } from "@/lib/openalex";
 import { rebuildLayout } from "@/components/GalaxySystem";
 import { readAuthorParam, writeAuthorParam } from "@/lib/authorUrl";
+import { getSelfSeed, setSelfSeed, randomSeed } from "@/lib/shipLook";
 
 export type DatasetStatus = "idle" | "loading" | "ready" | "error";
 
@@ -61,6 +62,17 @@ interface AppState {
   setCameraMode: (mode: CameraMode) => void;
   showSelfShip: boolean;
   setShowSelfShip: (val: boolean) => void;
+  // The viewer's own ship-look seed. Derived deterministically into a ship in
+  // shipLook.ts, broadcast over presence so others see this exact craft, and —
+  // for signed-in accounts — persisted server-side (savedShipSeed) so it follows
+  // across devices. Defaults to the per-browser local seed.
+  shipSeed: string;
+  setShipSeed: (seed: string) => void;
+  shuffleShip: () => void;
+  // The seed the server has on file for the signed-in account (null = none / not
+  // signed in). When it differs from shipSeed there are unsaved changes.
+  savedShipSeed: string | null;
+  setSavedShipSeed: (seed: string | null) => void;
   selectedObject: SelectedObject;
   setSelectedObject: (obj: SelectedObject) => void;
   hoveredObject: HoveredObject;
@@ -200,6 +212,17 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       /* ignore storage failures (private mode, etc.) */
     }
   }, []);
+  // Own ship-look seed: starts from the per-browser local default. ShipBridge
+  // overrides it with a signed-in account's saved seed once it loads.
+  const [shipSeed, setShipSeedState] = useState<string>(() => getSelfSeed());
+  const [savedShipSeed, setSavedShipSeed] = useState<string | null>(null);
+  const setShipSeed = useCallback((seed: string) => {
+    setShipSeedState(seed);
+    setSelfSeed(seed); // keep the local default in sync so it sticks per-browser
+  }, []);
+  const shuffleShip = useCallback(() => {
+    setShipSeed(randomSeed());
+  }, [setShipSeed]);
   const [selectedObject, setSelectedObject] = useState<SelectedObject>(null);
   const [hoveredObject, setHoveredObject] = useState<HoveredObject>(null);
   const [galaxyTilt, setGalaxyTilt] = useState<number>(0);
@@ -389,6 +412,11 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         setCameraMode,
         showSelfShip,
         setShowSelfShip,
+        shipSeed,
+        setShipSeed,
+        shuffleShip,
+        savedShipSeed,
+        setSavedShipSeed,
         selectedObject,
         setSelectedObject,
         hoveredObject,

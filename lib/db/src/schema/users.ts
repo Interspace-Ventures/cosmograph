@@ -18,6 +18,11 @@ export const usersTable = pgTable("users", {
   email: text("email"),
   stripeCustomerId: text("stripe_customer_id"),
   hasPaid: boolean("has_paid").notNull().default(false),
+  // The account's saved cosmonaut-ship seed. The ship look is derived
+  // deterministically from this short seed (see shipLook.ts); persisting it lets
+  // a member's chosen ship follow them across devices and be broadcast to other
+  // cosmonauts in real time. Null until the account saves one.
+  shipSeed: text("ship_seed"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

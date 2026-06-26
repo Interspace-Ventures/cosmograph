@@ -17,6 +17,19 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.16.0",
+    codename: "Hangar",
+    date: "2026-06-26",
+    summary:
+      "Sign in to save your ship — your chosen craft now follows you across devices and every other cosmonaut sees it live.",
+    changes: [
+      "Signed-in explorers can now save their ship: it's remembered on your account and follows you to every device.",
+      "Other cosmonauts now see your exact ship in real time, not a generic one — shuffle to a look you like, then Save.",
+      "New 'Your ship' panel in the account area with a live look preview, a Shuffle button, and a Save button.",
+      "The Show ship / Hide ship toggle moved onto the Orbit button itself, so ship controls live together.",
+    ],
+  },
+  {
     version: "3.15.0",
     codename: "Liveries",
     date: "2026-06-26",

@@ -1,9 +1,9 @@
 import { useFrame, useThree } from "@react-three/fiber";
-import { useRef, useEffect, useMemo, useSyncExternalStore } from "react";
+import { useRef, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import * as THREE from "three";
 import { presence } from "@/lib/presence";
 import { useAppState } from "@/lib/store";
-import { shipLookFromSeed, getSelfSeed } from "@/lib/shipLook";
+import { shipLookFromSeed } from "@/lib/shipLook";
 import { ShipModel, SHIP_FORWARD } from "./Ship";
 
 const X_AXIS = new THREE.Vector3(1, 0, 0);
@@ -44,15 +44,21 @@ function PeerShip({ id }: { id: string }) {
   const initialized = useRef(false);
   const appear = useRef(0);
   const phase = useRef(hashId(id) * Math.PI * 2);
-  // Each cosmonaut's ship look is derived deterministically from their stable
-  // presence id, so every peer reads as a distinct craft with no extra wire data.
-  const look = useMemo(() => shipLookFromSeed(id), [id]);
+  // Each cosmonaut's ship look is derived from the seed they broadcast (their
+  // saved/local ship), falling back to their stable presence id when absent.
+  // Tracked in state so a peer who saves a new ship mid-session re-skins live.
+  const [seed, setSeed] = useState<string | undefined>(
+    () => presence.peers.get(id)?.seed,
+  );
+  const look = useMemo(() => shipLookFromSeed(seed || id), [seed, id]);
   const camera = useThree((s) => s.camera);
 
   useFrame((_, dt) => {
     const peer = presence.peers.get(id);
     const g = ref.current;
     if (!peer || !g) return;
+    // Re-skin only when the broadcast seed actually changes (rare) — cheap.
+    if (peer.seed !== seed) setSeed(peer.seed);
 
     _target.set(peer.x, peer.y, peer.z);
     if (!initialized.current) {
@@ -133,15 +139,16 @@ const _baseQ = new THREE.Quaternion();
  * cockpit, so it's hidden (you'd be sitting inside it).
  */
 export function SelfShip() {
-  const { cameraMode, introFinished, tourActive, showSelfShip } = useAppState();
+  const { cameraMode, introFinished, tourActive, showSelfShip, shipSeed } =
+    useAppState();
   const camera = useThree((s) => s.camera);
   const ref = useRef<THREE.Group>(null);
   const roll = useRef(0);
   const prevAz = useRef<number | null>(null);
   const appear = useRef(0);
-  // The viewer's own ship look, stable per-browser (and, once accounts can save
-  // a ship, overridable from the saved config).
-  const look = useMemo(() => shipLookFromSeed(getSelfSeed()), []);
+  // The viewer's own ship look, derived from the store seed so it updates live
+  // when they shuffle or load a saved ship.
+  const look = useMemo(() => shipLookFromSeed(shipSeed), [shipSeed]);
 
   const active =
     introFinished && !tourActive && cameraMode === "god" && showSelfShip;
@@ -201,7 +208,7 @@ export function SelfShip() {
 
 /** Streams this explorer's camera pose to the server (no visual output). */
 export function PresenceBroadcaster() {
-  const { galaxyTilt, cameraMode, datasetVersion } = useAppState();
+  const { galaxyTilt, cameraMode, datasetVersion, shipSeed } = useAppState();
   const camera = useThree((s) => s.camera);
 
   // Presence (and its server cost) is scoped to the canonical default galaxy
@@ -218,7 +225,13 @@ export function PresenceBroadcaster() {
     if (!presenceEnabled) return;
     _target.copy(camera.position);
     if (galaxyTilt) _target.applyAxisAngle(X_AXIS, -galaxyTilt);
-    presence.sendPose(_target.x, _target.y, _target.z, cameraMode === "spaceship" ? 1 : 0);
+    presence.sendPose(
+      _target.x,
+      _target.y,
+      _target.z,
+      cameraMode === "spaceship" ? 1 : 0,
+      shipSeed,
+    );
   });
 
   return null;

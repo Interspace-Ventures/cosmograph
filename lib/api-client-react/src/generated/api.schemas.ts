@@ -43,6 +43,16 @@ export interface ConfirmRequest {
   sessionId: string;
 }
 
+export interface ShipState {
+  /** The account's saved ship seed, or null if none is saved. */
+  shipSeed: string | null;
+}
+
+export interface SaveShipRequest {
+  /** The ship seed to save (sanitized to short alphanumeric server-side). */
+  seed: string;
+}
+
 /**
  * A single field of the data shape (name + type), no actual data.
  */

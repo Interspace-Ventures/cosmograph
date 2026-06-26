@@ -30,6 +30,8 @@ import type {
   FeedbackRequest,
   FeedbackResult,
   HealthStatus,
+  SaveShipRequest,
+  ShipState,
   UnlockRequest
 } from './api.schemas';
 
@@ -419,6 +421,158 @@ export const useConfirmCheckout = <TError = ErrorType<Error>,
         TContext
       > => {
       return useMutation(getConfirmCheckoutMutationOptions(options));
+    }
+
+export const getGetShipUrl = () => {
+
+
+
+
+  return `/api/me/ship`
+}
+
+/**
+ * Returns the seed of the ship the account has saved, or null if none has been saved yet. The ship look is derived deterministically from this seed on the client.
+
+ * @summary The signed-in account's saved ship
+ */
+export const getShip = async ( options?: RequestInit): Promise<ShipState> => {
+
+  return customFetch<ShipState>(getGetShipUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetShipQueryKey = () => {
+    return [
+    `/api/me/ship`
+    ] as const;
+    }
+
+
+export const getGetShipQueryOptions = <TData = Awaited<ReturnType<typeof getShip>>, TError = ErrorType<Error>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getShip>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetShipQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getShip>>> = ({ signal }) => getShip({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getShip>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetShipQueryResult = NonNullable<Awaited<ReturnType<typeof getShip>>>
+export type GetShipQueryError = ErrorType<Error>
+
+
+/**
+ * @summary The signed-in account's saved ship
+ */
+
+export function useGetShip<TData = Awaited<ReturnType<typeof getShip>>, TError = ErrorType<Error>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getShip>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetShipQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getSaveShipUrl = () => {
+
+
+
+
+  return `/api/me/ship`
+}
+
+/**
+ * Persists the account's chosen ship seed so it follows them across devices and is broadcast to other cosmonauts. The seed is sanitized to a short alphanumeric string server-side.
+
+ * @summary Save the account's ship
+ */
+export const saveShip = async (saveShipRequest: SaveShipRequest, options?: RequestInit): Promise<ShipState> => {
+
+  return customFetch<ShipState>(getSaveShipUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      saveShipRequest,)
+  }
+);}
+
+
+
+
+export const getSaveShipMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveShip>>, TError,{data: BodyType<SaveShipRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof saveShip>>, TError,{data: BodyType<SaveShipRequest>}, TContext> => {
+
+const mutationKey = ['saveShip'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof saveShip>>, {data: BodyType<SaveShipRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  saveShip(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SaveShipMutationResult = NonNullable<Awaited<ReturnType<typeof saveShip>>>
+    export type SaveShipMutationBody = BodyType<SaveShipRequest>
+    export type SaveShipMutationError = ErrorType<Error>
+
+    /**
+ * @summary Save the account's ship
+ */
+export const useSaveShip = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveShip>>, TError,{data: BodyType<SaveShipRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof saveShip>>,
+        TError,
+        {data: BodyType<SaveShipRequest>},
+        TContext
+      > => {
+      return useMutation(getSaveShipMutationOptions(options));
     }
 
 export const getTranslateAskUrl = () => {

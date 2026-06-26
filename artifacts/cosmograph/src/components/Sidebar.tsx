@@ -100,8 +100,6 @@ export function Sidebar() {
   const {
     setCameraMode,
     cameraMode,
-    showSelfShip,
-    setShowSelfShip,
     filters,
     setInfoOpen,
     setAskOpen,
@@ -232,20 +230,6 @@ export function Sidebar() {
           active: cameraMode === "spaceship",
           locked: !canExplore,
         },
-        // The self ship only appears in Orbit view, so its show/hide toggle is
-        // only meaningful there.
-        ...(cameraMode === "god"
-          ? [
-              {
-                kind: "action" as const,
-                id: "my-ship",
-                label: showSelfShip ? "Hide ship" : "Show ship",
-                Icon: showSelfShip ? Eye : EyeOff,
-                onClick: () => setShowSelfShip(!showSelfShip),
-                active: showSelfShip,
-              },
-            ]
-          : []),
         {
           kind: "action",
           id: "tour",
@@ -448,6 +432,12 @@ function ExpandedItem({ item }: { item: ConsoleItem }) {
     );
   }
 
+  // Orbit gets a small embedded "show/hide my ship" toggle on its right edge,
+  // since the viewer's own ship only appears in Orbit view.
+  if (item.kind === "action" && item.id === "orbit") {
+    return <OrbitControl onOrbit={item.onClick} active={!!item.active} />;
+  }
+
   // action
   const { Icon } = item;
   if (item.accent || item.paidTag) {
@@ -634,6 +624,65 @@ function SectionLabel({
       {icon}
       {children}
     </span>
+  );
+}
+
+// The Orbit button with a small embedded eye toggle on its right edge that
+// shows/hides the viewer's own ship. The toggle only appears while Orbit is
+// active, since the self ship is only drawn in Orbit view.
+function OrbitControl({
+  onOrbit,
+  active,
+}: {
+  onOrbit: () => void;
+  active: boolean;
+}) {
+  const { showSelfShip, setShowSelfShip } = useAppState();
+  return (
+    <div className="flex w-full">
+      <button
+        type="button"
+        onClick={onOrbit}
+        aria-pressed={active}
+        title="Orbit"
+        style={active ? { background: "var(--accent)" } : undefined}
+        className={`flex flex-1 items-center gap-2 border-2 px-3 py-2 text-[11px] font-display uppercase tracking-wider transition-all ${
+          active
+            ? "border-r-0 border-edge text-accent-foreground"
+            : "border-edge bg-white/5 text-ink hover:bg-white/10"
+        }`}
+      >
+        <Orbit size={14} />
+        Orbit
+      </button>
+      {active && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={() => setShowSelfShip(!showSelfShip)}
+              aria-pressed={!showSelfShip}
+              aria-label={showSelfShip ? "Hide your ship" : "Show your ship"}
+              style={{ background: "var(--accent)" }}
+              className="flex items-center justify-center border-2 border-l border-edge px-2 text-accent-foreground transition-all hover:brightness-110"
+            >
+              {showSelfShip ? (
+                <Eye size={13} />
+              ) : (
+                <EyeOff size={13} className="opacity-60" />
+              )}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent
+            side="left"
+            sideOffset={8}
+            className="rounded-none border-2 border-edge bg-black/90 px-2 py-1 font-display text-[10px] uppercase tracking-wider text-ink"
+          >
+            {showSelfShip ? "Hide your ship" : "Show your ship"}
+          </TooltipContent>
+        </Tooltip>
+      )}
+    </div>
   );
 }
 

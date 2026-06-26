@@ -16,6 +16,8 @@ tags:
     description: Natural-language question translation
   - name: feedback
     description: Bug reports and feature requests
+  - name: ship
+    description: The signed-in account's saved cosmonaut ship
 paths:
   /healthz:
     get:
@@ -143,6 +145,61 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Entitlement"
+        "401":
+          description: Not signed in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /me/ship:
+    get:
+      operationId: getShip
+      tags: [ship]
+      summary: The signed-in account's saved ship
+      description: >
+        Returns the seed of the ship the account has saved, or null if none has
+        been saved yet. The ship look is derived deterministically from this
+        seed on the client.
+      responses:
+        "200":
+          description: The account's saved ship seed (or null)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShipState"
+        "401":
+          description: Not signed in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      operationId: saveShip
+      tags: [ship]
+      summary: Save the account's ship
+      description: >
+        Persists the account's chosen ship seed so it follows them across
+        devices and is broadcast to other cosmonauts. The seed is sanitized to a
+        short alphanumeric string server-side.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveShipRequest"
+      responses:
+        "200":
+          description: The saved ship seed (after sanitization)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShipState"
+        "400":
+          description: Invalid seed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
           description: Not signed in
           content:
@@ -282,6 +339,23 @@ components:
           description: The Stripe Checkout session id returned on the success redirect.
       required:
         - sessionId
+    ShipState:
+      type: object
+      properties:
+        shipSeed:
+          type: string
+          nullable: true
+          description: The account's saved ship seed, or null if none is saved.
+      required:
+        - shipSeed
+    SaveShipRequest:
+      type: object
+      properties:
+        seed:
+          type: string
+          description: The ship seed to save (sanitized to short alphanumeric server-side).
+      required:
+        - seed
     AskField:
       type: object
       description: A single field of the data shape (name + type), no actual data.

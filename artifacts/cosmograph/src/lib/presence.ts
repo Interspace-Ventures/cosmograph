@@ -10,6 +10,9 @@ export type Peer = {
   y: number;
   z: number;
   m: 0 | 1; // 0 = orbit view, 1 = fly
+  // Optional ship-look seed broadcast by the peer (their saved/local ship). When
+  // absent, the scene falls back to deriving a look from the stable peer id.
+  seed?: string;
 };
 
 type Listener = () => void;
@@ -139,7 +142,13 @@ class PresenceClient {
       t?: string;
       id?: string;
       count?: number;
-      peers?: Array<{ id: string; c: string; p: [number, number, number]; m: 0 | 1 }>;
+      peers?: Array<{
+        id: string;
+        c: string;
+        p: [number, number, number];
+        m: 0 | 1;
+        s?: string;
+      }>;
     };
     try {
       msg = JSON.parse(ev.data);
@@ -156,7 +165,15 @@ class PresenceClient {
     const next = new Map<string, Peer>();
     for (const p of msg.peers) {
       if (!p || p.id === this.selfId) continue;
-      next.set(p.id, { id: p.id, color: p.c, x: p.p[0], y: p.p[1], z: p.p[2], m: p.m });
+      next.set(p.id, {
+        id: p.id,
+        color: p.c,
+        x: p.p[0],
+        y: p.p[1],
+        z: p.p[2],
+        m: p.m,
+        seed: typeof p.s === "string" ? p.s : undefined,
+      });
     }
     this.peers = next;
 
@@ -172,16 +189,25 @@ class PresenceClient {
     if (idsChanged || countChanged) this.emit();
   }
 
-  /** Throttled (~10 Hz) outbound pose update; coords are galaxy-local space. */
-  sendPose(x: number, y: number, z: number, m: 0 | 1): void {
+  /**
+   * Throttled (~10 Hz) outbound pose update; coords are galaxy-local space. The
+   * optional `seed` carries this explorer's ship look (saved or local) so other
+   * cosmonauts render the exact ship; omitted/empty falls back to id-derived.
+   */
+  sendPose(x: number, y: number, z: number, m: 0 | 1, seed?: string): void {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
     const now = performance.now();
     if (now - this.lastSendAt < 90) return;
     this.lastSendAt = now;
     try {
-      this.ws.send(
-        JSON.stringify({ t: "pose", p: [Math.round(x), Math.round(y), Math.round(z)], m }),
-      );
+      const msg: {
+        t: "pose";
+        p: [number, number, number];
+        m: 0 | 1;
+        s?: string;
+      } = { t: "pose", p: [Math.round(x), Math.round(y), Math.round(z)], m };
+      if (seed) msg.s = seed;
+      this.ws.send(JSON.stringify(msg));
     } catch {
       // best-effort
     }

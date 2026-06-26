@@ -15,4 +15,4 @@
 - [Active scientist in URL](active-scientist-url.md) — explored author encoded as `?author=A123`; carry it through Stripe Checkout (sanitized into success/cancel_url) so redirects don't dump users on the default scientist.
 - [Poly Pizza GLB download](poly-pizza-glb.md) — page id ≠ file id; `static.poly.pizza/<page-id>.glb` is AccessDenied; scrape the page for the real UUID CDN url, verify `glTF` magic bytes.
 - [Iframe auth handoff](iframe-auth-handoff.md) — Clerk OAuth+bot-challenge split is an iframe-preview artifact; in-frame auth pages show a "open in new window" handoff, real widget renders top-level/prod.
-- [Cosmonaut presence ships](cosmonaut-ships.md) — peers + self render as low-poly ships; self in orbit is a small constant-apparent-size sprite (not a chase craft); ~9s reveal grace gate before peers/toast appear.
+- [Cosmonaut presence ships](cosmonaut-ships.md) — peers + self are low-poly ships; ship look = a seed now broadcast over presence + saved to users.ship_seed (/me/ship); hydrate saved seed once per sign-in.

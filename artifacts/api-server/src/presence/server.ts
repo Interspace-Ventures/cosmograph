@@ -49,6 +49,9 @@ type Client = {
   y: number;
   z: number;
   m: 0 | 1; // 0 = orbit/god, 1 = fly
+  // The explorer's ship-look seed (sanitized to short alphanumeric). Empty until
+  // the client sends one; rebroadcast so peers render the exact saved ship.
+  seed: string;
   hasPose: boolean;
   isAlive: boolean;
   tokens: number;
@@ -137,6 +140,7 @@ export function attachPresence(server: HttpServer): void {
         y: 0,
         z: 0,
         m: 0,
+        seed: "",
         hasPose: false,
         isAlive: true,
         tokens: MSG_BURST,
@@ -196,6 +200,12 @@ export function attachPresence(server: HttpServer): void {
         client.y = clamp(y);
         client.z = clamp(z);
         client.m = (msg as { m?: unknown }).m === 1 ? 1 : 0;
+        const rawSeed = (msg as { s?: unknown }).s;
+        if (typeof rawSeed === "string") {
+          // Clamp untrusted seed to a short alphanumeric token before storing or
+          // rebroadcasting (mirrors the REST sanitize in lib/ship.ts).
+          client.seed = rawSeed.replace(/[^a-zA-Z0-9]/g, "").slice(0, 16);
+        }
         client.hasPose = true;
         client.lastPose = now;
       });
@@ -215,11 +225,24 @@ export function attachPresence(server: HttpServer): void {
   const tick = setInterval(() => {
     if (clients.size === 0) return;
     const now = Date.now();
-    const peers: Array<{ id: string; c: string; p: [number, number, number]; m: 0 | 1 }> = [];
+    const peers: Array<{
+      id: string;
+      c: string;
+      p: [number, number, number];
+      m: 0 | 1;
+      s?: string;
+    }> = [];
     for (const c of clients.values()) {
       if (!c.hasPose || now - c.lastPose > STALE_MS) continue;
       if (peers.length >= MAX_RENDER_PEERS) break;
-      peers.push({ id: c.id, c: c.color, p: [c.x, c.y, c.z], m: c.m });
+      const peer: { id: string; c: string; p: [number, number, number]; m: 0 | 1; s?: string } = {
+        id: c.id,
+        c: c.color,
+        p: [c.x, c.y, c.z],
+        m: c.m,
+      };
+      if (c.seed) peer.s = c.seed;
+      peers.push(peer);
     }
     const payload = JSON.stringify({ t: "state", count: clients.size, peers });
     for (const c of clients.values()) {

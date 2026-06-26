@@ -79,11 +79,26 @@ export function getSelfSeed(): string {
   try {
     let s = localStorage.getItem(SELF_SEED_KEY);
     if (!s) {
-      s = Math.random().toString(36).slice(2, 10);
+      s = randomSeed();
       localStorage.setItem(SELF_SEED_KEY, s);
     }
     return s;
   } catch {
     return "self";
   }
+}
+
+// Persist a new local default seed. Used when shuffling to a new look, or when a
+// signed-in account's saved seed is loaded so it sticks on this browser too.
+export function setSelfSeed(seed: string): void {
+  try {
+    localStorage.setItem(SELF_SEED_KEY, seed);
+  } catch {
+    // ignore (private mode / storage disabled)
+  }
+}
+
+// A fresh random ship seed (short alphanumeric, matching the server's sanitize).
+export function randomSeed(): string {
+  return Math.random().toString(36).slice(2, 10);
 }
