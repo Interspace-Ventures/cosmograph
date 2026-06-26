@@ -17,6 +17,19 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.15.0",
+    codename: "Liveries",
+    date: "2026-06-26",
+    summary:
+      "Every cosmonaut now flies a distinct ship, and your own chase craft turns near-invisible with a one-tap show/hide toggle.",
+    changes: [
+      "Each cosmonaut's ship now has its own look — hull tint, engine glow, nose running-light, and size all vary per explorer — so the galaxy reads as a real crowd of distinct craft.",
+      "Your own ship in Orbit view is now barely-there glass, so it never blocks the galaxy or UI behind it.",
+      "New 'Show ship / Hide ship' toggle under Navigate lets you hide your own ship in Orbit view entirely; the choice is remembered next visit.",
+      "Your ship's look now stays the same across visits (saved in your browser), laying the groundwork for saving and customizing it once you sign in.",
+    ],
+  },
+  {
     version: "3.14.0",
     codename: "Dropship",
     date: "2026-06-26",

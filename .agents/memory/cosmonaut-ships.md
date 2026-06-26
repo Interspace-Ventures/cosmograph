@@ -13,3 +13,9 @@ Presence peers and the viewer's own avatar are both small low-poly ships (replac
 **Why:** seeing peers pop in instantly on arrival is disorienting.
 
 Both peers and self-ship are gated out of capture/screenshot paths via `!captureTopDown`, and presence is scoped to the canonical default galaxy (`datasetVersion === 0`).
+
+**Per-cosmonaut ship variety is derived client-side from a seed — the presence wire protocol is NOT touched.**
+**Why:** peer ids are already stable and unique, so hashing each into a look (hull tint, glow, accent, scale) makes every cosmonaut distinct with zero extra bytes broadcast; adding a config field to the protocol would be needless cost/complexity.
+**How to apply:** peers seed from their presence id; the viewer's own ship seeds from a per-browser persisted value so "your ship" stays consistent across visits. When account-saved/customizable ships land, the saved config overrides the local seed for self, and only THEN does broadcasting a look over the wire become worth it (so others see your chosen ship).
+
+**Self-ship in orbit is "essentially transparent" (opacity ~0.16) AND has a localStorage-persisted show/hide toggle** (`showSelfShip`), surfaced in the Sidebar Navigate group only while in orbit mode. The user wanted it barely-there with the option to hide it entirely.

@@ -18,6 +18,8 @@ import {
   Rocket,
   Telescope,
   Sparkles,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { useAppState } from "@/lib/store";
 import { isFiltersActive } from "@/data/galaxy";
@@ -98,6 +100,8 @@ export function Sidebar() {
   const {
     setCameraMode,
     cameraMode,
+    showSelfShip,
+    setShowSelfShip,
     filters,
     setInfoOpen,
     setAskOpen,
@@ -228,6 +232,20 @@ export function Sidebar() {
           active: cameraMode === "spaceship",
           locked: !canExplore,
         },
+        // The self ship only appears in Orbit view, so its show/hide toggle is
+        // only meaningful there.
+        ...(cameraMode === "god"
+          ? [
+              {
+                kind: "action" as const,
+                id: "my-ship",
+                label: showSelfShip ? "Hide ship" : "Show ship",
+                Icon: showSelfShip ? Eye : EyeOff,
+                onClick: () => setShowSelfShip(!showSelfShip),
+                active: showSelfShip,
+              },
+            ]
+          : []),
         {
           kind: "action",
           id: "tour",

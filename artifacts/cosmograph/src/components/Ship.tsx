@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
+import { type ShipLook } from "../lib/shipLook";
 
 // A real low-poly spaceship model (CC0, "Spaceship" by Quaternius via Poly Pizza,
 // https://poly.pizza/m/Jqfed124pQ). The model's nose points local +Z, which lets
@@ -38,39 +39,52 @@ export function getGlowTexture(): THREE.Texture {
   return glowTexture;
 }
 
-// Shared material variants, derived once from the loaded model material. The
-// galaxy is very dark, so we self-illuminate the texture (emissiveMap) a touch
-// to keep ships readable. "self" is semi-transparent so the viewer's own ship
-// never occludes the UI.
-let sharedMats: { peer: THREE.Material; self: THREE.Material } | null = null;
-function getMaterials(base: THREE.MeshStandardMaterial) {
-  if (sharedMats) return sharedMats;
-  const peer = base.clone();
-  peer.emissiveMap = base.map;
-  peer.emissive = new THREE.Color("#ffffff");
-  peer.emissiveIntensity = 0.35;
-  const self = peer.clone();
-  self.transparent = true;
-  self.opacity = 0.55;
-  self.depthWrite = false;
-  sharedMats = { peer, self };
-  return sharedMats;
+// Self ship is "essentially transparent" so the viewer's own chase craft reads
+// as a faint glassy hint and never occludes the galaxy or UI behind it.
+const SELF_OPACITY = 0.16;
+
+// Per-hull material cache. The galaxy is very dark, so we self-illuminate the
+// texture (emissiveMap) a touch to keep ships readable. The hull tint multiplies
+// the baked texture atlas to vary each cosmonaut's color. Materials are cached by
+// (variant, hull) so 60 peers drawing from an 8-color palette only ever allocate
+// a handful of materials.
+const matCache = new Map<string, THREE.MeshStandardMaterial>();
+function getShipMaterial(
+  base: THREE.MeshStandardMaterial,
+  variant: "peer" | "self",
+  hull: string,
+): THREE.MeshStandardMaterial {
+  const key = `${variant}|${hull}`;
+  const cached = matCache.get(key);
+  if (cached) return cached;
+  const m = base.clone();
+  m.color = new THREE.Color(hull);
+  m.emissiveMap = base.map;
+  m.emissive = new THREE.Color("#ffffff");
+  m.emissiveIntensity = 0.35;
+  if (variant === "self") {
+    m.transparent = true;
+    m.opacity = SELF_OPACITY;
+    m.depthWrite = false;
+  }
+  matCache.set(key, m);
+  return m;
 }
 
 /**
  * One spaceship. Normalized so its longest dimension is 1 unit and centered at
  * the origin, so callers can size it purely via the parent group's scale and
- * rotate it about its own center. `variant="self"` is the translucent own-ship;
- * `glow` adds an additive engine halo tinted `glowColor`.
+ * rotate it about its own center. `variant="self"` is the translucent own-ship.
+ * `look` drives per-cosmonaut variety: hull tint, engine glow, and nose accent.
  */
 export function ShipModel({
   variant = "peer",
+  look,
   glow = true,
-  glowColor = "#9ec5ff",
 }: {
   variant?: "peer" | "self";
+  look: ShipLook;
   glow?: boolean;
-  glowColor?: string;
 }) {
   const { nodes, materials } = useGLTF(MODEL_URL) as unknown as {
     nodes: Record<string, THREE.Mesh>;
@@ -86,8 +100,8 @@ export function ShipModel({
   }
 
   const geometry = meshNode.geometry;
-  const mats = getMaterials(baseMaterial);
-  const material = variant === "self" ? mats.self : mats.peer;
+  const material = getShipMaterial(baseMaterial, variant, look.hull);
+  const self = variant === "self";
 
   // Normalize: scale so the longest axis is 1, and offset so the model is
   // centered on the origin. The geometry is shared across every ship, so only
@@ -118,15 +132,27 @@ export function ShipModel({
         <sprite position={[0, 0, -0.55]} scale={[1, 1, 1]}>
           <spriteMaterial
             map={getGlowTexture()}
-            color={glowColor}
+            color={look.glow}
             transparent
-            opacity={variant === "self" ? 0.6 : 0.8}
+            opacity={self ? 0.35 : 0.8}
             depthWrite={false}
             blending={THREE.AdditiveBlending}
             toneMapped={false}
           />
         </sprite>
       )}
+      {/* Nose running light — a small accent spark that varies per cosmonaut. */}
+      <sprite position={[0, 0.04, 0.5]} scale={[0.32, 0.32, 0.32]}>
+        <spriteMaterial
+          map={getGlowTexture()}
+          color={look.accent}
+          transparent
+          opacity={self ? 0.4 : 0.95}
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+          toneMapped={false}
+        />
+      </sprite>
     </group>
   );
 }

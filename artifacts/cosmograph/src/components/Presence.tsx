@@ -1,8 +1,9 @@
 import { useFrame, useThree } from "@react-three/fiber";
-import { useRef, useEffect, useSyncExternalStore } from "react";
+import { useRef, useEffect, useMemo, useSyncExternalStore } from "react";
 import * as THREE from "three";
 import { presence } from "@/lib/presence";
 import { useAppState } from "@/lib/store";
+import { shipLookFromSeed, getSelfSeed } from "@/lib/shipLook";
 import { ShipModel, SHIP_FORWARD } from "./Ship";
 
 const X_AXIS = new THREE.Vector3(1, 0, 0);
@@ -43,7 +44,9 @@ function PeerShip({ id }: { id: string }) {
   const initialized = useRef(false);
   const appear = useRef(0);
   const phase = useRef(hashId(id) * Math.PI * 2);
-  const color = presence.peers.get(id)?.color ?? "#8ab4ff";
+  // Each cosmonaut's ship look is derived deterministically from their stable
+  // presence id, so every peer reads as a distinct craft with no extra wire data.
+  const look = useMemo(() => shipLookFromSeed(id), [id]);
   const camera = useThree((s) => s.camera);
 
   useFrame((_, dt) => {
@@ -81,12 +84,12 @@ function PeerShip({ id }: { id: string }) {
 
     appear.current = Math.min(1, appear.current + dt / 0.9);
     const pulse = 1 + Math.sin(performance.now() * 0.002 + phase.current) * 0.05;
-    g.scale.setScalar(PEER_SCALE * easeOut(appear.current) * pulse);
+    g.scale.setScalar(PEER_SCALE * look.scale * easeOut(appear.current) * pulse);
   });
 
   return (
     <group ref={ref} scale={0.001}>
-      <ShipModel variant="peer" glow glowColor={color} />
+      <ShipModel variant="peer" look={look} glow />
     </group>
   );
 }
@@ -130,14 +133,18 @@ const _baseQ = new THREE.Quaternion();
  * cockpit, so it's hidden (you'd be sitting inside it).
  */
 export function SelfShip() {
-  const { cameraMode, introFinished, tourActive } = useAppState();
+  const { cameraMode, introFinished, tourActive, showSelfShip } = useAppState();
   const camera = useThree((s) => s.camera);
   const ref = useRef<THREE.Group>(null);
   const roll = useRef(0);
   const prevAz = useRef<number | null>(null);
   const appear = useRef(0);
+  // The viewer's own ship look, stable per-browser (and, once accounts can save
+  // a ship, overridable from the saved config).
+  const look = useMemo(() => shipLookFromSeed(getSelfSeed()), []);
 
-  const active = introFinished && !tourActive && cameraMode === "god";
+  const active =
+    introFinished && !tourActive && cameraMode === "god" && showSelfShip;
 
   // Reset the bank/appear state whenever it (re)activates so it eases back in.
   useEffect(() => {
@@ -180,14 +187,14 @@ export function SelfShip() {
     g.quaternion.copy(_baseQ).premultiply(_rollQ);
 
     appear.current = Math.min(1, appear.current + dt / 0.5);
-    g.scale.setScalar(SELF_SCALE * easeOut(appear.current));
+    g.scale.setScalar(SELF_SCALE * look.scale * easeOut(appear.current));
   });
 
   if (!active) return null;
 
   return (
     <group ref={ref} scale={0.001} renderOrder={10}>
-      <ShipModel variant="self" glow glowColor="#cfe8ff" />
+      <ShipModel variant="self" look={look} glow />
     </group>
   );
 }

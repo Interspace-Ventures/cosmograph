@@ -59,6 +59,8 @@ interface AppState {
   introProgressRef: React.MutableRefObject<number>;
   cameraMode: CameraMode;
   setCameraMode: (mode: CameraMode) => void;
+  showSelfShip: boolean;
+  setShowSelfShip: (val: boolean) => void;
   selectedObject: SelectedObject;
   setSelectedObject: (obj: SelectedObject) => void;
   hoveredObject: HoveredObject;
@@ -118,6 +120,7 @@ interface AppState {
 const AppStateContext = createContext<AppState | undefined>(undefined);
 
 const INTRO_SEEN_KEY = "cosmograph:introSeen";
+const SHOW_SELF_SHIP_KEY = "cosmograph:showSelfShip";
 
 function readIntroSeen(): boolean {
   try {
@@ -180,6 +183,23 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     setCustomizeOpen(false);
   }, []);
   const [cameraMode, setCameraModeState] = useState<CameraMode>("god");
+  // Whether the viewer's own (faint) chase ship is drawn in Orbit view. Persisted
+  // per-browser so the preference sticks across visits.
+  const [showSelfShip, setShowSelfShipState] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(SHOW_SELF_SHIP_KEY) !== "0";
+    } catch {
+      return true;
+    }
+  });
+  const setShowSelfShip = useCallback((val: boolean) => {
+    setShowSelfShipState(val);
+    try {
+      localStorage.setItem(SHOW_SELF_SHIP_KEY, val ? "1" : "0");
+    } catch {
+      /* ignore storage failures (private mode, etc.) */
+    }
+  }, []);
   const [selectedObject, setSelectedObject] = useState<SelectedObject>(null);
   const [hoveredObject, setHoveredObject] = useState<HoveredObject>(null);
   const [galaxyTilt, setGalaxyTilt] = useState<number>(0);
@@ -367,6 +387,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         introProgressRef,
         cameraMode,
         setCameraMode,
+        showSelfShip,
+        setShowSelfShip,
         selectedObject,
         setSelectedObject,
         hoveredObject,
