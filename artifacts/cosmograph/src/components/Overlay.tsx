@@ -111,7 +111,7 @@ function Header() {
         </h1>
       </div>
       <p className="pointer-events-none text-ink-dim font-mono text-[11px] mt-1 uppercase tracking-widest">
-        A Journey of Scientific Exploration · {galaxyData.author.name}
+        Scientific Work at Galactic Scale · {galaxyData.author.name}
       </p>
       <div className="pointer-events-none mt-3 flex flex-wrap gap-x-4 gap-y-1">
         <HeaderStat label="Papers" value={stats.totalPapers.toLocaleString()} />
