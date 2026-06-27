@@ -476,8 +476,8 @@ function ExpandedItem({ item }: { item: ConsoleItem }) {
 
   // action
   const { Icon } = item;
-  // Replay the animated icon (if any) on click, then run the action. Hover
-  // auto-animation is disabled so motion only fires on an intentional click.
+  // Replay the animated icon (if any) on click, then run the action. The icon
+  // also auto-animates on hover for a bit of liveliness.
   const handleClick = () => {
     animRef.current?.startAnimation();
     item.onClick();
@@ -488,7 +488,7 @@ function ExpandedItem({ item }: { item: ConsoleItem }) {
         ref={animRef}
         size={size}
         className={className}
-        animateOnHover={false}
+        animateOnHover
       />
     ) : (
       <Icon size={size} className={className} />
@@ -612,7 +612,7 @@ function RailItem({ item }: { item: ConsoleItem }) {
       locked={item.locked}
     >
       {item.animated ? (
-        <item.animated ref={animRef} size={15} animateOnHover={false} />
+        <item.animated ref={animRef} size={15} animateOnHover />
       ) : (
         <Icon size={15} />
       )}
