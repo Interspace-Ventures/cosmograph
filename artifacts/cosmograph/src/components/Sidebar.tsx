@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Info,
   Orbit,
-  Compass,
+  History,
   Rewind,
   Map,
   Navigation,
@@ -21,7 +21,7 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react";
-import { CompassIcon, RocketIcon, TelescopeIcon } from "lucide-animated";
+import { HistoryIcon, RocketIcon, TelescopeIcon } from "lucide-animated";
 import { useAppState } from "@/lib/store";
 import { isFiltersActive } from "@/data/galaxy";
 import { SITE } from "@/config/site";
@@ -174,8 +174,8 @@ export function Sidebar() {
           kind: "action",
           id: "changelog",
           label: "Changelog",
-          Icon: Rocket,
-          animated: RocketIcon,
+          Icon: History,
+          animated: HistoryIcon,
           onClick: () => setChangelogOpen(true),
           open: changelogOpen,
         },
@@ -256,8 +256,8 @@ export function Sidebar() {
           kind: "action",
           id: "fly",
           label: "Fly",
-          Icon: Compass,
-          animated: CompassIcon,
+          Icon: Rocket,
+          animated: RocketIcon,
           onClick: () => setCameraMode("spaceship"),
           active: cameraMode === "spaceship",
           locked: !canExplore,
