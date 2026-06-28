@@ -1,4 +1,4 @@
-import { useState, useRef, Fragment } from "react";
+import { useRef, Fragment } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Info,
@@ -9,7 +9,6 @@ import {
   ChevronDown,
   ChevronUp,
   Lock,
-  LayoutGrid,
   Rocket,
   Telescope,
   Sparkles,
@@ -20,7 +19,6 @@ import { TelescopeIcon } from "lucide-animated";
 import { useAppState } from "@/lib/store";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { isFiltersActive } from "@/data/galaxy";
-import { SITE } from "@/config/site";
 import { AccountIndicator, AccountIndicatorRail } from "./AccountIndicator";
 import { MessageCircleStar } from "./MessageCircleStar";
 import {
@@ -102,12 +100,7 @@ type ConsoleItem =
     };
 
 type ConsoleSection = {
-  id: "account" | SectionKey;
-  title?: string;
-  icon?: React.ReactNode;
-  flush?: boolean;
-  /** chrome = collapsible header (expanded) + divider separation (collapsed) */
-  chrome: boolean;
+  id: string;
   items: ConsoleItem[];
 };
 
@@ -127,7 +120,6 @@ export function Sidebar() {
     setConsoleOpen: setOpen,
   } = useAppState();
 
-  const { openSections, toggleSection } = useSectionState();
   const isMobile = useIsMobile();
 
   const filtersActive = isFiltersActive(filters);
@@ -135,7 +127,6 @@ export function Sidebar() {
   const sections: ConsoleSection[] = [
     {
       id: "account",
-      chrome: false,
       items: [
         {
           kind: "custom",
@@ -148,10 +139,6 @@ export function Sidebar() {
     },
     {
       id: "controls",
-      title: "Controls",
-      icon: <LayoutGrid size={15} />,
-      flush: true,
-      chrome: true,
       items: [
         {
           kind: "action",
@@ -241,11 +228,7 @@ export function Sidebar() {
                 </button>
               </div>
 
-              <ConsoleBody
-                sections={sections}
-                openSections={openSections}
-                toggleSection={toggleSection}
-              />
+              <ConsoleBody sections={sections} />
 
               <CameraFooter />
             </motion.div>
@@ -412,47 +395,22 @@ function CameraFooterRail({ horizontal }: { horizontal: boolean }) {
   );
 }
 
-/** Expanded panel body: section chrome + full-width labelled controls. */
-function ConsoleBody({
-  sections,
-  openSections,
-  toggleSection,
-}: {
-  sections: ConsoleSection[];
-  openSections: Record<SectionKey, boolean>;
-  toggleSection: (key: SectionKey) => void;
-}) {
+/** Expanded panel body: full-width labelled controls. */
+function ConsoleBody({ sections }: { sections: ConsoleSection[] }) {
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto custom-scrollbar p-3">
-      {sections.map((section) =>
-        section.chrome ? (
-          <CollapsibleSection
-            key={section.id}
-            icon={section.icon}
-            title={section.title ?? ""}
-            isOpen={openSections[section.id as SectionKey]}
-            onToggle={() => toggleSection(section.id as SectionKey)}
-            flush={section.flush}
-          >
-            <div className="flex flex-col gap-1.5">
-              {section.items.map((item) => (
-                <ExpandedItem key={item.id} item={item} />
-              ))}
-            </div>
-          </CollapsibleSection>
-        ) : (
-          <Fragment key={section.id}>
-            {section.items.map((item) => (
-              <ExpandedItem key={item.id} item={item} />
-            ))}
-          </Fragment>
-        ),
-      )}
+    <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto custom-scrollbar p-3">
+      {sections.map((section) => (
+        <Fragment key={section.id}>
+          {section.items.map((item) => (
+            <ExpandedItem key={item.id} item={item} />
+          ))}
+        </Fragment>
+      ))}
     </div>
   );
 }
 
-/** Collapsed rail body: neutral icon shortcuts, dividers between groups. */
+/** Collapsed rail body: neutral icon shortcuts. */
 function RailBody({
   sections,
   horizontal = false,
@@ -460,7 +418,6 @@ function RailBody({
   sections: ConsoleSection[];
   horizontal?: boolean;
 }) {
-  let firstChromeSeen = false;
   return (
     <div
       className={
@@ -469,21 +426,13 @@ function RailBody({
           : "flex flex-1 flex-col items-center gap-1 overflow-y-auto custom-scrollbar p-1.5"
       }
     >
-      {sections.map((section) => {
-        let divider = false;
-        if (section.chrome) {
-          divider = firstChromeSeen;
-          firstChromeSeen = true;
-        }
-        return (
-          <Fragment key={section.id}>
-            {divider && <Divider horizontal={horizontal} />}
-            {section.items.map((item) => (
-              <RailItem key={item.id} item={item} horizontal={horizontal} />
-            ))}
-          </Fragment>
-        );
-      })}
+      {sections.map((section) => (
+        <Fragment key={section.id}>
+          {section.items.map((item) => (
+            <RailItem key={item.id} item={item} horizontal={horizontal} />
+          ))}
+        </Fragment>
+      ))}
     </div>
   );
 }
@@ -709,91 +658,6 @@ function RailItem({
   );
 }
 
-type SectionKey = "controls";
-
-const SECTION_STORAGE_KEY = "galaxy.console.sections";
-const DEFAULT_SECTIONS: Record<SectionKey, boolean> = {
-  controls: true,
-};
-
-function useSectionState() {
-  const [openSections, setOpenSections] = useState<Record<SectionKey, boolean>>(
-    () => {
-      try {
-        const raw = localStorage.getItem(SECTION_STORAGE_KEY);
-        if (raw) return { ...DEFAULT_SECTIONS, ...JSON.parse(raw) };
-      } catch {
-        /* ignore */
-      }
-      return DEFAULT_SECTIONS;
-    },
-  );
-  const toggleSection = (key: SectionKey) =>
-    setOpenSections((prev) => {
-      const next = { ...prev, [key]: !prev[key] };
-      try {
-        localStorage.setItem(SECTION_STORAGE_KEY, JSON.stringify(next));
-      } catch {
-        /* ignore */
-      }
-      return next;
-    });
-  return { openSections, toggleSection };
-}
-
-function CollapsibleSection({
-  icon,
-  title,
-  isOpen,
-  onToggle,
-  children,
-  flush = false,
-}: {
-  icon?: React.ReactNode;
-  title: string;
-  isOpen: boolean;
-  onToggle: () => void;
-  children: React.ReactNode;
-  flush?: boolean;
-}) {
-  return (
-    <div className={flush ? "" : "border-t-2 border-edge pt-3"}>
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={isOpen}
-        className="flex w-full items-center justify-between gap-2 text-left"
-      >
-        <SectionLabel icon={icon}>{title}</SectionLabel>
-        <span className="flex items-center gap-2">
-          <ChevronDown
-            size={14}
-            className={`shrink-0 text-ink-dim transition-transform ${
-              isOpen ? "" : "-rotate-90"
-            }`}
-          />
-        </span>
-      </button>
-      {isOpen && <div className="mt-3">{children}</div>}
-    </div>
-  );
-}
-
-function SectionLabel({
-  children,
-  icon,
-}: {
-  children: React.ReactNode;
-  icon?: React.ReactNode;
-}) {
-  return (
-    <span className="flex items-center gap-2 font-mono text-[13px] uppercase tracking-widest text-ink-dim">
-      {icon}
-      {children}
-    </span>
-  );
-}
-
 // The Orbit button with a small embedded eye toggle on its right edge that
 // shows/hides the viewer's own ship. The toggle only appears while Orbit is
 // active, since the self ship is only drawn in Orbit view.
@@ -969,15 +833,5 @@ function RailButton({
       </TooltipTrigger>
       <RailTipContent>{tip}</RailTipContent>
     </Tooltip>
-  );
-}
-
-function Divider({ horizontal = false }: { horizontal?: boolean }) {
-  return (
-    <div
-      className={
-        horizontal ? "mx-0.5 h-6 w-px bg-edge/60" : "my-0.5 h-px w-6 bg-edge/60"
-      }
-    />
   );
 }
