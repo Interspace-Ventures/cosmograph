@@ -180,7 +180,6 @@ export function Sidebar() {
           open: customizeOpen,
           paidTag: true,
           trailing: Sparkles,
-          tooltip: "Choose researcher for cosmograph",
         },
         {
           kind: "action",
