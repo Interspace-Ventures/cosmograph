@@ -161,7 +161,9 @@ function HeaderActions() {
   const desktopRight = consoleOpen ? "min(12rem, 80vw)" : "3.5rem";
   return (
     <div
-      className="absolute right-0 z-20 flex items-center gap-2 p-3 transition-[right,top] duration-[280ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
+      className={`absolute right-0 z-20 flex items-center gap-2 px-3 transition-[right,top] duration-[280ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
+        isMobile ? "py-3" : "py-1"
+      }`}
       style={{
         top: bannerHeight,
         right: isMobile ? "0px" : `calc(${desktopRight} + 0.5rem)`,
