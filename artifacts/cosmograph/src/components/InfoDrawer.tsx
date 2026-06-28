@@ -47,7 +47,7 @@ export function InfoDrawer() {
               id="info-drawer-title"
               className="mt-1 mb-5 text-2xl font-title font-bold tracking-tight text-ink"
             >
-              A galaxy for a life in science
+              Scientific work on galactic scale
             </h2>
 
             <div className="space-y-4 text-[13px] leading-relaxed text-ink-dim">
