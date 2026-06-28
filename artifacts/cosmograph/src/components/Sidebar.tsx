@@ -4,7 +4,6 @@ import {
   Info,
   Orbit,
   Map,
-  Navigation,
   ChevronRight,
   ChevronLeft,
   ChevronDown,
@@ -150,8 +149,8 @@ export function Sidebar() {
       ],
     },
     {
-      id: "platform",
-      title: "Platform",
+      id: "controls",
+      title: "Controls",
       icon: <LayoutGrid size={15} />,
       flush: true,
       chrome: true,
@@ -179,16 +178,6 @@ export function Sidebar() {
           activeIconClass: "text-accent",
         },
         {
-          kind: "link",
-          id: "sponsor",
-          label: "Sponsor",
-          Icon: Heart,
-          href: SITE.github.sponsors,
-          title: "Sponsor development via GitHub Sponsors (opens in a new tab)",
-          paidTag: true,
-          trailing: Github,
-        },
-        {
           kind: "action",
           id: "personalize",
           label: "Personalize",
@@ -200,14 +189,6 @@ export function Sidebar() {
           trailing: Sparkles,
           tooltip: "Choose researcher for cosmograph",
         },
-      ],
-    },
-    {
-      id: "navigate",
-      title: "Navigate",
-      icon: <Navigation size={15} />,
-      chrome: true,
-      items: [
         {
           kind: "custom",
           id: "camera",
@@ -223,6 +204,16 @@ export function Sidebar() {
           Icon: Map,
           onClick: startTour,
           locked: !canExplore,
+        },
+        {
+          kind: "link",
+          id: "sponsor",
+          label: "Sponsor",
+          Icon: Heart,
+          href: SITE.github.sponsors,
+          title: "Sponsor development via GitHub Sponsors (opens in a new tab)",
+          paidTag: true,
+          trailing: Github,
         },
       ],
     },
@@ -696,13 +687,11 @@ function RailItem({
   );
 }
 
-type SectionKey = "share" | "navigate" | "platform";
+type SectionKey = "controls";
 
 const SECTION_STORAGE_KEY = "galaxy.console.sections";
 const DEFAULT_SECTIONS: Record<SectionKey, boolean> = {
-  share: true,
-  navigate: true,
-  platform: true,
+  controls: true,
 };
 
 function useSectionState() {
