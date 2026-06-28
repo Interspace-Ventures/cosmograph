@@ -38,6 +38,16 @@
   --font-mono: "Space Mono", monospace;
 
   --radius: var(--radius);
+  /* Structured Glass is square-edged. Collapse the whole radius scale so every
+     shadcn primitive (Button, Alert/error messages, Input, Card, Dialog,
+     Tooltip, Select…) renders with sharp corners. `rounded-full` is left alone
+     so status dots, avatars, and count badges stay circular by intent. */
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
+  --radius-3xl: 0px;
 }
 
 :root {
