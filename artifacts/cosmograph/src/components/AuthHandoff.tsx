@@ -41,7 +41,7 @@ export function AuthHandoff({
     window.open(window.location.href, "_blank", "noopener,noreferrer");
 
   return (
-    <div className="w-full max-w-md rounded-2xl border border-white/10 bg-white/[0.03] p-8 text-center shadow-2xl backdrop-blur">
+    <div className="w-full max-w-md rounded-none border border-white/10 bg-white/[0.03] p-8 text-center shadow-2xl backdrop-blur">
       <h1 className="text-xl font-semibold text-foreground">{verb}</h1>
       <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
         For your security, sign-in opens in its own window — Google and GitHub
