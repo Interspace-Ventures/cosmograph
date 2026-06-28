@@ -1,6 +1,7 @@
 import { Telescope, Crown } from "lucide-react";
 import { useAppState } from "@/lib/store";
 import { ResearcherSearch } from "@/components/ResearcherSearch";
+import { PERKS } from "@/config/perks";
 import { Drawer } from "./Drawer";
 
 export function CustomizeDrawer() {
@@ -34,6 +35,26 @@ export function CustomizeDrawer() {
       </p>
 
       <ResearcherSearch />
+
+      <div className="mt-7 border-t-2 border-edge pt-5">
+        <span className="font-mono text-[10px] uppercase tracking-widest text-accent">
+          Everything membership unlocks · $7 / year
+        </span>
+        <ul className="mt-3 space-y-2.5">
+          {PERKS.map((perk) => {
+            const Icon = perk.icon;
+            return (
+              <li
+                key={perk.text}
+                className="flex items-start gap-2.5 text-[13px] leading-relaxed text-ink"
+              >
+                <Icon size={14} className="mt-0.5 shrink-0 text-accent" />
+                <span>{perk.text}</span>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
     </Drawer>
   );
 }

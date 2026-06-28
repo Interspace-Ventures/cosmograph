@@ -8,6 +8,8 @@ import { Footer } from "./Footer";
 import { InfoDrawer } from "./InfoDrawer";
 import { AskDrawer } from "./AskDrawer";
 import { CustomizeDrawer } from "./CustomizeDrawer";
+import { DealBanner } from "./DealBanner";
+import { EngagePrompt } from "./EngagePrompt";
 import { galaxyData } from "@/data/galaxy";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { presence } from "@/lib/presence";
@@ -35,6 +37,7 @@ export function Overlay() {
         <>
           {!tourActive && (
             <>
+              <DealBanner />
               <Header />
               <HeaderActions />
 
@@ -88,6 +91,7 @@ export function Overlay() {
 
               <FlyHud />
               <Footer />
+              <EngagePrompt />
             </>
           )}
           <TourOverlay />
@@ -102,10 +106,12 @@ export function Overlay() {
 
 function Header() {
   const { stats } = galaxyData;
+  const { showDealBanner } = useAppState();
   return (
     <div
-      className="absolute top-0 left-0 p-6 pr-16 pb-10"
+      className="absolute left-0 p-6 pr-16 pb-10 transition-[top] duration-300 ease-out"
       style={{
+        top: showDealBanner ? 30 : 0,
         background:
           "radial-gradient(130% 130% at 0% 0%, rgba(8,9,13,0.82) 0%, rgba(8,9,13,0.5) 40%, transparent 72%)",
       }}
@@ -150,15 +156,18 @@ function Header() {
 // (right-0); on desktop the console occupies the right edge, so these slide left
 // of it by the live console width and stay clear of the panel.
 function HeaderActions() {
-  const { consoleOpen } = useAppState();
+  const { consoleOpen, showDealBanner } = useAppState();
   const isMobile = useIsMobile();
   const [shareOpen, setShareOpen] = useState(false);
   const { stars, url } = useGithubStars();
   const desktopRight = consoleOpen ? "min(12rem, 80vw)" : "3.5rem";
   return (
     <div
-      className="absolute top-0 right-0 z-20 flex items-center gap-2 p-3 transition-[right] duration-[280ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
-      style={{ right: isMobile ? "0px" : `calc(${desktopRight} + 0.5rem)` }}
+      className="absolute right-0 z-20 flex items-center gap-2 p-3 transition-[right,top] duration-[280ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
+      style={{
+        top: showDealBanner ? 30 : 0,
+        right: isMobile ? "0px" : `calc(${desktopRight} + 0.5rem)`,
+      }}
     >
       <a
         href={url ?? SITE.github.url}

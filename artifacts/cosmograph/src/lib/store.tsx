@@ -108,6 +108,9 @@ interface AppState {
   setInfoTab: (tab: "about" | "log") => void;
   customizeOpen: boolean;
   setCustomizeOpen: (val: boolean) => void;
+  // The slim top "deal" banner: shown to non-members until dismissed (persisted).
+  showDealBanner: boolean;
+  dismissDealBanner: () => void;
   // Right-hand "Mission Control" expanded vs collapsed-to-rail. Lifted to the store
   // so the galaxy can slide aside (GPU transform) in sync with the console width.
   consoleOpen: boolean;
@@ -133,6 +136,15 @@ const AppStateContext = createContext<AppState | undefined>(undefined);
 
 const INTRO_SEEN_KEY = "cosmograph:introSeen";
 const SHOW_SELF_SHIP_KEY = "cosmograph:showSelfShip";
+const DEAL_DISMISSED_KEY = "cosmograph:dealDismissed";
+
+function readDealDismissed(): boolean {
+  try {
+    return localStorage.getItem(DEAL_DISMISSED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
 
 function readIntroSeen(): boolean {
   try {
@@ -293,6 +305,19 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     setIncludedSlots(e.includedSlots);
   }, []);
   const [paywallOpen, setPaywallOpen] = useState(false);
+
+  // Slim top "deal" banner. Shown to non-members until dismissed; the dismissal
+  // is persisted so it never nags a returning visitor.
+  const [dealDismissed, setDealDismissed] = useState(readDealDismissed);
+  const dismissDealBanner = useCallback(() => {
+    setDealDismissed(true);
+    try {
+      localStorage.setItem(DEAL_DISMISSED_KEY, "1");
+    } catch {
+      // ignore (private mode / storage disabled)
+    }
+  }, []);
+  const showDealBanner = !dealDismissed && !entitled;
 
   // Live gate check for handlers: free on the default researcher, otherwise the
   // active researcher must be a member-unlocked one. Reads galaxyData live
@@ -481,6 +506,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         setInfoTab,
         customizeOpen,
         setCustomizeOpen: setCustomizeOpenExclusive,
+        showDealBanner,
+        dismissDealBanner,
         consoleOpen,
         setConsoleOpen,
         datasetVersion,

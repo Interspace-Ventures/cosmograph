@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { Copy, Check, Heart, ArrowLeft } from "lucide-react";
 import { useAppState } from "@/lib/store";
 import { Scene } from "@/components/Scene";
-import { PERKS } from "@/components/Paywall";
+import { PERKS } from "@/config/perks";
 import {
   MembershipActions,
   WhyAccountNote,

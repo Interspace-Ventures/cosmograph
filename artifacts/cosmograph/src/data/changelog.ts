@@ -17,6 +17,18 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.21.0",
+    codename: "Signal Boost",
+    date: "2026-06-28",
+    summary:
+      "Gentle, dismissable nudges: a slim top banner for the $7/year membership deal, and a one-time prompt to support the project once you've settled in.",
+    changes: [
+      "A slim banner up top highlights the limited-time $7/year membership — dismiss it once and it stays gone.",
+      "The banner's \"See what's included\" opens the Personalize panel, which now lists every membership benefit.",
+      "After you've spent a little time exploring, a small unobtrusive card invites you to sponsor, star the repo, or spread the word — shown only once.",
+    ],
+  },
+  {
     version: "3.20.0",
     codename: "Clean Console",
     date: "2026-06-28",
