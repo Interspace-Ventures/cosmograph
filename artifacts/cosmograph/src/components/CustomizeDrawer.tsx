@@ -13,9 +13,9 @@ export function CustomizeDrawer() {
       onClose={() => setCustomizeOpen(false)}
       labelledBy="customize-drawer-title"
     >
-      <div className="flex items-center justify-between gap-2 pr-8">
+      <div className="flex items-center gap-2 pr-8">
         <span className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-accent">
-          <Telescope size={12} /> Customize the galaxy
+          <Telescope size={12} /> Personalize your galaxy
         </span>
         <span className="flex shrink-0 items-center gap-1 border border-accent/60 bg-accent/10 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-widest text-accent">
           <Crown size={9} /> Premium
