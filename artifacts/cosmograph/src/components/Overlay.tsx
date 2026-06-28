@@ -3,12 +3,11 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ScrollIntro } from "./ScrollIntro";
 import { DetailPanel } from "./DetailPanel";
 import { TourOverlay } from "./TourOverlay";
-import { FlyHud } from "./FlyHud";
 import { Footer } from "./Footer";
 import { InfoDrawer } from "./InfoDrawer";
 import { AskDrawer } from "./AskDrawer";
 import { CustomizeDrawer } from "./CustomizeDrawer";
-import { DealBanner } from "./DealBanner";
+import { BannerHost } from "./BannerHost";
 import { EngagePrompt } from "./EngagePrompt";
 import { galaxyData } from "@/data/galaxy";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -37,7 +36,7 @@ export function Overlay() {
         <>
           {!tourActive && (
             <>
-              <DealBanner />
+              <BannerHost />
               <Header />
               <HeaderActions />
 
@@ -89,7 +88,6 @@ export function Overlay() {
                 )}
               </AnimatePresence>
 
-              <FlyHud />
               <Footer />
               <EngagePrompt />
             </>
@@ -106,12 +104,12 @@ export function Overlay() {
 
 function Header() {
   const { stats } = galaxyData;
-  const { showDealBanner } = useAppState();
+  const { bannerHeight } = useAppState();
   return (
     <div
       className="absolute left-0 p-6 pr-16 pb-10 transition-[top] duration-300 ease-out"
       style={{
-        top: showDealBanner ? 30 : 0,
+        top: bannerHeight,
         background:
           "radial-gradient(130% 130% at 0% 0%, rgba(8,9,13,0.82) 0%, rgba(8,9,13,0.5) 40%, transparent 72%)",
       }}
@@ -156,7 +154,7 @@ function Header() {
 // (right-0); on desktop the console occupies the right edge, so these slide left
 // of it by the live console width and stay clear of the panel.
 function HeaderActions() {
-  const { consoleOpen, showDealBanner } = useAppState();
+  const { consoleOpen, bannerHeight } = useAppState();
   const isMobile = useIsMobile();
   const [shareOpen, setShareOpen] = useState(false);
   const { stars, url } = useGithubStars();
@@ -165,7 +163,7 @@ function HeaderActions() {
     <div
       className="absolute right-0 z-20 flex items-center gap-2 p-3 transition-[right,top] duration-[280ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
       style={{
-        top: showDealBanner ? 30 : 0,
+        top: bannerHeight,
         right: isMobile ? "0px" : `calc(${desktopRight} + 0.5rem)`,
       }}
     >

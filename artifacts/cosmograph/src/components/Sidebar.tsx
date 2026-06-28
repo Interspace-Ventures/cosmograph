@@ -190,14 +190,6 @@ export function Sidebar() {
           tooltip: "Choose researcher for cosmograph",
         },
         {
-          kind: "custom",
-          id: "camera",
-          label: "Orbit / Fly",
-          expanded: <CameraToggle />,
-          rail: <CameraToggleRail />,
-          railTip: true,
-        },
-        {
           kind: "action",
           id: "tour",
           label: "Tour",
@@ -266,6 +258,8 @@ export function Sidebar() {
                 openSections={openSections}
                 toggleSection={toggleSection}
               />
+
+              <CameraFooter />
             </motion.div>
           ) : (
             <motion.div
@@ -308,6 +302,8 @@ export function Sidebar() {
               </div>
 
               <RailBody sections={sections} horizontal={isMobile} />
+
+              <CameraFooterRail horizontal={isMobile} />
             </motion.div>
           )}
         </AnimatePresence>
@@ -390,6 +386,44 @@ function CameraToggleRail() {
   );
 }
 
+/**
+ * Orbit/Fly pinned to the bottom of the expanded console — the primary view
+ * control sits at the end of the navbar, separated from the action list above.
+ */
+function CameraFooter() {
+  return (
+    <div className="shrink-0 border-t-2 border-edge p-3">
+      <CameraToggle />
+    </div>
+  );
+}
+
+/**
+ * Orbit/Fly pinned to the end of the collapsed rail: the bottom on the desktop
+ * vertical rail, the trailing (right) edge on the mobile bottom dock.
+ */
+function CameraFooterRail({ horizontal }: { horizontal: boolean }) {
+  if (horizontal) {
+    return (
+      <div className="flex shrink-0 items-center justify-center border-l-2 border-edge px-1.5">
+        <div className="flex flex-col items-center justify-center gap-0.5">
+          <CameraToggleRail />
+          <span className="max-w-[3.75rem] truncate font-display text-[8px] uppercase leading-none tracking-wide text-ink-dim">
+            Orbit / Fly
+          </span>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="flex shrink-0 items-center justify-center border-t-2 border-edge p-1.5">
+      <RailTip label="Orbit / Fly">
+        <CameraToggleRail />
+      </RailTip>
+    </div>
+  );
+}
+
 /** Expanded panel body: section chrome + full-width labelled controls. */
 function ConsoleBody({
   sections,
@@ -444,7 +478,7 @@ function RailBody({
       className={
         horizontal
           ? "flex min-w-0 flex-1 flex-row items-center gap-1 overflow-x-auto custom-scrollbar px-1.5"
-          : "flex flex-col items-center gap-1 overflow-y-auto custom-scrollbar p-1.5"
+          : "flex flex-1 flex-col items-center gap-1 overflow-y-auto custom-scrollbar p-1.5"
       }
     >
       {sections.map((section) => {

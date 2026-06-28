@@ -111,6 +111,11 @@ interface AppState {
   // The slim top "deal" banner: shown to non-members until dismissed (persisted).
   showDealBanner: boolean;
   dismissDealBanner: () => void;
+  // Height (px) of the active top notification banner, or 0 when none. The
+  // BannerHost publishes this so the header chrome can slide down to make room
+  // (iPhone-style push, not an overlay toast).
+  bannerHeight: number;
+  setBannerHeight: (h: number) => void;
   // Right-hand "Mission Control" expanded vs collapsed-to-rail. Lifted to the store
   // so the galaxy can slide aside (GPU transform) in sync with the console width.
   consoleOpen: boolean;
@@ -319,6 +324,10 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   }, []);
   const showDealBanner = !dealDismissed && !entitled;
 
+  // Published by the BannerHost: how far the header chrome should slide down to
+  // make room for the active top notification banner.
+  const [bannerHeight, setBannerHeight] = useState(0);
+
   // Live gate check for handlers: free on the default researcher, otherwise the
   // active researcher must be a member-unlocked one. Reads galaxyData live
   // (mutable binding) + the entitlement refs.
@@ -508,6 +517,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         setCustomizeOpen: setCustomizeOpenExclusive,
         showDealBanner,
         dismissDealBanner,
+        bannerHeight,
+        setBannerHeight,
         consoleOpen,
         setConsoleOpen,
         datasetVersion,

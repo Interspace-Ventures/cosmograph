@@ -17,6 +17,18 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.22.0",
+    codename: "Notification Deck",
+    date: "2026-06-28",
+    summary:
+      "Tips and offers now arrive as one tidy notification banner that gently slides the view down instead of floating over the galaxy, and the Orbit/Fly switch moved to the bottom of the console.",
+    changes: [
+      "Flight-control tips and the membership offer now share a single slim banner up top that eases the view down to make room — no more pop-ups floating over the stars.",
+      "When there's more than one thing to mention, the banner quietly cycles between them.",
+      "The Orbit / Fly view switch now lives at the bottom of the console, set apart from the other controls.",
+    ],
+  },
+  {
     version: "3.21.0",
     codename: "Signal Boost",
     date: "2026-06-28",
