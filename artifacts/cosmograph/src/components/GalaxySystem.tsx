@@ -695,7 +695,7 @@ export function rebuildLayout(): void {
       // start phase, a varied (mostly prograde) spin rate, and an axial tilt that
       // also tips any rings off the shared flat plane.
       const spinPhase = prng() * Math.PI * 2;
-      const spin = (0.08 + prng() * 0.2) * (prng() < 0.2 ? -1 : 1);
+      const spin = (0.14 + prng() * 0.34) * (prng() < 0.2 ? -1 : 1);
       const axialTilt = (prng() - 0.5) * 0.6;
       const planetRadius = Math.min(
         8,
