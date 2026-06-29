@@ -169,6 +169,61 @@
     inset 0 2px 36px rgba(0, 0, 0, 0.45);
 }
 
+/* "Thinking…" shimmer — a pale sweep across the live reasoning label while the
+   assistant streams. Uses the accent so it reads as part of Structured Glass, not
+   a generic skeleton. Honors reduced-motion (falls back to a steady dim color). */
+.shimmer-text {
+  background: linear-gradient(
+    100deg,
+    var(--ink-dim) 30%,
+    var(--accent) 50%,
+    var(--ink-dim) 70%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer-sweep 1.6s linear infinite;
+}
+
+@keyframes shimmer-sweep {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Soft top/bottom fade for the scrolling conversation, so messages dissolve into
+   the panel chrome instead of being hard-clipped at the edges. */
+.scroll-fade {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 14px,
+    #000 calc(100% - 14px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 14px,
+    #000 calc(100% - 14px),
+    transparent 100%
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shimmer-text {
+    animation: none;
+    background: none;
+    -webkit-background-clip: border-box;
+    background-clip: border-box;
+    color: var(--ink-dim);
+  }
+}
+
 .custom-scrollbar::-webkit-scrollbar {
   width: 8px;
   height: 8px;

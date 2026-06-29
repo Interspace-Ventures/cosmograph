@@ -256,12 +256,12 @@ export function getMatchingPapers(f: Filters): Paper[] {
     .sort((a, b) => b.citations - a.citations);
 }
 
-// A structured query produced by the "Ask" translator. Mirrors the server's
-// AskQuery contract (zod TranslateAskResponse) but stays a local type so the
-// data layer has no dependency on generated server code.
+// A structured query the "Ask Cosmos" assistant fills for a "data" turn. Mirrors
+// the server's AskQuery (lib/ask.ts) but stays a local type so the data layer has
+// no dependency on generated server code. The model only fills these slots; the
+// real counts and lists are computed here by runAskQuery, never by the model.
 export interface AskQuery {
-  intent: "count" | "list" | "feedback";
-  feedbackKind?: "bug" | "feature" | null;
+  intent: "count" | "list";
   text?: string | null;
   coAuthor?: string | null;
   minYear?: number | null;
@@ -273,7 +273,6 @@ export interface AskQuery {
   sortBy?: "citations" | "year" | "coAuthors" | null;
   sortDir?: "asc" | "desc" | null;
   limit?: number | null;
-  unsupported?: boolean;
 }
 
 // Convert an AskQuery into the Filters predicate. Domains always start "all on";
@@ -333,4 +332,79 @@ export function runAskQuery(q: AskQuery): AskResult {
     total: galaxyData.papers.length,
     filters,
   };
+}
+
+// The headline, public corpus summary sent to the assistant as grounding. These
+// are the ONLY numbers the model is allowed to state verbatim; anything filtered
+// or derived must route through a "data" action and runAskQuery. Computed from
+// the live galaxyData so it stays correct after a dataset swap.
+export interface CorpusSummary {
+  authorName: string;
+  institution: string | null;
+  totalPapers: number;
+  totalCitations: number;
+  hIndex: number | null;
+  i10Index: number | null;
+  uniqueCoAuthors: number;
+  firstYear: number;
+  lastYear: number;
+  avgCitations: number;
+  topDomains: string[];
+  mostCitedTitle: string | null;
+  mostCitedCount: number | null;
+}
+
+export function getCorpusSummary(): CorpusSummary {
+  const { author, stats, domains } = galaxyData;
+  const topDomains = [...domains]
+    .sort((a, b) => b.paperCount - a.paperCount)
+    .slice(0, 8)
+    .map((d) => d.name);
+  return {
+    authorName: author.name,
+    institution: author.institution,
+    totalPapers: stats.totalPapers,
+    totalCitations: stats.totalCitations,
+    hIndex: author.hIndex,
+    i10Index: author.i10Index,
+    uniqueCoAuthors: stats.uniqueCoAuthors,
+    firstYear: stats.firstYear,
+    lastYear: stats.lastYear,
+    avgCitations: stats.avgCitations,
+    topDomains,
+    mostCitedTitle: stats.mostCited?.title ?? null,
+    mostCitedCount: stats.mostCited?.citations ?? null,
+  };
+}
+
+// The paper-record shape (field names + types only) sent to the assistant so it
+// can build accurate queries — never any actual paper data; everything stays in
+// the browser.
+export interface AskFieldDescriptor {
+  name: string;
+  type: string;
+  description?: string;
+}
+
+export function getAskFields(): AskFieldDescriptor[] {
+  return [
+    { name: "title", type: "string" },
+    { name: "year", type: "number", description: "Publication year." },
+    { name: "citations", type: "number", description: "Total citation count." },
+    { name: "topic", type: "string", description: "Fine-grained OpenAlex topic." },
+    { name: "subfield", type: "string" },
+    { name: "field", type: "string" },
+    {
+      name: "domainName",
+      type: "string",
+      description: "The research domain (sun) this paper orbits.",
+    },
+    { name: "venue", type: "string", description: "Journal or conference." },
+    { name: "coAuthors", type: "string[]", description: "Names of collaborators." },
+    {
+      name: "coAuthorCount",
+      type: "number",
+      description: "Number of collaborators.",
+    },
+  ];
 }

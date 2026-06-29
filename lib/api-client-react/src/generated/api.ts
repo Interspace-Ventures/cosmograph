@@ -20,7 +20,6 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
-  AskQuery,
   AskRequest,
   CheckoutRequest,
   CheckoutSession,
@@ -729,22 +728,22 @@ export const useClaimReferral = <TError = ErrorType<Error>,
       return useMutation(getClaimReferralMutationOptions(options));
     }
 
-export const getTranslateAskUrl = () => {
+export const getChatAskUrl = () => {
 
 
 
 
-  return `/api/ask/translate`
+  return `/api/ask/chat`
 }
 
 /**
- * Uses the LLM purely as a translator: it converts a plain-English question about a scientist's corpus into a validated, structured query spec. The model never computes counts or lists — the browser runs the returned spec deterministically over the locally-baked data. Only the question text and a description of the data shape are sent; no actual paper data leaves the browser.
+ * A grounded "router + writer": the model classifies the turn (data / explain / chat / feedback), emits a structured action on the first streamed line, then streams a short reasoning trace and the answer. The model never computes filtered counts or lists — for "data" turns it only fills a query spec the browser runs deterministically over the locally-baked data; it may only repeat the exact summary stats it is given. Only the question, the data shape, the domain names, and the public corpus summary are sent; no actual paper data leaves the browser. The response is a Server-Sent-Events stream, read manually on the client.
 
- * @summary Translate a natural-language question into a structured query spec
+ * @summary Ask the grounded streaming assistant a question
  */
-export const translateAsk = async (askRequest: AskRequest, options?: RequestInit): Promise<AskQuery> => {
+export const chatAsk = async (askRequest: AskRequest, options?: RequestInit): Promise<unknown> => {
 
-  return customFetch<AskQuery>(getTranslateAskUrl(),
+  return customFetch<unknown>(getChatAskUrl(),
   {
     ...options,
     method: 'POST',
@@ -757,11 +756,11 @@ export const translateAsk = async (askRequest: AskRequest, options?: RequestInit
 
 
 
-export const getTranslateAskMutationOptions = <TError = ErrorType<Error>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof translateAsk>>, TError,{data: BodyType<AskRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof translateAsk>>, TError,{data: BodyType<AskRequest>}, TContext> => {
+export const getChatAskMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof chatAsk>>, TError,{data: BodyType<AskRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof chatAsk>>, TError,{data: BodyType<AskRequest>}, TContext> => {
 
-const mutationKey = ['translateAsk'];
+const mutationKey = ['chatAsk'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -771,10 +770,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof translateAsk>>, {data: BodyType<AskRequest>}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof chatAsk>>, {data: BodyType<AskRequest>}> = (props) => {
           const {data} = props ?? {};
 
-          return  translateAsk(data,requestOptions)
+          return  chatAsk(data,requestOptions)
         }
 
 
@@ -784,22 +783,22 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type TranslateAskMutationResult = NonNullable<Awaited<ReturnType<typeof translateAsk>>>
-    export type TranslateAskMutationBody = BodyType<AskRequest>
-    export type TranslateAskMutationError = ErrorType<Error>
+    export type ChatAskMutationResult = NonNullable<Awaited<ReturnType<typeof chatAsk>>>
+    export type ChatAskMutationBody = BodyType<AskRequest>
+    export type ChatAskMutationError = ErrorType<Error>
 
     /**
- * @summary Translate a natural-language question into a structured query spec
+ * @summary Ask the grounded streaming assistant a question
  */
-export const useTranslateAsk = <TError = ErrorType<Error>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof translateAsk>>, TError,{data: BodyType<AskRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+export const useChatAsk = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof chatAsk>>, TError,{data: BodyType<AskRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
-        Awaited<ReturnType<typeof translateAsk>>,
+        Awaited<ReturnType<typeof chatAsk>>,
         TError,
         {data: BodyType<AskRequest>},
         TContext
       > => {
-      return useMutation(getTranslateAskMutationOptions(options));
+      return useMutation(getChatAskMutationOptions(options));
     }
 
 export const getReportFeedbackUrl = () => {

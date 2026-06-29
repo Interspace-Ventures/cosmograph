@@ -7,12 +7,10 @@
  */
 
 export * from './askField';
-export * from './askQuery';
-export * from './askQueryFeedbackKind';
-export * from './askQueryIntent';
-export * from './askQuerySortBy';
-export * from './askQuerySortDir';
+export * from './askMessage';
+export * from './askMessageRole';
 export * from './askRequest';
+export * from './askSummary';
 export * from './checkoutRequest';
 export * from './checkoutSession';
 export * from './claimReferralRequest';

@@ -6,12 +6,15 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { AskField } from './askField';
+import type { AskMessage } from './askMessage';
+import type { AskSummary } from './askSummary';
 
 export interface AskRequest {
-  /** The visitor's plain-English question about the corpus. */
-  question: string;
+  /** The ephemeral conversation so far (oldest first). */
+  messages: AskMessage[];
   /** The shape of a paper record (field names and types only). */
   fields?: AskField[];
   /** The research-domain (category) names present in this galaxy. */
   domains?: string[];
+  summary: AskSummary;
 }

@@ -13,7 +13,7 @@ tags:
   - name: billing
     description: Accounts, entitlement and membership subscription
   - name: ask
-    description: Natural-language question translation
+    description: Grounded streaming assistant about the scientist's work
   - name: feedback
     description: Bug reports and feature requests
   - name: ship
@@ -264,18 +264,21 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-  /ask/translate:
+  /ask/chat:
     post:
-      operationId: translateAsk
+      operationId: chatAsk
       tags: [ask]
-      summary: Translate a natural-language question into a structured query spec
+      summary: Ask the grounded streaming assistant a question
       description: >
-        Uses the LLM purely as a translator: it converts a plain-English
-        question about a scientist's corpus into a validated, structured query
-        spec. The model never computes counts or lists — the browser runs the
-        returned spec deterministically over the locally-baked data. Only the
-        question text and a description of the data shape are sent; no actual
-        paper data leaves the browser.
+        A grounded "router + writer": the model classifies the turn (data /
+        explain / chat / feedback), emits a structured action on the first
+        streamed line, then streams a short reasoning trace and the answer. The
+        model never computes filtered counts or lists — for "data" turns it only
+        fills a query spec the browser runs deterministically over the
+        locally-baked data; it may only repeat the exact summary stats it is
+        given. Only the question, the data shape, the domain names, and the
+        public corpus summary are sent; no actual paper data leaves the browser.
+        The response is a Server-Sent-Events stream, read manually on the client.
       requestBody:
         required: true
         content:
@@ -284,13 +287,17 @@ paths:
               $ref: "#/components/schemas/AskRequest"
       responses:
         "200":
-          description: A structured query spec for the browser to execute
+          description: An SSE stream of action, reasoning and answer events
+          content:
+            text/event-stream: {}
+        "400":
+          description: Invalid request
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AskQuery"
+                $ref: "#/components/schemas/Error"
         "502":
-          description: The translation model is unreachable
+          description: The assistant model is unreachable
           content:
             application/json:
               schema:
@@ -427,12 +434,76 @@ components:
       required:
         - name
         - type
+    AskMessage:
+      type: object
+      description: One turn of the ephemeral, in-browser conversation.
+      properties:
+        role:
+          type: string
+          enum: [user, assistant]
+        content:
+          type: string
+      required:
+        - role
+        - content
+    AskSummary:
+      type: object
+      description: >
+        The public, headline corpus summary the model may quote verbatim. These
+        are the ONLY numbers the model is allowed to state; any filtered/derived
+        count must route to a "data" action for deterministic in-browser compute.
+      properties:
+        authorName:
+          type: string
+        institution:
+          type: string
+          nullable: true
+        totalPapers:
+          type: integer
+        totalCitations:
+          type: integer
+        hIndex:
+          type: integer
+          nullable: true
+        i10Index:
+          type: integer
+          nullable: true
+        uniqueCoAuthors:
+          type: integer
+        firstYear:
+          type: integer
+        lastYear:
+          type: integer
+        avgCitations:
+          type: integer
+        topDomains:
+          type: array
+          description: The largest research domains, biggest first.
+          items:
+            type: string
+        mostCitedTitle:
+          type: string
+          nullable: true
+        mostCitedCount:
+          type: integer
+          nullable: true
+      required:
+        - authorName
+        - totalPapers
+        - totalCitations
+        - uniqueCoAuthors
+        - firstYear
+        - lastYear
+        - avgCitations
+        - topDomains
     AskRequest:
       type: object
       properties:
-        question:
-          type: string
-          description: The visitor's plain-English question about the corpus.
+        messages:
+          type: array
+          description: The ephemeral conversation so far (oldest first).
+          items:
+            $ref: "#/components/schemas/AskMessage"
         fields:
           type: array
           description: The shape of a paper record (field names and types only).
@@ -443,72 +514,11 @@ components:
           description: The research-domain (category) names present in this galaxy.
           items:
             type: string
+        summary:
+          $ref: "#/components/schemas/AskSummary"
       required:
-        - question
-    AskQuery:
-      type: object
-      description: >
-        A structured query the browser executes deterministically over the local
-        data. The model only fills these slots; it never returns numbers or lists.
-      properties:
-        intent:
-          type: string
-          enum: [count, list, feedback]
-          description: >
-            What the visitor wants: "count" for a number/how-many, "list" for
-            matching papers, or "feedback" when they are reporting a bug or
-            requesting a feature/improvement rather than asking about the corpus.
-        feedbackKind:
-          type: string
-          enum: [bug, feature]
-          nullable: true
-          description: >
-            When intent is "feedback", whether the message is a bug report or a
-            feature request. Null otherwise.
-        text:
-          type: string
-          nullable: true
-          description: Keyword to match across a paper's title, topic, field and venue.
-        coAuthor:
-          type: string
-          nullable: true
-          description: Co-author name substring to match.
-        minYear:
-          type: integer
-          nullable: true
-        maxYear:
-          type: integer
-          nullable: true
-        minCitations:
-          type: integer
-          nullable: true
-        maxCitations:
-          type: integer
-          nullable: true
-        minCoAuthors:
-          type: integer
-          nullable: true
-          description: Minimum number of co-authors (collaborators) on a paper.
-        maxCoAuthors:
-          type: integer
-          nullable: true
-        sortBy:
-          type: string
-          enum: [citations, year, coAuthors]
-          nullable: true
-        sortDir:
-          type: string
-          enum: [asc, desc]
-          nullable: true
-        limit:
-          type: integer
-          nullable: true
-          description: Max papers to show for a list answer.
-        unsupported:
-          type: boolean
-          description: True when the question cannot be expressed as a query over this data.
-      required:
-        - intent
+        - messages
+        - summary
     FeedbackRequest:
       type: object
       properties:

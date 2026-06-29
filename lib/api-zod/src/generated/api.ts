@@ -130,36 +130,37 @@ export const ClaimReferralResponse = zod.object({
 
 
 /**
- * Uses the LLM purely as a translator: it converts a plain-English question about a scientist's corpus into a validated, structured query spec. The model never computes counts or lists — the browser runs the returned spec deterministically over the locally-baked data. Only the question text and a description of the data shape are sent; no actual paper data leaves the browser.
+ * A grounded "router + writer": the model classifies the turn (data / explain / chat / feedback), emits a structured action on the first streamed line, then streams a short reasoning trace and the answer. The model never computes filtered counts or lists — for "data" turns it only fills a query spec the browser runs deterministically over the locally-baked data; it may only repeat the exact summary stats it is given. Only the question, the data shape, the domain names, and the public corpus summary are sent; no actual paper data leaves the browser. The response is a Server-Sent-Events stream, read manually on the client.
 
- * @summary Translate a natural-language question into a structured query spec
+ * @summary Ask the grounded streaming assistant a question
  */
-export const TranslateAskBody = zod.object({
-  "question": zod.string().describe('The visitor\'s plain-English question about the corpus.'),
+export const ChatAskBody = zod.object({
+  "messages": zod.array(zod.object({
+  "role": zod.enum(['user', 'assistant']),
+  "content": zod.string()
+}).describe('One turn of the ephemeral, in-browser conversation.')).describe('The ephemeral conversation so far (oldest first).'),
   "fields": zod.array(zod.object({
   "name": zod.string(),
   "type": zod.string(),
   "description": zod.string().optional()
 }).describe('A single field of the data shape (name + type), no actual data.')).optional().describe('The shape of a paper record (field names and types only).'),
-  "domains": zod.array(zod.string()).optional().describe('The research-domain (category) names present in this galaxy.')
+  "domains": zod.array(zod.string()).optional().describe('The research-domain (category) names present in this galaxy.'),
+  "summary": zod.object({
+  "authorName": zod.string(),
+  "institution": zod.string().nullish(),
+  "totalPapers": zod.number(),
+  "totalCitations": zod.number(),
+  "hIndex": zod.number().nullish(),
+  "i10Index": zod.number().nullish(),
+  "uniqueCoAuthors": zod.number(),
+  "firstYear": zod.number(),
+  "lastYear": zod.number(),
+  "avgCitations": zod.number(),
+  "topDomains": zod.array(zod.string()).describe('The largest research domains, biggest first.'),
+  "mostCitedTitle": zod.string().nullish(),
+  "mostCitedCount": zod.number().nullish()
+}).describe('The public, headline corpus summary the model may quote verbatim. These are the ONLY numbers the model is allowed to state; any filtered\/derived count must route to a \"data\" action for deterministic in-browser compute.\n')
 })
-
-export const TranslateAskResponse = zod.object({
-  "intent": zod.enum(['count', 'list', 'feedback']).describe('What the visitor wants: \"count\" for a number\/how-many, \"list\" for matching papers, or \"feedback\" when they are reporting a bug or requesting a feature\/improvement rather than asking about the corpus.\n'),
-  "feedbackKind": zod.enum(['bug', 'feature']).nullish().describe('When intent is \"feedback\", whether the message is a bug report or a feature request. Null otherwise.\n'),
-  "text": zod.string().nullish().describe('Keyword to match across a paper\'s title, topic, field and venue.'),
-  "coAuthor": zod.string().nullish().describe('Co-author name substring to match.'),
-  "minYear": zod.number().nullish(),
-  "maxYear": zod.number().nullish(),
-  "minCitations": zod.number().nullish(),
-  "maxCitations": zod.number().nullish(),
-  "minCoAuthors": zod.number().nullish().describe('Minimum number of co-authors (collaborators) on a paper.'),
-  "maxCoAuthors": zod.number().nullish(),
-  "sortBy": zod.enum(['citations', 'year', 'coAuthors']).nullish(),
-  "sortDir": zod.enum(['asc', 'desc']).nullish(),
-  "limit": zod.number().nullish().describe('Max papers to show for a list answer.'),
-  "unsupported": zod.boolean().optional().describe('True when the question cannot be expressed as a query over this data.')
-}).describe('A structured query the browser executes deterministically over the local data. The model only fills these slots; it never returns numbers or lists.\n')
 
 
 /**

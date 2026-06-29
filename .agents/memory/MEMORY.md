@@ -18,3 +18,4 @@
 - [Cosmonaut presence ships](cosmonaut-ships.md) — peers + self are low-poly ships; ship look = a seed now broadcast over presence + saved to users.ship_seed (/me/ship); hydrate saved seed once per sign-in.
 - [Overlay vs Sidebar stacking](overlay-stacking-context.md) — Overlay subtree (z-10) always renders below the console rail (z-30); top-right overlay UI must inset its right edge by console width (or be hoisted out) to stay clickable.
 - [Mobile console dock](mobile-console-dock.md) — on mobile the console docks bottom (sheet), desktop stays right rail; no right-push on mobile, detail panel hides while console open, footer hidden, useIsMobile inits synchronously.
+- [Ask Cosmos chat](ask-cosmos-chat.md) — streaming SSE assistant; action+THINK/ANSWER markers → typed frames; data-turn numbers are deterministic (client ignores model prose), never model-stated.

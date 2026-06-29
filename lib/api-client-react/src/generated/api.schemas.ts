@@ -62,85 +62,51 @@ export interface AskField {
   description?: string;
 }
 
+export type AskMessageRole = typeof AskMessageRole[keyof typeof AskMessageRole];
+
+
+export const AskMessageRole = {
+  user: 'user',
+  assistant: 'assistant',
+} as const;
+
+/**
+ * One turn of the ephemeral, in-browser conversation.
+ */
+export interface AskMessage {
+  role: AskMessageRole;
+  content: string;
+}
+
+/**
+ * The public, headline corpus summary the model may quote verbatim. These are the ONLY numbers the model is allowed to state; any filtered/derived count must route to a "data" action for deterministic in-browser compute.
+
+ */
+export interface AskSummary {
+  authorName: string;
+  institution?: string | null;
+  totalPapers: number;
+  totalCitations: number;
+  hIndex?: number | null;
+  i10Index?: number | null;
+  uniqueCoAuthors: number;
+  firstYear: number;
+  lastYear: number;
+  avgCitations: number;
+  /** The largest research domains, biggest first. */
+  topDomains: string[];
+  mostCitedTitle?: string | null;
+  mostCitedCount?: number | null;
+}
+
 export interface AskRequest {
-  /** The visitor's plain-English question about the corpus. */
-  question: string;
+  /** The ephemeral conversation so far (oldest first). */
+  messages: AskMessage[];
   /** The shape of a paper record (field names and types only). */
   fields?: AskField[];
   /** The research-domain (category) names present in this galaxy. */
   domains?: string[];
-}
-
-/**
- * What the visitor wants: "count" for a number/how-many, "list" for matching papers, or "feedback" when they are reporting a bug or requesting a feature/improvement rather than asking about the corpus.
-
- */
-export type AskQueryIntent = typeof AskQueryIntent[keyof typeof AskQueryIntent];
-
-
-export const AskQueryIntent = {
-  count: 'count',
-  list: 'list',
-  feedback: 'feedback',
-} as const;
-
-/**
- * When intent is "feedback", whether the message is a bug report or a feature request. Null otherwise.
-
- */
-export type AskQueryFeedbackKind = typeof AskQueryFeedbackKind[keyof typeof AskQueryFeedbackKind] | null;
-
-
-export const AskQueryFeedbackKind = {
-  bug: 'bug',
-  feature: 'feature',
-} as const;
-
-export type AskQuerySortBy = typeof AskQuerySortBy[keyof typeof AskQuerySortBy] | null;
-
-
-export const AskQuerySortBy = {
-  citations: 'citations',
-  year: 'year',
-  coAuthors: 'coAuthors',
-} as const;
-
-export type AskQuerySortDir = typeof AskQuerySortDir[keyof typeof AskQuerySortDir] | null;
-
-
-export const AskQuerySortDir = {
-  asc: 'asc',
-  desc: 'desc',
-} as const;
-
-/**
- * A structured query the browser executes deterministically over the local data. The model only fills these slots; it never returns numbers or lists.
-
- */
-export interface AskQuery {
-  /** What the visitor wants: "count" for a number/how-many, "list" for matching papers, or "feedback" when they are reporting a bug or requesting a feature/improvement rather than asking about the corpus.
-   */
-  intent: AskQueryIntent;
-  /** When intent is "feedback", whether the message is a bug report or a feature request. Null otherwise.
-   */
-  feedbackKind?: AskQueryFeedbackKind;
-  /** Keyword to match across a paper's title, topic, field and venue. */
-  text?: string | null;
-  /** Co-author name substring to match. */
-  coAuthor?: string | null;
-  minYear?: number | null;
-  maxYear?: number | null;
-  minCitations?: number | null;
-  maxCitations?: number | null;
-  /** Minimum number of co-authors (collaborators) on a paper. */
-  minCoAuthors?: number | null;
-  maxCoAuthors?: number | null;
-  sortBy?: AskQuerySortBy;
-  sortDir?: AskQuerySortDir;
-  /** Max papers to show for a list answer. */
-  limit?: number | null;
-  /** True when the question cannot be expressed as a query over this data. */
-  unsupported?: boolean;
+  summary: AskSummary;
 }
 
 /**
