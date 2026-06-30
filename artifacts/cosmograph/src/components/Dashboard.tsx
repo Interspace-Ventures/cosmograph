@@ -1,10 +1,20 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { Show } from "@clerk/react";
-import { Info, Orbit, Rocket, Lock, Map, Telescope, LogIn } from "lucide-react";
+import {
+  Info,
+  Orbit,
+  Rocket,
+  Lock,
+  Map,
+  Telescope,
+  LogIn,
+  UserPlus,
+} from "lucide-react";
 import { useAppState } from "@/lib/store";
 import { isFiltersActive } from "@/data/galaxy";
+import { readAuthMemory, ssoLabel } from "@/lib/authMemory";
 import { AccountIndicatorRail } from "./AccountIndicator";
 import { MessageCircleStar } from "./MessageCircleStar";
 
@@ -72,11 +82,7 @@ export function Dashboard() {
             <Divider />
           </Show>
           <Show when="signed-out">
-            <DashButton
-              label="Sign In"
-              onClick={() => setLocation("/sign-in")}
-              icon={<LogIn size={15} />}
-            />
+            <SignedOutAuthButton onNavigate={setLocation} />
             <Divider />
           </Show>
 
@@ -128,6 +134,33 @@ export function Dashboard() {
 
 function Divider() {
   return <span aria-hidden className="mx-0.5 h-6 w-px shrink-0 bg-edge" />;
+}
+
+// The signed-out entry point. Brand-new visitors (no local trace of a prior
+// sign-in) are nudged to Sign Up; returning visitors get Sign In — and if we
+// remember the social provider they last used, we name it ("Sign in with
+// Google") so the path back in is one obvious click.
+function SignedOutAuthButton({
+  onNavigate,
+}: {
+  onNavigate: (to: string) => void;
+}) {
+  // Read once on mount: it's signed-out, so the flag was written in a prior
+  // session and won't change while this button is shown.
+  const [mem] = useState(readAuthMemory);
+  const provider = mem.seen ? ssoLabel(mem.sso) : null;
+  const label = mem.seen
+    ? provider
+      ? `Sign in with ${provider}`
+      : "Sign In"
+    : "Sign Up";
+  return (
+    <DashButton
+      label={label}
+      onClick={() => onNavigate(mem.seen ? "/sign-in" : "/sign-up")}
+      icon={mem.seen ? <LogIn size={15} /> : <UserPlus size={15} />}
+    />
+  );
 }
 
 // A labelled icon button for the dashboard. `open` marks a panel this button

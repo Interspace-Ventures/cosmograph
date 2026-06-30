@@ -20,3 +20,14 @@ unchanged, so production is untouched.
 **Why:** Clerk's bot challenge is Replit-managed and NOT code/Auth-pane
 configurable — can't suppress it; the only lever is keeping the whole flow in one
 top-level window. The handoff is purely a UX fix for embedded contexts.
+
+## Signed-out "last used SSO" hint
+Clerk's hosted `<SignIn>` does NOT surface the strategy/provider of the *last*
+sign-in post-redirect. To greet returning visitors with "Sign in with <Provider>"
+we keep a per-browser localStorage hint (`lib/authMemory.ts`): an
+`AuthMemoryBridge` reads the signed-in user's linked external accounts (prefer a
+verified one) as a stand-in for "last SSO", and records a "seen" flag so the
+cockpit shows Sign Up to brand-new visitors and Sign In to returners.
+**Limitation:** for accounts with multiple linked providers (or password +
+social) the provider is a best-effort guess, not the true last-used strategy.
+Non-social sign-ins clear the stored SSO so the label doesn't go stale.

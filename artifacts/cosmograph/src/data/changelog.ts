@@ -17,6 +17,16 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.28.1",
+    codename: "Welcome Back",
+    date: "2026-06-30",
+    summary: "The cockpit now remembers returning pilots and their usual login.",
+    changes: [
+      "First-time visitors see Sign Up; if you've signed in before on this device, it greets you with Sign In instead.",
+      "If you last logged in with a service like Google or GitHub, the button now names it — one click back in.",
+    ],
+  },
+  {
     version: "3.28.0",
     codename: "Hangar Bay",
     date: "2026-06-30",
