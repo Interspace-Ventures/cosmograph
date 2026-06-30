@@ -17,6 +17,15 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.26.1",
+    codename: "Clean Hull",
+    date: "2026-06-30",
+    summary: "Dropped the glowing aura around your ship in Fly mode.",
+    changes: [
+      "Your ship in Fly mode no longer has a glowing aura around it — just the clean hull.",
+    ],
+  },
+  {
     version: "3.26.0",
     codename: "Snug Fit",
     date: "2026-06-30",

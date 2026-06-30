@@ -202,7 +202,7 @@ export function SelfShip() {
 
   return (
     <group ref={ref} scale={0.001} renderOrder={10}>
-      <ShipModel variant="peer" look={look} glow />
+      <ShipModel variant="peer" look={look} glow={false} />
     </group>
   );
 }
