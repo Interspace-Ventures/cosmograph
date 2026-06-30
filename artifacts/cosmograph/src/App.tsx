@@ -11,7 +11,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Scene } from "@/components/Scene";
 import { Overlay } from "@/components/Overlay";
 import { AuthHandoff } from "@/components/AuthHandoff";
-import { Sidebar } from "@/components/Sidebar";
+import { Dashboard } from "@/components/Dashboard";
 import { FlyCockpit } from "@/components/FlyCockpit";
 import { DatasetLoadingOverlay } from "@/components/DatasetLoadingOverlay";
 import { EntitlementBridge } from "@/components/EntitlementBridge";
@@ -56,25 +56,11 @@ if (!clerkPubKey) {
 function GalaxyView() {
   const {
     datasetVersion,
-    consoleOpen,
     introFinished,
     canExplore,
     selectedObject,
   } = useAppState();
   const isMobile = useIsMobile();
-  // Reserve the Mission Control rail/console width on the RIGHT so the galaxy is
-  // genuinely *pushed* into the remaining width — the canvas shrinks to fit the
-  // open space instead of staying full-bleed and hiding planets under the panel.
-  // During the intro the console is hidden, so the canvas is full-bleed. On mobile
-  // the console docks to the BOTTOM (not the right), so there's no right push —
-  // the galaxy stays full-width and the slim bottom bar floats over it.
-  const rightInset = !introFinished
-    ? "0px"
-    : isMobile
-      ? "0px"
-      : consoleOpen
-        ? "min(12rem,80vw)"
-        : "3.5rem";
   // When a detail panel is open it floats over the top-LEFT on desktop, so nudge
   // the framed (camera-centered) object to the right with a cheap GPU transform
   // so the panel can never occlude the planet/sun you just selected. Mobile shows
@@ -88,24 +74,14 @@ function GalaxyView() {
     >
       {canExplore ? (
         <>
-          {/* The 3D galaxy is confined to the space left of the console (real push,
-              not an overlay). Changing `right` resizes the canvas, but the debounced
-              <Canvas resize> coalesces it into a single snap once the layout settles.
-              The selection nudge is a pure transform (no resize) so picking planets
-              stays smooth. */}
+          {/* The galaxy is full-bleed now that the rail is gone; only the
+              selection nudge (a cheap GPU transform, no resize) shifts the framed
+              object right so the top-left detail panel can't occlude it. */}
           <div
-            className="absolute inset-y-0 left-0 will-change-[right,transform]"
+            className="absolute inset-0 will-change-transform"
             style={{
-              right: rightInset,
               transform: `translateX(${selectionShift})`,
-              // `right` (the console push) is kept in lockstep with the console
-              // panel's own width animation (Sidebar.tsx: 280ms, same easing) so
-              // the galaxy edge and the panel edge move as one — otherwise the
-              // panel collapses faster than the canvas refills and you see the
-              // dark gap "pull over" late. `transform` (the selection nudge) is a
-              // separate interaction, so it keeps its own slower, softer curve.
-              transition:
-                "right 280ms cubic-bezier(0.22,1,0.36,1), transform 450ms cubic-bezier(0.16,1,0.3,1)",
+              transition: "transform 450ms cubic-bezier(0.16,1,0.3,1)",
             }}
           >
             <Scene />
@@ -113,8 +89,9 @@ function GalaxyView() {
           {/* 2D HUD stays put (not translated) so nothing clips off the left edge. */}
           <FlyCockpit />
           <Overlay />
-          {/* Console is hidden during the intro so nothing covers the title screen. */}
-          {introFinished && <Sidebar />}
+          {/* The cockpit dashboard is hidden during the intro so nothing covers
+              the title screen. */}
+          {introFinished && <Dashboard />}
         </>
       ) : (
         // Non-member on a non-default scientist: the interactive galaxy is

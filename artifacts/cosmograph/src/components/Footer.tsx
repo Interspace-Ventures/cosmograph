@@ -5,7 +5,7 @@ export function Footer() {
   const { setInfoOpen, setInfoTab } = useAppState();
 
   return (
-    <footer className="absolute inset-x-0 bottom-0 z-20 hidden md:flex flex-col items-center gap-1 px-4 pb-1.5 pt-1 pointer-events-none">
+    <footer className="absolute inset-x-0 bottom-[4.25rem] z-20 hidden md:flex flex-col items-center gap-1 px-4 pointer-events-none">
       <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 text-center font-mono text-[10px] leading-relaxed tracking-wide text-ink-dim/70">
         <span>
           © 2026{" "}

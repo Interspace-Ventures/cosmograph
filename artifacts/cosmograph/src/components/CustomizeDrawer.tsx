@@ -2,6 +2,7 @@ import { Telescope, Crown } from "lucide-react";
 import { useAppState } from "@/lib/store";
 import { ResearcherSearch } from "@/components/ResearcherSearch";
 import { PERKS } from "@/config/perks";
+import { AccountIndicator } from "./AccountIndicator";
 import { Drawer } from "./Drawer";
 
 export function CustomizeDrawer() {
@@ -13,6 +14,12 @@ export function CustomizeDrawer() {
       onClose={() => setCustomizeOpen(false)}
       labelledBy="customize-drawer-title"
     >
+      {/* Signed-in account block (Full-access badge + ShipSaver) — relocated here
+          from the old Mission Control rail. Renders nothing when signed out, so
+          the wrapper collapses (empty:hidden) and leaves no stray margin. */}
+      <div className="mb-5 empty:hidden">
+        <AccountIndicator />
+      </div>
       <div className="flex items-center gap-2 pr-8">
         <span className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-accent">
           <Telescope size={12} /> Personalize your galaxy

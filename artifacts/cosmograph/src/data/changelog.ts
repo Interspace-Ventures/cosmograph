@@ -17,6 +17,19 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.23.0",
+    codename: "Cockpit Dashboard",
+    date: "2026-06-30",
+    summary:
+      "Every control now lives in one clean cockpit dashboard along the bottom of the screen, and the rich panels rise up from it — freeing the galaxy to fill the whole view.",
+    changes: [
+      "The Mission Control side rail and the top-right Sponsor / GitHub / Share buttons are gone, replaced by a single bottom dashboard that holds every control.",
+      "Info, Ask Cosmos, and Personalize now rise as panels from the dashboard, centered above the bar on both desktop and mobile.",
+      "With the side rail gone, the galaxy now fills the entire screen.",
+      "Your account, ship save, and shuffle controls moved into the top of the Personalize panel.",
+    ],
+  },
+  {
     version: "3.22.0",
     codename: "Notification Deck",
     date: "2026-06-28",

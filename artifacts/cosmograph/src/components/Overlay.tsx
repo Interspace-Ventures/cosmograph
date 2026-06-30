@@ -10,21 +10,15 @@ import { CustomizeDrawer } from "./CustomizeDrawer";
 import { BannerHost } from "./BannerHost";
 import { EngagePrompt } from "./EngagePrompt";
 import { galaxyData } from "@/data/galaxy";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { presence } from "@/lib/presence";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import { toast } from "sonner";
-import { ExternalLink, Github, Heart, Share2, Star } from "lucide-react";
-import { useGithubStars, formatStars } from "@/lib/useGithubStars";
-import { SITE } from "@/config/site";
-import { ShareModal } from "./ShareModal";
 
 const EMPTY_IDS: string[] = [];
 
 export function Overlay() {
-  const { introFinished, selectedObject, hoveredObject, tourActive, consoleOpen } =
+  const { introFinished, selectedObject, hoveredObject, tourActive } =
     useAppState();
-  const isMobile = useIsMobile();
 
   return (
     <div className="absolute inset-0 pointer-events-none z-10">
@@ -38,7 +32,6 @@ export function Overlay() {
             <>
               <BannerHost />
               <Header />
-              <HeaderActions />
 
               <AnimatePresence>
                 {hoveredObject && (
@@ -81,8 +74,8 @@ export function Overlay() {
               </AnimatePresence>
 
               <AnimatePresence>
-                {selectedObject && !(isMobile && consoleOpen) && (
-                  <div className="absolute z-30 left-3 right-3 bottom-[4.25rem] max-h-[42vh] md:inset-x-auto md:right-auto md:bottom-auto md:top-36 md:left-5 md:w-[min(384px,calc(100vw-2.5rem))] md:max-h-[calc(100vh-15rem)] md:!block overflow-y-auto custom-scrollbar pointer-events-auto block">
+                {selectedObject && (
+                  <div className="absolute z-30 left-3 right-3 bottom-[5.5rem] max-h-[42vh] md:inset-x-auto md:right-auto md:bottom-auto md:top-36 md:left-5 md:w-[min(384px,calc(100vw-2.5rem))] md:max-h-[calc(100vh-15rem)] md:!block overflow-y-auto custom-scrollbar pointer-events-auto block">
                     <DetailPanel />
                   </div>
                 )}
@@ -145,72 +138,6 @@ function Header() {
         />
       </div>
       <LivePresence />
-    </div>
-  );
-}
-
-// GitHub + Share pulled out of the console into two standalone buttons pinned
-// top-right. On mobile the console docks to the bottom so the top-right is free
-// (right-0); on desktop the console occupies the right edge, so these slide left
-// of it by the live console width and stay clear of the panel.
-function HeaderActions() {
-  const { consoleOpen, bannerHeight } = useAppState();
-  const isMobile = useIsMobile();
-  const [shareOpen, setShareOpen] = useState(false);
-  const { stars, url } = useGithubStars();
-  const desktopRight = consoleOpen ? "min(12rem, 80vw)" : "3.5rem";
-  return (
-    <div
-      className={`absolute right-0 z-20 flex items-center gap-2 px-3 transition-[right,top] duration-[280ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
-        isMobile ? "py-3" : "py-1"
-      }`}
-      style={{
-        top: bannerHeight,
-        right: isMobile ? "0px" : `calc(${desktopRight} + 0.5rem)`,
-      }}
-    >
-      <a
-        href={SITE.github.sponsors}
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label="Sponsor this project"
-        className="pointer-events-auto flex h-9 items-center gap-2 border-2 border-edge bg-white/5 px-3 text-ink backdrop-blur-sm transition-colors hover:bg-white/10"
-      >
-        <Heart size={15} className="shrink-0 text-accent" />
-        <span className="font-display text-[11px] uppercase tracking-wider">
-          Sponsor
-        </span>
-        <ExternalLink size={12} className="shrink-0 text-ink-dim" />
-      </a>
-      <a
-        href={url ?? SITE.github.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label="View source on GitHub"
-        className="pointer-events-auto flex h-9 items-center gap-2 border-2 border-edge bg-white/5 px-3 text-ink backdrop-blur-sm transition-colors hover:bg-white/10"
-      >
-        <Github size={15} className="shrink-0" />
-        <span className="font-display text-[11px] uppercase tracking-wider">
-          GitHub
-        </span>
-        {stars !== null && (
-          <span className="inline-flex items-center gap-0.5 font-mono text-[11px] text-accent">
-            <Star size={11} className="fill-current" />
-            {formatStars(stars)}
-          </span>
-        )}
-      </a>
-      <button
-        onClick={() => setShareOpen(true)}
-        aria-label="Share this Cosmograph"
-        className="pointer-events-auto flex h-9 items-center gap-2 border-2 border-edge bg-white/5 px-3 text-ink backdrop-blur-sm transition-colors hover:bg-white/10"
-      >
-        <Share2 size={15} className="shrink-0" />
-        <span className="font-display text-[11px] uppercase tracking-wider">
-          Share
-        </span>
-      </button>
-      <ShareModal open={shareOpen} onClose={() => setShareOpen(false)} />
     </div>
   );
 }

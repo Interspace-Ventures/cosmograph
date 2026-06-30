@@ -1,7 +1,7 @@
 - [Galaxy visual language](galaxy-visual-language.md) — Structured Liquidity applies to 2D UI only; 3D scene stays photoreal with per-domain stellar colors; orbits must read as real planetary systems, not belts.
 - [R3F headless WebGL](r3f-headless-webgl.md) — screenshot sandbox has no GPU so WebGL context fails; this is expected, verify via typecheck + browser logs, not screenshots.
 - [Share-card capture timing](share-card-capture-timing.md) — off-screen galaxy snapshot must fire on Suspense readiness + 2 RAFs, never a fixed timer, or the card is intermittently blank.
-- [R3F canvas resize vs transform](r3f-canvas-resize-jank.md) — console toggle now width-confines (resizes) the galaxy canvas for a real "push" + debounced single snap; translate-only was reverted (it hides content under the panel). Don't flip back.
+- [Cockpit dashboard HUD](cockpit-dashboard.md) — all controls live in ONE bottom bar (z-30); rail + top-right buttons gone; galaxy canvas is full-bleed inset-0 (no resize push); drawers rise z-50, banner z-40 full-width; AccountIndicator moved to CustomizeDrawer top.
 - [Live dataset swap staleness](dataset-swap-staleness.md) — values derived from galaxyData must be mount-time useMemo inside the key={datasetVersion} subtree, never module-scope consts, or they show the prior scientist after a swap.
 - [OpenAlex merged profile](openalex-merged-profile.md) — the galaxy author id merges TWO same-named people; disambiguate by institution+coauthor (not year alone) via fetch-galaxy filters; recompute headline stats from kept works.
 - [Fly camera mode](fly-camera-mode.md) — first-person spaceship: dive-in on entry, OrbitControls unmounted, momentum velocity (clamp+delta-damp), never unbounded translate.
@@ -16,6 +16,4 @@
 - [Poly Pizza GLB download](poly-pizza-glb.md) — page id ≠ file id; `static.poly.pizza/<page-id>.glb` is AccessDenied; scrape the page for the real UUID CDN url, verify `glTF` magic bytes.
 - [Iframe auth handoff](iframe-auth-handoff.md) — Clerk OAuth+bot-challenge split is an iframe-preview artifact; in-frame auth pages show a "open in new window" handoff, real widget renders top-level/prod.
 - [Cosmonaut presence ships](cosmonaut-ships.md) — peers + self are low-poly ships; ship look = a seed now broadcast over presence + saved to users.ship_seed (/me/ship); hydrate saved seed once per sign-in.
-- [Overlay vs Sidebar stacking](overlay-stacking-context.md) — Overlay subtree (z-10) always renders below the console rail (z-30); top-right overlay UI must inset its right edge by console width (or be hoisted out) to stay clickable.
-- [Mobile console dock](mobile-console-dock.md) — on mobile the console docks bottom (sheet), desktop stays right rail; no right-push on mobile, detail panel hides while console open, footer hidden, useIsMobile inits synchronously.
 - [Ask Cosmos chat](ask-cosmos-chat.md) — streaming SSE assistant; action+THINK/ANSWER markers → typed frames; data-turn numbers are deterministic (client ignores model prose), never model-stated.

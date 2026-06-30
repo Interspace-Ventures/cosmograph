@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, Move3d, X } from "lucide-react";
 import { useAppState } from "@/lib/store";
-import { useIsMobile } from "@/hooks/use-mobile";
 
 // Fixed single-line height for every notification banner. Kept constant so the
 // header chrome can push down by a predictable amount (no measuring) and so the
@@ -27,23 +26,18 @@ type Banner = {
 // of floating toasts that occlude the galaxy, it slides down and the header
 // chrome slides down with it (the store's bannerHeight). When more than one
 // banner is active (e.g. the limited-time offer plus the fly-controls hint) it
-// quietly cycles between them. On desktop it insets its right edge by the live
-// console width so it never sits under the Mission Control rail (which renders
-// above this overlay's stacking context); on mobile the console docks to the
-// bottom, so the banner spans the full width.
+// quietly cycles between them. The galaxy is full-bleed (the side rail is gone),
+// so the banner spans the full width.
 export function BannerHost() {
   const {
     showDealBanner,
     dismissDealBanner,
     setCustomizeOpen,
-    consoleOpen,
     cameraMode,
     tourActive,
     introFinished,
     setBannerHeight,
   } = useAppState();
-  const isMobile = useIsMobile();
-  const desktopRight = consoleOpen ? "min(12rem, 80vw)" : "3.5rem";
 
   // Fly-controls hint: re-shows each time the viewer enters spaceship mode, then
   // auto-expires so it never lingers.
@@ -133,10 +127,10 @@ export function BannerHost() {
           exit={{ y: "-100%" }}
           transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
           style={{
-            right: isMobile ? "0px" : desktopRight,
+            right: 0,
             height: BANNER_HEIGHT,
           }}
-          className={`pointer-events-auto absolute left-0 top-0 z-40 overflow-hidden border-b-2 bg-[rgba(11,9,18,0.88)] backdrop-blur-md transition-[right] duration-[280ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
+          className={`pointer-events-auto absolute left-0 top-0 z-40 overflow-hidden border-b-2 bg-[rgba(11,9,18,0.88)] backdrop-blur-md ${
             current.accent ? "border-accent/50" : "border-edge"
           }`}
         >
