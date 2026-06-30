@@ -99,8 +99,10 @@ function Thrusters({
     // popping, and so a one-frame speed spike on (re)entry doesn't flash.
     cur.current = THREE.MathUtils.lerp(cur.current, target, Math.min(1, dt * 8));
     const t = cur.current;
-    const opacity = (self ? 0.5 : 0.9) * t;
-    const s = 0.16 + t * 0.3;
+    const opacity = (self ? 0.55 : 0.95) * t;
+    // Small, tight nozzle flare (was a broad soft halo) so it reads as a focused
+    // space thruster rather than a fuzzy glow.
+    const s = 0.07 + t * 0.13;
     if (matL.current) matL.current.opacity = opacity;
     if (matR.current) matR.current.opacity = opacity;
     if (left.current) left.current.scale.setScalar(s);
@@ -109,7 +111,7 @@ function Thrusters({
 
   return (
     <>
-      <sprite ref={left} position={[-0.13, 0, -0.5]} scale={[0.0001, 0.0001, 0.0001]}>
+      <sprite ref={left} position={[-0.1, 0, -0.5]} scale={[0.0001, 0.0001, 0.0001]}>
         <spriteMaterial
           ref={matL}
           map={getGlowTexture()}
@@ -121,7 +123,7 @@ function Thrusters({
           toneMapped={false}
         />
       </sprite>
-      <sprite ref={right} position={[0.13, 0, -0.5]} scale={[0.0001, 0.0001, 0.0001]}>
+      <sprite ref={right} position={[0.1, 0, -0.5]} scale={[0.0001, 0.0001, 0.0001]}>
         <spriteMaterial
           ref={matR}
           map={getGlowTexture()}

@@ -17,6 +17,15 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.27.1",
+    codename: "Tight Burn",
+    date: "2026-06-30",
+    summary: "Tuned the engine thrusters down to a tighter, more focused burn.",
+    changes: [
+      "Made the rear thruster flare smaller and more concentrated so it reads like a real space engine nozzle instead of a soft halo.",
+    ],
+  },
+  {
     version: "3.27.0",
     codename: "True North",
     date: "2026-06-30",
