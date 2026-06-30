@@ -17,6 +17,16 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.25.1",
+    codename: "Header Crew",
+    date: "2026-06-30",
+    summary:
+      "The header buttons are now slimmer and reordered — Source, Sponsor, Share.",
+    changes: [
+      "Source (the GitHub repo), Sponsor, and Share buttons in the header are now smaller and reordered.",
+    ],
+  },
+  {
     version: "3.25.0",
     codename: "Header Crew",
     date: "2026-06-30",
