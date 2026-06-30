@@ -9,4 +9,7 @@
 export interface SaveShipRequest {
   /** The ship seed to save (sanitized to short alphanumeric server-side). */
   seed: string;
+  /** The ship type id to equip. Must be owned by the account (or the free "scout"); defaults to "scout" when omitted.
+   */
+  type?: string | null;
 }

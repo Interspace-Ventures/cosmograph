@@ -13,6 +13,7 @@ import router from "./routes";
 import { logger } from "./lib/logger";
 import { getStripeSync } from "./lib/stripeClient";
 import { markUnlockedFromWebhook } from "./lib/billing";
+import { grantSkinFromWebhook } from "./lib/ship";
 
 const app: Express = express();
 
@@ -70,6 +71,7 @@ app.post(
       const sync = await getStripeSync();
       await sync.processWebhook(req.body, sig);
       await markUnlockedFromWebhook(req.body, req.log);
+      await grantSkinFromWebhook(req.body, req.log);
       res.status(200).json({ received: true });
     } catch (err) {
       req.log.error({ err }, "Stripe webhook processing failed");

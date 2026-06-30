@@ -17,6 +17,18 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.28.0",
+    codename: "Hangar Bay",
+    date: "2026-06-30",
+    summary: "Sign in to claim a profile and fly a ship that's truly yours.",
+    changes: [
+      "Added Sign In / Sign Up in the cockpit, and a signed-in account panel showing your member status and ship.",
+      "New ship hangar: choose a hull type — the free Scout, or the premium Fighter, Hauler, and Interceptor — each with its own distinctive silhouette.",
+      "Members get three ship types included; anyone can unlock an extra type for a one-time $1. Colors stay free on any ship you own.",
+      "Other cosmonauts now see the exact ship type you're flying.",
+    ],
+  },
+  {
     version: "3.27.1",
     codename: "Tight Burn",
     date: "2026-06-30",

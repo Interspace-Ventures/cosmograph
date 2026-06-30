@@ -53,6 +53,11 @@ function PeerShip({ id }: { id: string }) {
   const [seed, setSeed] = useState<string | undefined>(
     () => presence.peers.get(id)?.seed,
   );
+  // The peer's equipped ship TYPE, tracked in state so they re-skin live when
+  // they equip a different hull mid-session. Falls back to default "scout".
+  const [shipType, setShipType] = useState<string | undefined>(
+    () => presence.peers.get(id)?.shipType,
+  );
   const look = useMemo(() => shipLookFromSeed(seed || id), [seed, id]);
   const camera = useThree((s) => s.camera);
 
@@ -60,8 +65,9 @@ function PeerShip({ id }: { id: string }) {
     const peer = presence.peers.get(id);
     const g = ref.current;
     if (!peer || !g) return;
-    // Re-skin only when the broadcast seed actually changes (rare) — cheap.
+    // Re-skin only when the broadcast seed/type actually changes (rare) — cheap.
     if (peer.seed !== seed) setSeed(peer.seed);
+    if (peer.shipType !== shipType) setShipType(peer.shipType);
 
     _target.set(peer.x, peer.y, peer.z);
     if (!initialized.current) {
@@ -102,7 +108,13 @@ function PeerShip({ id }: { id: string }) {
 
   return (
     <group ref={ref} scale={0.001}>
-      <ShipModel variant="peer" look={look} glow thrustRef={thrust} />
+      <ShipModel
+        variant="peer"
+        look={look}
+        glow
+        thrustRef={thrust}
+        typeId={shipType}
+      />
     </group>
   );
 }
@@ -150,7 +162,8 @@ const _flipY = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0
  * (the god/planetarium view has no ship).
  */
 export function SelfShip() {
-  const { cameraMode, introFinished, tourActive, shipSeed } = useAppState();
+  const { cameraMode, introFinished, tourActive, shipSeed, shipTypeId } =
+    useAppState();
   const camera = useThree((s) => s.camera);
   const ref = useRef<THREE.Group>(null);
   const roll = useRef(0);
@@ -223,14 +236,21 @@ export function SelfShip() {
 
   return (
     <group ref={ref} scale={0.001} renderOrder={10}>
-      <ShipModel variant="peer" look={look} glow={false} thrustRef={thrust} />
+      <ShipModel
+        variant="peer"
+        look={look}
+        glow={false}
+        thrustRef={thrust}
+        typeId={shipTypeId}
+      />
     </group>
   );
 }
 
 /** Streams this explorer's camera pose to the server (no visual output). */
 export function PresenceBroadcaster() {
-  const { galaxyTilt, cameraMode, datasetVersion, shipSeed } = useAppState();
+  const { galaxyTilt, cameraMode, datasetVersion, shipSeed, shipTypeId } =
+    useAppState();
   const camera = useThree((s) => s.camera);
 
   // Presence (and its server cost) is scoped to the canonical default galaxy
@@ -253,6 +273,7 @@ export function PresenceBroadcaster() {
       _target.z,
       cameraMode === "spaceship" ? 1 : 0,
       shipSeed,
+      shipTypeId,
     );
   });
 

@@ -52,6 +52,9 @@ type Client = {
   // The explorer's ship-look seed (sanitized to short alphanumeric). Empty until
   // the client sends one; rebroadcast so peers render the exact saved ship.
   seed: string;
+  // The explorer's equipped ship TYPE id (sanitized to short alphanumeric).
+  // Empty = default "scout"; rebroadcast so peers render the right hull family.
+  shipType: string;
   hasPose: boolean;
   isAlive: boolean;
   tokens: number;
@@ -141,6 +144,7 @@ export function attachPresence(server: HttpServer): void {
         z: 0,
         m: 0,
         seed: "",
+        shipType: "",
         hasPose: false,
         isAlive: true,
         tokens: MSG_BURST,
@@ -206,6 +210,11 @@ export function attachPresence(server: HttpServer): void {
           // rebroadcasting (mirrors the REST sanitize in lib/ship.ts).
           client.seed = rawSeed.replace(/[^a-zA-Z0-9]/g, "").slice(0, 16);
         }
+        const rawType = (msg as { st?: unknown }).st;
+        if (typeof rawType === "string") {
+          // Same clamp for the equipped ship-type id before rebroadcasting.
+          client.shipType = rawType.replace(/[^a-zA-Z0-9]/g, "").slice(0, 16);
+        }
         client.hasPose = true;
         client.lastPose = now;
       });
@@ -231,17 +240,26 @@ export function attachPresence(server: HttpServer): void {
       p: [number, number, number];
       m: 0 | 1;
       s?: string;
+      st?: string;
     }> = [];
     for (const c of clients.values()) {
       if (!c.hasPose || now - c.lastPose > STALE_MS) continue;
       if (peers.length >= MAX_RENDER_PEERS) break;
-      const peer: { id: string; c: string; p: [number, number, number]; m: 0 | 1; s?: string } = {
+      const peer: {
+        id: string;
+        c: string;
+        p: [number, number, number];
+        m: 0 | 1;
+        s?: string;
+        st?: string;
+      } = {
         id: c.id,
         c: c.color,
         p: [c.x, c.y, c.z],
         m: c.m,
       };
       if (c.seed) peer.s = c.seed;
+      if (c.shipType) peer.st = c.shipType;
       peers.push(peer);
     }
     const payload = JSON.stringify({ t: "state", count: clients.size, peers });

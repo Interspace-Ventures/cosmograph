@@ -24,6 +24,7 @@ import type {
   CheckoutRequest,
   CheckoutSession,
   ClaimReferralRequest,
+  ClaimSkinRequest,
   ConfirmRequest,
   Entitlement,
   Error,
@@ -33,6 +34,7 @@ import type {
   ReferralInfo,
   SaveShipRequest,
   ShipState,
+  SkinCheckout,
   UnlockRequest
 } from './api.schemas';
 
@@ -574,6 +576,152 @@ export const useSaveShip = <TError = ErrorType<Error>,
         TContext
       > => {
       return useMutation(getSaveShipMutationOptions(options));
+    }
+
+export const getClaimSkinUrl = () => {
+
+
+
+
+  return `/api/me/ship/claim`
+}
+
+/**
+ * Claims a premium ship type for the signed-in account. Active members get a fixed number of types included for free; once those are used (or for non-members) the account pays $1 one-time. Returns alreadyOwned when the account already has it, granted when a free member slot was applied, or a hosted Stripe Checkout URL when payment is required.
+
+ * @summary Claim or purchase a premium ship type
+ */
+export const claimSkin = async (claimSkinRequest: ClaimSkinRequest, options?: RequestInit): Promise<SkinCheckout> => {
+
+  return customFetch<SkinCheckout>(getClaimSkinUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      claimSkinRequest,)
+  }
+);}
+
+
+
+
+export const getClaimSkinMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof claimSkin>>, TError,{data: BodyType<ClaimSkinRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof claimSkin>>, TError,{data: BodyType<ClaimSkinRequest>}, TContext> => {
+
+const mutationKey = ['claimSkin'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof claimSkin>>, {data: BodyType<ClaimSkinRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  claimSkin(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ClaimSkinMutationResult = NonNullable<Awaited<ReturnType<typeof claimSkin>>>
+    export type ClaimSkinMutationBody = BodyType<ClaimSkinRequest>
+    export type ClaimSkinMutationError = ErrorType<Error>
+
+    /**
+ * @summary Claim or purchase a premium ship type
+ */
+export const useClaimSkin = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof claimSkin>>, TError,{data: BodyType<ClaimSkinRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof claimSkin>>,
+        TError,
+        {data: BodyType<ClaimSkinRequest>},
+        TContext
+      > => {
+      return useMutation(getClaimSkinMutationOptions(options));
+    }
+
+export const getConfirmSkinUrl = () => {
+
+
+
+
+  return `/api/me/ship/confirm`
+}
+
+/**
+ * Verifies a returned Stripe Checkout session directly against Stripe and, when paid and owned by the signed-in account, grants the ship type. Returns the refreshed ship state.
+
+ * @summary Confirm a completed ship-type checkout
+ */
+export const confirmSkin = async (confirmRequest: ConfirmRequest, options?: RequestInit): Promise<ShipState> => {
+
+  return customFetch<ShipState>(getConfirmSkinUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      confirmRequest,)
+  }
+);}
+
+
+
+
+export const getConfirmSkinMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmSkin>>, TError,{data: BodyType<ConfirmRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmSkin>>, TError,{data: BodyType<ConfirmRequest>}, TContext> => {
+
+const mutationKey = ['confirmSkin'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmSkin>>, {data: BodyType<ConfirmRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  confirmSkin(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfirmSkinMutationResult = NonNullable<Awaited<ReturnType<typeof confirmSkin>>>
+    export type ConfirmSkinMutationBody = BodyType<ConfirmRequest>
+    export type ConfirmSkinMutationError = ErrorType<Error>
+
+    /**
+ * @summary Confirm a completed ship-type checkout
+ */
+export const useConfirmSkin = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmSkin>>, TError,{data: BodyType<ConfirmRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof confirmSkin>>,
+        TError,
+        {data: BodyType<ConfirmRequest>},
+        TContext
+      > => {
+      return useMutation(getConfirmSkinMutationOptions(options));
     }
 
 export const getGetReferralUrl = () => {

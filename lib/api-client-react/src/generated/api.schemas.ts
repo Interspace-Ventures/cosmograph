@@ -46,11 +46,43 @@ export interface ConfirmRequest {
 export interface ShipState {
   /** The account's saved ship seed, or null if none is saved. */
   shipSeed: string | null;
+  /** The equipped ship type id (defaults to "scout"). */
+  shipType: string;
+  /** Ship type ids the account can equip — always includes the free "scout", plus every premium type it has claimed or purchased.
+   */
+  ownedTypes: string[];
+  /** Whether the account is an active member (free-slot eligible). */
+  entitled: boolean;
+  /** How many premium ship types the membership includes for free. */
+  includedSkinSlots: number;
+  /** Included premium-type slots not yet used (members only; 0 otherwise).
+   */
+  freeSlotsRemaining: number;
 }
 
 export interface SaveShipRequest {
   /** The ship seed to save (sanitized to short alphanumeric server-side). */
   seed: string;
+  /** The ship type id to equip. Must be owned by the account (or the free "scout"); defaults to "scout" when omitted.
+   */
+  type?: string | null;
+}
+
+export interface ClaimSkinRequest {
+  /** The premium ship type id to claim or purchase. */
+  type: string;
+  /** OpenAlex author id of the scientist currently being explored, so the post-payment redirect returns to that galaxy instead of the default.
+   */
+  author?: string | null;
+}
+
+export interface SkinCheckout {
+  /** True when the account already owns this type; no action taken. */
+  alreadyOwned: boolean;
+  /** True when a free member-slot claim was applied (no payment). */
+  granted: boolean;
+  /** Hosted Stripe Checkout URL to redirect to, when payment is required. */
+  url?: string | null;
 }
 
 /**

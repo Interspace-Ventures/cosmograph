@@ -1,7 +1,8 @@
 import { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
+import { useLocation } from "wouter";
 import { Show } from "@clerk/react";
-import { Info, Orbit, Rocket, Lock, Map, Telescope } from "lucide-react";
+import { Info, Orbit, Rocket, Lock, Map, Telescope, LogIn } from "lucide-react";
 import { useAppState } from "@/lib/store";
 import { isFiltersActive } from "@/data/galaxy";
 import { AccountIndicatorRail } from "./AccountIndicator";
@@ -34,6 +35,7 @@ export function Dashboard() {
     setCockpitWidth,
   } = useAppState();
   const filtersActive = isFiltersActive(filters);
+  const [, setLocation] = useLocation();
   const barRef = useRef<HTMLDivElement>(null);
   const lastWidth = useRef(0);
 
@@ -63,9 +65,18 @@ export function Dashboard() {
           ref={barRef}
           className="custom-scrollbar pointer-events-auto flex max-w-full items-center gap-1.5 overflow-x-auto border-2 border-edge bg-bg/80 px-2 py-2 backdrop-blur-xl"
         >
-          {/* Account — avatar only; signed-out renders nothing (so does the rule). */}
+          {/* Account — signed-in shows the avatar; signed-out shows a Sign In
+              entry so visitors can make an account (then personalize a ship). */}
           <Show when="signed-in">
             <AccountIndicatorRail />
+            <Divider />
+          </Show>
+          <Show when="signed-out">
+            <DashButton
+              label="Sign In"
+              onClick={() => setLocation("/sign-in")}
+              icon={<LogIn size={15} />}
+            />
             <Divider />
           </Show>
 

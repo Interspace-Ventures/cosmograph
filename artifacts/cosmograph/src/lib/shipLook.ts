@@ -102,3 +102,24 @@ export function setSelfSeed(seed: string): void {
 export function randomSeed(): string {
   return Math.random().toString(36).slice(2, 10);
 }
+
+const SELF_TYPE_KEY = "cosmograph.shipType";
+
+// The viewer's equipped ship TYPE id, persisted per-browser so it sticks across
+// visits before sign-in (defaults to the free "scout"). A signed-in account's
+// saved type overrides this local default once loaded.
+export function getSelfType(): string {
+  try {
+    return localStorage.getItem(SELF_TYPE_KEY) || "scout";
+  } catch {
+    return "scout";
+  }
+}
+
+export function setSelfType(typeId: string): void {
+  try {
+    localStorage.setItem(SELF_TYPE_KEY, typeId);
+  } catch {
+    // ignore (private mode / storage disabled)
+  }
+}

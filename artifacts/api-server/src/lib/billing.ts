@@ -75,7 +75,7 @@ export interface CheckoutResult {
   url?: string | null;
 }
 
-async function fetchClerkEmail(userId: string): Promise<string | null> {
+export async function fetchClerkEmail(userId: string): Promise<string | null> {
   try {
     const user = await clerkClient.users.getUser(userId);
     const primary = user.emailAddresses.find(
@@ -87,7 +87,7 @@ async function fetchClerkEmail(userId: string): Promise<string | null> {
   }
 }
 
-async function getOrCreateUser(
+export async function getOrCreateUser(
   userId: string,
   email: string | null,
 ): Promise<User> {
@@ -152,7 +152,10 @@ async function recordUnlock(userId: string, authorId: string): Promise<void> {
     .onConflictDoNothing();
 }
 
-async function ensureCustomer(stripe: Stripe, user: User): Promise<string> {
+export async function ensureCustomer(
+  stripe: Stripe,
+  user: User,
+): Promise<string> {
   if (user.stripeCustomerId) return user.stripeCustomerId;
   const email = user.email ?? (await fetchClerkEmail(user.id)) ?? undefined;
   const customer = await stripe.customers.create({
@@ -343,7 +346,7 @@ export async function createCheckout(
   // Carry the author in metadata too so the first researcher is auto-unlocked
   // (within the included slots) when the membership is granted — both on the
   // success-redirect confirm and via the webhook for buyers who never return.
-  const meta: Record<string, string> = { userId };
+  const meta: Record<string, string> = { userId, kind: "membership" };
   if (authorId) meta.author = authorId;
 
   const session = await stripe.checkout.sessions.create({
@@ -512,9 +515,13 @@ export async function markUnlockedFromWebhook(
       event.type === "checkout.session.async_payment_succeeded"
     ) {
       const metadata = obj.metadata as
-        | { userId?: string; author?: string }
+        | { userId?: string; author?: string; kind?: string }
         | undefined;
       const userId = metadata?.userId;
+      // Skin (one-time ship-type) sessions are handled by the ship lib's own
+      // webhook grant — never treat them as a membership here, or a $1 cosmetic
+      // purchase would flip the account to full member.
+      if (metadata?.kind === "skin") return;
       // Only grant once funds have actually settled. A session can reach
       // status="complete" before payment_status flips to "paid" for some
       // payment methods, so we key strictly on payment_status here (the

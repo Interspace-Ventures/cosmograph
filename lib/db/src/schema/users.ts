@@ -23,6 +23,11 @@ export const usersTable = pgTable("users", {
   // a member's chosen ship follow them across devices and be broadcast to other
   // cosmonauts in real time. Null until the account saves one.
   shipSeed: text("ship_seed"),
+  // The account's equipped cosmonaut-ship TYPE id (e.g. "scout", "fighter").
+  // The default free "scout" is assumed when null. Premium types must be owned
+  // (recorded in ship_unlocks) before they can be equipped here; the server
+  // enforces that on save, so this column can never reference an unowned type.
+  shipType: text("ship_type"),
   // Referrals: every account gets a stable short code used as `?ref=<code>`.
   // When a brand-new account signs up through someone's link, `referredBy` is
   // set once (permanently) to that referrer's account id, and `referredAt`

@@ -85,7 +85,12 @@ export const ConfirmCheckoutResponse = zod.object({
  * @summary The signed-in account's saved ship
  */
 export const GetShipResponse = zod.object({
-  "shipSeed": zod.string().nullable().describe('The account\'s saved ship seed, or null if none is saved.')
+  "shipSeed": zod.string().nullable().describe('The account\'s saved ship seed, or null if none is saved.'),
+  "shipType": zod.string().describe('The equipped ship type id (defaults to \"scout\").'),
+  "ownedTypes": zod.array(zod.string()).describe('Ship type ids the account can equip — always includes the free \"scout\", plus every premium type it has claimed or purchased.\n'),
+  "entitled": zod.boolean().describe('Whether the account is an active member (free-slot eligible).'),
+  "includedSkinSlots": zod.number().describe('How many premium ship types the membership includes for free.'),
+  "freeSlotsRemaining": zod.number().describe('Included premium-type slots not yet used (members only; 0 otherwise).\n')
 })
 
 
@@ -95,11 +100,53 @@ export const GetShipResponse = zod.object({
  * @summary Save the account's ship
  */
 export const SaveShipBody = zod.object({
-  "seed": zod.string().describe('The ship seed to save (sanitized to short alphanumeric server-side).')
+  "seed": zod.string().describe('The ship seed to save (sanitized to short alphanumeric server-side).'),
+  "type": zod.string().nullish().describe('The ship type id to equip. Must be owned by the account (or the free \"scout\"); defaults to \"scout\" when omitted.\n')
 })
 
 export const SaveShipResponse = zod.object({
-  "shipSeed": zod.string().nullable().describe('The account\'s saved ship seed, or null if none is saved.')
+  "shipSeed": zod.string().nullable().describe('The account\'s saved ship seed, or null if none is saved.'),
+  "shipType": zod.string().describe('The equipped ship type id (defaults to \"scout\").'),
+  "ownedTypes": zod.array(zod.string()).describe('Ship type ids the account can equip — always includes the free \"scout\", plus every premium type it has claimed or purchased.\n'),
+  "entitled": zod.boolean().describe('Whether the account is an active member (free-slot eligible).'),
+  "includedSkinSlots": zod.number().describe('How many premium ship types the membership includes for free.'),
+  "freeSlotsRemaining": zod.number().describe('Included premium-type slots not yet used (members only; 0 otherwise).\n')
+})
+
+
+/**
+ * Claims a premium ship type for the signed-in account. Active members get a fixed number of types included for free; once those are used (or for non-members) the account pays $1 one-time. Returns alreadyOwned when the account already has it, granted when a free member slot was applied, or a hosted Stripe Checkout URL when payment is required.
+
+ * @summary Claim or purchase a premium ship type
+ */
+export const ClaimSkinBody = zod.object({
+  "type": zod.string().describe('The premium ship type id to claim or purchase.'),
+  "author": zod.string().nullish().describe('OpenAlex author id of the scientist currently being explored, so the post-payment redirect returns to that galaxy instead of the default.\n')
+})
+
+export const ClaimSkinResponse = zod.object({
+  "alreadyOwned": zod.boolean().describe('True when the account already owns this type; no action taken.'),
+  "granted": zod.boolean().describe('True when a free member-slot claim was applied (no payment).'),
+  "url": zod.string().nullish().describe('Hosted Stripe Checkout URL to redirect to, when payment is required.')
+})
+
+
+/**
+ * Verifies a returned Stripe Checkout session directly against Stripe and, when paid and owned by the signed-in account, grants the ship type. Returns the refreshed ship state.
+
+ * @summary Confirm a completed ship-type checkout
+ */
+export const ConfirmSkinBody = zod.object({
+  "sessionId": zod.string().describe('The Stripe Checkout session id returned on the success redirect.')
+})
+
+export const ConfirmSkinResponse = zod.object({
+  "shipSeed": zod.string().nullable().describe('The account\'s saved ship seed, or null if none is saved.'),
+  "shipType": zod.string().describe('The equipped ship type id (defaults to \"scout\").'),
+  "ownedTypes": zod.array(zod.string()).describe('Ship type ids the account can equip — always includes the free \"scout\", plus every premium type it has claimed or purchased.\n'),
+  "entitled": zod.boolean().describe('Whether the account is an active member (free-slot eligible).'),
+  "includedSkinSlots": zod.number().describe('How many premium ship types the membership includes for free.'),
+  "freeSlotsRemaining": zod.number().describe('Included premium-type slots not yet used (members only; 0 otherwise).\n')
 })
 
 

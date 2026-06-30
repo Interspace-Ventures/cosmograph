@@ -24,7 +24,13 @@ import {
 } from "@/lib/openalex";
 import { rebuildLayout } from "@/components/GalaxySystem";
 import { readAuthorParam, writeAuthorParam } from "@/lib/authorUrl";
-import { getSelfSeed, setSelfSeed, randomSeed } from "@/lib/shipLook";
+import {
+  getSelfSeed,
+  setSelfSeed,
+  randomSeed,
+  getSelfType,
+  setSelfType,
+} from "@/lib/shipLook";
 
 export type DatasetStatus = "idle" | "loading" | "ready" | "error";
 
@@ -73,6 +79,23 @@ interface AppState {
   // signed in). When it differs from shipSeed there are unsaved changes.
   savedShipSeed: string | null;
   setSavedShipSeed: (seed: string | null) => void;
+  // The viewer's equipped ship TYPE id (procedural hull family, e.g. "scout").
+  // Broadcast over presence so peers render the right craft, and persisted
+  // server-side (savedShipType) for signed-in accounts. Defaults to the free
+  // "scout" via the per-browser local default.
+  shipTypeId: string;
+  setShipTypeId: (typeId: string) => void;
+  // The type the server has on file for the signed-in account (null = none / not
+  // signed in). When it differs from shipTypeId there are unsaved changes.
+  savedShipType: string | null;
+  setSavedShipType: (typeId: string | null) => void;
+  // Ship types this account can equip (always includes "scout", plus any claimed
+  // or purchased premium types). Pushed in by ShipBridge from the server.
+  ownedShipTypes: string[];
+  setOwnedShipTypes: (types: string[]) => void;
+  // Premium ship-type slots the account's membership still includes for free.
+  freeShipSlotsRemaining: number;
+  setFreeShipSlotsRemaining: (n: number) => void;
   selectedObject: SelectedObject;
   setSelectedObject: (obj: SelectedObject) => void;
   hoveredObject: HoveredObject;
@@ -253,6 +276,16 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const shuffleShip = useCallback(() => {
     setShipSeed(randomSeed());
   }, [setShipSeed]);
+  // Equipped ship type: starts from the per-browser local default ("scout").
+  // ShipBridge overrides it with a signed-in account's saved type once it loads.
+  const [shipTypeId, setShipTypeIdState] = useState<string>(() => getSelfType());
+  const [savedShipType, setSavedShipType] = useState<string | null>(null);
+  const [ownedShipTypes, setOwnedShipTypes] = useState<string[]>(["scout"]);
+  const [freeShipSlotsRemaining, setFreeShipSlotsRemaining] = useState(0);
+  const setShipTypeId = useCallback((typeId: string) => {
+    setShipTypeIdState(typeId);
+    setSelfType(typeId); // keep the local default in sync so it sticks per-browser
+  }, []);
   const [selectedObject, setSelectedObject] = useState<SelectedObject>(null);
   const [hoveredObject, setHoveredObject] = useState<HoveredObject>(null);
   const [galaxyTilt, setGalaxyTilt] = useState<number>(0);
@@ -493,6 +526,14 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         shuffleShip,
         savedShipSeed,
         setSavedShipSeed,
+        shipTypeId,
+        setShipTypeId,
+        savedShipType,
+        setSavedShipType,
+        ownedShipTypes,
+        setOwnedShipTypes,
+        freeShipSlotsRemaining,
+        setFreeShipSlotsRemaining,
         selectedObject,
         setSelectedObject,
         hoveredObject,
