@@ -1,33 +1,18 @@
-import { useState } from "react";
 import { motion } from "framer-motion";
 import { Show } from "@clerk/react";
-import {
-  Info,
-  Orbit,
-  Rocket,
-  Lock,
-  Map,
-  Telescope,
-  Heart,
-  Github,
-  Star,
-  Share2,
-} from "lucide-react";
+import { Info, Orbit, Rocket, Lock, Map, Telescope } from "lucide-react";
 import { useAppState } from "@/lib/store";
 import { isFiltersActive } from "@/data/galaxy";
 import { AccountIndicatorRail } from "./AccountIndicator";
 import { MessageCircleStar } from "./MessageCircleStar";
-import { useGithubStars, formatStars } from "@/lib/useGithubStars";
-import { SITE } from "@/config/site";
-import { ShareModal } from "./ShareModal";
 
 /**
- * The cockpit dashboard — a single bottom HUD that replaces BOTH the old
- * Mission Control side rail AND the top-right Sponsor/GitHub/Share buttons.
- * Every control the galaxy needs lives here in one bar: the account avatar, the
- * Orbit/Fly toggle, and the labelled buttons that raise the rich panels (Info,
- * Ask Cosmo, Personalize) plus the project/social actions. Those rich panels
- * rise from the bottom just above this bar (see Drawer.tsx).
+ * The cockpit dashboard — the bottom HUD that replaces the old Mission Control
+ * side rail. Every in-galaxy control lives here in one bar: the account avatar,
+ * the Orbit/Fly toggle, and the labelled buttons that raise the rich panels
+ * (Info, Ask Cosmo, Personalize, Tour). Those rich panels rise from the bottom
+ * just above this bar (see Drawer.tsx). The project/social actions (Sponsor,
+ * GitHub, Share) live beside the header title instead (see SocialActions.tsx).
  *
  * Each control shows its label inline beside the icon. The bar centres on
  * desktop and scrolls horizontally if it ever outgrows the viewport (e.g. on
@@ -46,8 +31,6 @@ export function Dashboard() {
     startTour,
     canExplore,
   } = useAppState();
-  const [shareOpen, setShareOpen] = useState(false);
-  const { stars, url } = useGithubStars();
   const filtersActive = isFiltersActive(filters);
 
   return (
@@ -100,46 +83,8 @@ export function Dashboard() {
             locked={!canExplore}
             icon={<Map size={15} />}
           />
-
-          <Divider />
-
-          {/* Project / social actions — formerly the top-right buttons. */}
-          <a
-            href={SITE.github.sponsors}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="relative flex h-9 shrink-0 items-center gap-2 border-2 border-edge bg-white/5 px-3 text-ink transition-colors hover:bg-white/10"
-          >
-            <Heart size={15} className="shrink-0 text-accent" />
-            <span className="font-display text-[11px] uppercase tracking-wider">
-              Sponsor
-            </span>
-          </a>
-          <a
-            href={url ?? SITE.github.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="relative flex h-9 shrink-0 items-center gap-2 border-2 border-edge bg-white/5 px-3 text-ink transition-colors hover:bg-white/10"
-          >
-            <Github size={15} className="shrink-0" />
-            <span className="font-display text-[11px] uppercase tracking-wider">
-              GitHub
-            </span>
-            {stars !== null && (
-              <span className="inline-flex items-center gap-0.5 font-mono text-[11px] text-accent">
-                <Star size={11} className="fill-current" />
-                {formatStars(stars)}
-              </span>
-            )}
-          </a>
-          <DashButton
-            label="Share"
-            onClick={() => setShareOpen(true)}
-            icon={<Share2 size={15} />}
-          />
         </div>
       </div>
-      <ShareModal open={shareOpen} onClose={() => setShareOpen(false)} />
     </>
   );
 }

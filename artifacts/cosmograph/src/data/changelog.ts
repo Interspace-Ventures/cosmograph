@@ -17,6 +17,17 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.25.0",
+    codename: "Header Crew",
+    date: "2026-06-30",
+    summary:
+      "The Sponsor, GitHub, and Share buttons moved up beside the Cosmograph title, leaving the cockpit for the controls you fly with.",
+    changes: [
+      "Sponsor, GitHub, and Share now sit just to the right of the Cosmograph header instead of in the cockpit.",
+      "The cockpit dashboard is now focused purely on in-galaxy controls.",
+    ],
+  },
+  {
     version: "3.24.0",
     codename: "Chase the Stars",
     date: "2026-06-30",

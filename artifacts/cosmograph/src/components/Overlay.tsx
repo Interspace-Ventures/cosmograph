@@ -9,6 +9,7 @@ import { AskDrawer } from "./AskDrawer";
 import { CustomizeDrawer } from "./CustomizeDrawer";
 import { BannerHost } from "./BannerHost";
 import { EngagePrompt } from "./EngagePrompt";
+import { SocialActions } from "./SocialActions";
 import { galaxyData } from "@/data/galaxy";
 import { presence } from "@/lib/presence";
 import { useEffect, useRef, useSyncExternalStore } from "react";
@@ -107,16 +108,19 @@ function Header() {
           "radial-gradient(130% 130% at 0% 0%, rgba(8,9,13,0.82) 0%, rgba(8,9,13,0.5) 40%, transparent 72%)",
       }}
     >
-      <div className="flex items-center gap-2.5">
-        <img
-          src={`${import.meta.env.BASE_URL}logo-mark.svg`}
-          alt=""
-          aria-hidden="true"
-          className="pointer-events-none h-8 w-8"
-        />
-        <h1 className="pointer-events-none text-3xl font-title font-bold tracking-tight text-ink">
-          Cosmograph
-        </h1>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <div className="flex items-center gap-2.5">
+          <img
+            src={`${import.meta.env.BASE_URL}logo-mark.svg`}
+            alt=""
+            aria-hidden="true"
+            className="pointer-events-none h-8 w-8"
+          />
+          <h1 className="pointer-events-none text-3xl font-title font-bold tracking-tight text-ink">
+            Cosmograph
+          </h1>
+        </div>
+        <SocialActions />
       </div>
       <p className="pointer-events-none text-ink/75 font-mono text-[11px] mt-1 uppercase tracking-[0.12em]">
         Scientific Work at Galactic Scale · {galaxyData.author.name}
