@@ -46,6 +46,18 @@ OrbitControls cannot express.
   restores it on entry (set imperatively + `updateProjectionMatrix()`); a wide FOV
   made the viewer feel "bigger than the planets." Tune scale in order FOV → maxSpeed
   → accel.
+- **Chase-ship heading must copy the full camera quaternion** (`camera.quaternion`
+  then flip 180° about Y, since the model nose is local +Z but the camera looks
+  down -Z), NOT `setFromUnitVectors(forward, camDir)`. Shortest-arc from a single
+  direction ignores "up", so pitching the camera induced a phantom sideways roll —
+  controls didn't match on-screen motion. Add turn-banking (yaw-rate → roll about
+  the forward axis) on top; it's a separate signal from the camera's strafe-roll,
+  so no double-bank.
+- **Thruster glow is ref-driven, not state:** a per-frame `thrustRef` (0..1, from
+  camera/peer move speed ÷ ~240, clamped) feeds rear-engine sprites whose opacity/
+  scale a child `useFrame` lerps (`dt*8`) — never a React prop, or every ship
+  re-renders each frame. Reset thrust + prevPos on Fly (re)entry or the first
+  frame's stale-delta spikes the glow.
 - **Per-mode camera persistence:** each mode records its latest vantage every frame
   (Orbit: pos+orbit target; Fly: pos+yaw+pitch) and the mode-enter effects restore
   it instead of resetting — Fly skips the dive-in once it has a saved vantage.

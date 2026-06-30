@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { useMemo, useRef, type MutableRefObject } from "react";
+import { useFrame } from "@react-three/fiber";
 import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { type ShipLook } from "../lib/shipLook";
@@ -72,19 +73,87 @@ function getShipMaterial(
 }
 
 /**
+ * Twin rear engine thrusters that brighten and stretch with throttle. The
+ * parent reports thrust (0..1) via a ref so this animates per-frame without
+ * re-rendering the ship. Mounted at the model's tail (local -Z, since the nose
+ * is +Z) and additively blended so they read as hot engine plumes.
+ */
+function Thrusters({
+  look,
+  thrustRef,
+  self,
+}: {
+  look: ShipLook;
+  thrustRef: MutableRefObject<number>;
+  self: boolean;
+}) {
+  const left = useRef<THREE.Sprite>(null);
+  const right = useRef<THREE.Sprite>(null);
+  const matL = useRef<THREE.SpriteMaterial>(null);
+  const matR = useRef<THREE.SpriteMaterial>(null);
+  const cur = useRef(0);
+
+  useFrame((_, dt) => {
+    const target = THREE.MathUtils.clamp(thrustRef.current, 0, 1);
+    // Ease toward the target so the glow swells/fades smoothly instead of
+    // popping, and so a one-frame speed spike on (re)entry doesn't flash.
+    cur.current = THREE.MathUtils.lerp(cur.current, target, Math.min(1, dt * 8));
+    const t = cur.current;
+    const opacity = (self ? 0.5 : 0.9) * t;
+    const s = 0.16 + t * 0.3;
+    if (matL.current) matL.current.opacity = opacity;
+    if (matR.current) matR.current.opacity = opacity;
+    if (left.current) left.current.scale.setScalar(s);
+    if (right.current) right.current.scale.setScalar(s);
+  });
+
+  return (
+    <>
+      <sprite ref={left} position={[-0.13, 0, -0.5]} scale={[0.0001, 0.0001, 0.0001]}>
+        <spriteMaterial
+          ref={matL}
+          map={getGlowTexture()}
+          color={look.glow}
+          transparent
+          opacity={0}
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+          toneMapped={false}
+        />
+      </sprite>
+      <sprite ref={right} position={[0.13, 0, -0.5]} scale={[0.0001, 0.0001, 0.0001]}>
+        <spriteMaterial
+          ref={matR}
+          map={getGlowTexture()}
+          color={look.glow}
+          transparent
+          opacity={0}
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+          toneMapped={false}
+        />
+      </sprite>
+    </>
+  );
+}
+
+/**
  * One spaceship. Normalized so its longest dimension is 1 unit and centered at
  * the origin, so callers can size it purely via the parent group's scale and
  * rotate it about its own center. `variant="self"` is the translucent own-ship.
- * `look` drives per-cosmonaut variety: hull tint, engine glow, and nose accent.
+ * `look` drives per-cosmonaut variety: hull tint and engine glow. When a
+ * `thrustRef` is supplied, rear thrusters glow in proportion to its 0..1 value.
  */
 export function ShipModel({
   variant = "peer",
   look,
   glow = true,
+  thrustRef,
 }: {
   variant?: "peer" | "self";
   look: ShipLook;
   glow?: boolean;
+  thrustRef?: MutableRefObject<number>;
 }) {
   const { nodes, materials } = useGLTF(MODEL_URL) as unknown as {
     nodes: Record<string, THREE.Mesh>;
@@ -141,18 +210,8 @@ export function ShipModel({
           />
         </sprite>
       )}
-      {/* Nose running light — a small accent spark that varies per cosmonaut. */}
-      <sprite position={[0, 0.04, 0.5]} scale={[0.32, 0.32, 0.32]}>
-        <spriteMaterial
-          map={getGlowTexture()}
-          color={look.accent}
-          transparent
-          opacity={self ? 0.4 : 0.95}
-          depthWrite={false}
-          blending={THREE.AdditiveBlending}
-          toneMapped={false}
-        />
-      </sprite>
+      {/* Rear engine thrusters — glow in proportion to throttle when moving. */}
+      {thrustRef && <Thrusters look={look} thrustRef={thrustRef} self={self} />}
     </group>
   );
 }

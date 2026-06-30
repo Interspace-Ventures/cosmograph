@@ -45,6 +45,7 @@ function PeerShip({ id }: { id: string }) {
   const heading = useRef(new THREE.Quaternion());
   const initialized = useRef(false);
   const appear = useRef(0);
+  const thrust = useRef(0);
   const phase = useRef(hashId(id) * Math.PI * 2);
   // Each cosmonaut's ship look is derived from the seed they broadcast (their
   // saved/local ship), falling back to their stable presence id when absent.
@@ -75,12 +76,16 @@ function PeerShip({ id }: { id: string }) {
     // Heading: face along recent movement; hold the last heading when idle.
     _dir.copy(smoothed.current).sub(prev.current);
     prev.current.copy(smoothed.current);
-    if (_dir.lengthSq() > 1e-4) {
+    const moveLen = _dir.length();
+    if (moveLen > 0.01) {
       _dir.normalize();
       _q.setFromUnitVectors(SHIP_FORWARD, _dir);
       heading.current.slerp(_q, Math.min(1, dt * 4));
     }
     g.quaternion.copy(heading.current);
+
+    // Throttle glow: brighten the thrusters when this peer is actually moving.
+    thrust.current = THREE.MathUtils.clamp(moveLen / Math.max(dt, 1e-3) / 240, 0, 1);
 
     // Cull when too close so a peer near the camera doesn't fill the frame.
     g.getWorldPosition(_world);
@@ -97,7 +102,7 @@ function PeerShip({ id }: { id: string }) {
 
   return (
     <group ref={ref} scale={0.001}>
-      <ShipModel variant="peer" look={look} glow />
+      <ShipModel variant="peer" look={look} glow thrustRef={thrust} />
     </group>
   );
 }
@@ -134,6 +139,9 @@ const _camDir = new THREE.Vector3();
 const _offset = new THREE.Vector3();
 const _rollQ = new THREE.Quaternion();
 const _baseQ = new THREE.Quaternion();
+// The model nose is local +Z while the camera looks down -Z; this 180° flip
+// about Y maps the nose onto the view direction when copying camera orientation.
+const _flipY = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
 
 /**
  * The viewer's OWN ship, shown in Fly mode as a fully-opaque third-person chase
@@ -148,6 +156,8 @@ export function SelfShip() {
   const roll = useRef(0);
   const prevAz = useRef<number | null>(null);
   const appear = useRef(0);
+  const thrust = useRef(0);
+  const prevCam = useRef(new THREE.Vector3());
   // The viewer's own ship look, derived from the store seed so it updates live
   // when they shuffle or load a saved ship.
   const look = useMemo(() => shipLookFromSeed(shipSeed), [shipSeed]);
@@ -160,8 +170,10 @@ export function SelfShip() {
       appear.current = 0;
       roll.current = 0;
       prevAz.current = null;
+      thrust.current = 0;
+      prevCam.current.copy(camera.position);
     }
-  }, [active]);
+  }, [active, camera]);
 
   useFrame((_, dt) => {
     const g = ref.current;
@@ -175,9 +187,18 @@ export function SelfShip() {
       .add(camera.position);
     g.position.copy(_offset);
 
-    // Heading: nose follows the camera's forward direction (world -Z).
+    // Heading: copy the camera's full orientation (flipped 180° about Y so the
+    // model's +Z nose aligns with the view's -Z forward). Deriving from the
+    // whole quaternion — not just the forward vector — keeps "up" stable, so
+    // pitching up/down no longer induces a phantom sideways roll. On-screen
+    // pitch/yaw now track the controls 1:1.
     camera.getWorldDirection(_camDir);
-    _baseQ.setFromUnitVectors(SHIP_FORWARD, _camDir);
+    _baseQ.copy(camera.quaternion).multiply(_flipY);
+
+    // Throttle glow: drive the rear thrusters from how fast the camera moves.
+    const speed = camera.position.distanceTo(prevCam.current) / Math.max(dt, 1e-3);
+    prevCam.current.copy(camera.position);
+    thrust.current = THREE.MathUtils.clamp(speed / 240, 0, 1);
 
     // Bank into horizontal turns for a game-y chase feel.
     const az = Math.atan2(_camDir.x, _camDir.z);
@@ -202,7 +223,7 @@ export function SelfShip() {
 
   return (
     <group ref={ref} scale={0.001} renderOrder={10}>
-      <ShipModel variant="peer" look={look} glow={false} />
+      <ShipModel variant="peer" look={look} glow={false} thrustRef={thrust} />
     </group>
   );
 }

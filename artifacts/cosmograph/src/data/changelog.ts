@@ -17,6 +17,16 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.27.0",
+    codename: "True North",
+    date: "2026-06-30",
+    summary: "Fly controls now track the ship 1:1, and engines glow when you move.",
+    changes: [
+      "Fixed Fly steering so the ship pitches and turns to match your controls — pressing up now tilts the nose up instead of rolling sideways.",
+      "Replaced the nose beacon with twin rear thrusters that glow brighter the faster you fly.",
+    ],
+  },
+  {
     version: "3.26.1",
     codename: "Clean Hull",
     date: "2026-06-30",
