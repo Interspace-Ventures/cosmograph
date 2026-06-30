@@ -1,11 +1,23 @@
 ---
 name: Fly (spaceship) camera mode
-description: How Fly mode achieves a first-person spaceship feel and why it owns the camera directly instead of via OrbitControls.
+description: How Fly mode achieves a third-person spaceship chase feel and why it owns the camera directly instead of via OrbitControls.
 ---
 
-Fly mode is a true first-person flight that takes over the single shared R3F
-camera directly; OrbitControls is unmounted (`return null`) while in spaceship
-mode (except during a tour, which always wins).
+Fly mode flies the single shared R3F camera directly; OrbitControls is unmounted
+(`return null`) while in spaceship mode (except during a tour, which always
+wins). The camera itself is still a free-flying first-person camera — the
+**third-person chase look is a render trick, not a separate camera rig**:
+`SelfShip` (Presence.tsx) draws the player's OWN ship opaque (`variant="peer"`),
+locked at a fixed camera-space offset ahead-of+below the camera
+(`FLY_SHIP_OFFSET`), so the flying camera reads as a chase cam sitting behind the
+ship. The self ship shows ONLY in Fly now (it used to be an Orbit-only
+translucent chase craft); Orbit/god mode has no ship. `showSelfShip` store state
+is vestigial (no UI toggle).
+
+**Why third-person:** the point is to let players see (and pay for nicer) ships.
+PresenceBroadcaster still sends raw camera position, so peers see your ship at
+the camera, slightly behind your on-screen chase ship — accepted, not worth the
+complexity to reconcile.
 
 **Why:** The user explicitly rejected the earlier Fly mode because it felt like
 the same distant god view — it never changed perspective and speed ran away. The

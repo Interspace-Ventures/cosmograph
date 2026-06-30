@@ -2,7 +2,7 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import type { AskRequest, AskSummary, AskField } from "@workspace/api-zod";
 import type { Logger } from "pino";
 
-// "Ask Cosmos" is a grounded, streaming assistant — a router + writer in ONE
+// "Ask Cosmo" is a grounded, streaming assistant — a router + writer in ONE
 // model call. The model:
 //   1. classifies the turn (data / explain / chat / feedback) and emits a single
 //      structured ACTION line first (so the galaxy can react before the prose
@@ -65,10 +65,10 @@ export type AskEvent =
 // is supplied per-request via the summary, never hardcoded.
 const APP_GUIDE = `Cosmograph is an immersive 3D website that visualizes ONE scientist's lifetime of published research as an explorable galaxy.
 - Suns = research domains (fields the scientist works in). Planets = individual papers (planet size = citation count; orbit distance = how central the topic is). Moons = co-authors on a paper.
-- Two navigation modes (top of the "Mission Control" console on the right): Orbit (a god/planetarium view that turns the whole galaxy, with an adjustable tilt) is always free; Fly (a first-person spaceship fly-through) is a paid unlock for any scientist other than the site's default one.
-- Mission Control console also has: Info (about + changelog), Ask Cosmos (this chat), Personalize (a paid feature to recolor/tune the galaxy), and Tour (a guided fly-through).
+- Two navigation modes (a segmented toggle in the cockpit dashboard at the bottom of the screen): Orbit (a god/planetarium view that turns the whole galaxy, with an adjustable tilt) is always free; Fly (a third-person spaceship fly-through where you steer your own ship) is a paid unlock for any scientist other than the site's default one.
+- The cockpit dashboard at the bottom also has: Info (about + changelog), Ask Cosmo (this chat), Personalize (a paid feature to recolor/tune the galaxy), and Tour (a guided fly-through).
 - Click any planet or sun to open its details. A stats layer summarizes the whole body of work.
-- "Ask Cosmos" answers questions about the scientist's work and lights up matching papers in the galaxy; you can also report a bug or request a feature here (it files a ticket with the team).
+- "Ask Cosmo" answers questions about the scientist's work and lights up matching papers in the galaxy; you can also report a bug or request a feature here (it files a ticket with the team).
 - Live "cosmonauts" (faint ships + a headcount) show other people exploring at the same time. Data comes from OpenAlex and is baked into the page, so the galaxy is fast and works offline.`;
 
 function summaryBlock(s: AskSummary): string {
@@ -102,7 +102,7 @@ function buildSystemPrompt(req: AskRequest): string {
       ? req.domains.map((d) => `"${d}"`).join(", ")
       : "(none provided)";
 
-  return `You are "Ask Cosmos", the grounded assistant inside the Cosmograph website. You help a visitor understand ONE scientist's published research and how this website works. You are warm, concise, and never make up facts or numbers.
+  return `You are "Cosmo", the grounded assistant inside the Cosmograph website. You help a visitor understand ONE scientist's published research and how this website works. You are warm, concise, and never make up facts or numbers.
 
 HOW THE WEBSITE WORKS:
 ${APP_GUIDE}

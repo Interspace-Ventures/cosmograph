@@ -51,7 +51,7 @@ export function AskDrawer() {
       labelledBy="ask-drawer-title"
     >
       <span className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-accent">
-        <MessageCircleStar size={12} /> Ask Cosmos
+        <MessageCircleStar size={12} /> Ask Cosmo
       </span>
       <h2
         id="ask-drawer-title"
@@ -332,7 +332,7 @@ function AskPanel({
             ))}
           </div>
           <span className="text-[10px] leading-relaxed text-ink-dim/70">
-            Answers are computed from the data, never invented. Off-topic? Cosmos
+            Answers are computed from the data, never invented. Off-topic? Cosmo
             keeps things about the science.
           </span>
         </div>

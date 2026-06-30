@@ -20,7 +20,7 @@ export const PERKS: { icon: LucideIcon; text: string }[] = [
   },
   {
     icon: Sparkles,
-    text: "Ask Cosmos: ask questions about a researcher's work and watch matching papers light up",
+    text: "Ask Cosmo: ask questions about a researcher's work and watch matching papers light up",
   },
   {
     icon: Rocket,

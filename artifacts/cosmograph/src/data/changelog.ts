@@ -17,6 +17,20 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.24.0",
+    codename: "Chase the Stars",
+    date: "2026-06-30",
+    summary:
+      "Fly mode is now a third-person chase — you can see and steer your own ship — the cockpit buttons gained labels, and the AI is now named Cosmo.",
+    changes: [
+      "Fly mode switched from first-person to a third-person chase camera, so you can see your own ship as you weave through the galaxy (nicer ships ahead).",
+      "Your ship no longer appears in Orbit view — it's reserved for Fly.",
+      "Every cockpit button now shows its name beside the icon, so it's clear at a glance.",
+      "The cockpit now sits a little higher, lifted clear of the footer credits.",
+      'The "Ask Cosmos" assistant is now simply "Cosmo".',
+    ],
+  },
+  {
     version: "3.23.0",
     codename: "Cockpit Dashboard",
     date: "2026-06-30",

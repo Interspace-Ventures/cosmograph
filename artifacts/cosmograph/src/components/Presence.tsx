@@ -13,10 +13,12 @@ const PEER_SCALE = 7;
 // Hide a peer ship once it's closer than this to the camera, so a passing
 // cosmonaut never balloons into a giant orb filling the view.
 const NEAR_CULL = 60;
-// The viewer's own ship rides at a fixed (zoom-independent) distance ahead of the
-// camera, so this is a constant apparent size — small, like a distant cosmonaut.
-const SELF_SCALE = 4.5;
-const SELF_OFFSET = new THREE.Vector3(0, -12, -78);
+// Third-person chase: in Fly mode the viewer's own ship rides at a fixed offset
+// ahead of and just below the camera, so they steer it from behind and can see
+// (and show off) their ship. Both are in camera space; the camera flies, the
+// ship is locked to its view.
+const FLY_SHIP_SCALE = 8;
+const FLY_SHIP_OFFSET = new THREE.Vector3(0, -3, -24);
 
 function hashId(id: string): number {
   let h = 0;
@@ -134,13 +136,13 @@ const _rollQ = new THREE.Quaternion();
 const _baseQ = new THREE.Quaternion();
 
 /**
- * The viewer's OWN ship, shown in Orbit mode as a semi-transparent chase craft
- * just ahead and below the camera, banking into turns. In Fly mode you're in the
- * cockpit, so it's hidden (you'd be sitting inside it).
+ * The viewer's OWN ship, shown in Fly mode as a fully-opaque third-person chase
+ * craft riding just ahead of and below the camera, banking into turns — so the
+ * player sees and steers their own ship. In Orbit mode it's hidden entirely
+ * (the god/planetarium view has no ship).
  */
 export function SelfShip() {
-  const { cameraMode, introFinished, tourActive, showSelfShip, shipSeed } =
-    useAppState();
+  const { cameraMode, introFinished, tourActive, shipSeed } = useAppState();
   const camera = useThree((s) => s.camera);
   const ref = useRef<THREE.Group>(null);
   const roll = useRef(0);
@@ -150,8 +152,7 @@ export function SelfShip() {
   // when they shuffle or load a saved ship.
   const look = useMemo(() => shipLookFromSeed(shipSeed), [shipSeed]);
 
-  const active =
-    introFinished && !tourActive && cameraMode === "god" && showSelfShip;
+  const active = introFinished && !tourActive && cameraMode === "spaceship";
 
   // Reset the bank/appear state whenever it (re)activates so it eases back in.
   useEffect(() => {
@@ -167,9 +168,9 @@ export function SelfShip() {
     if (!g || !active) return;
 
     // Position: fixed offset in camera space — ahead and below — so the ship
-    // always rides in the lower-center of the frame as a small distant sprite.
+    // always rides in the lower-center of the frame as the chase target.
     _offset
-      .copy(SELF_OFFSET)
+      .copy(FLY_SHIP_OFFSET)
       .applyQuaternion(camera.quaternion)
       .add(camera.position);
     g.position.copy(_offset);
@@ -194,14 +195,14 @@ export function SelfShip() {
     g.quaternion.copy(_baseQ).premultiply(_rollQ);
 
     appear.current = Math.min(1, appear.current + dt / 0.5);
-    g.scale.setScalar(SELF_SCALE * look.scale * easeOut(appear.current));
+    g.scale.setScalar(FLY_SHIP_SCALE * look.scale * easeOut(appear.current));
   });
 
   if (!active) return null;
 
   return (
     <group ref={ref} scale={0.001} renderOrder={10}>
-      <ShipModel variant="self" look={look} glow />
+      <ShipModel variant="peer" look={look} glow />
     </group>
   );
 }
