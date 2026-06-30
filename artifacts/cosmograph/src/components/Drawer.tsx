@@ -25,7 +25,7 @@ export function Drawer({
   labelledBy: string;
   children: ReactNode;
 }) {
-  const { bannerHeight } = useAppState();
+  const { bannerHeight, cockpitWidth } = useAppState();
   const isMobile = useIsMobile();
   // Clear the Dashboard bar at the bottom (taller on mobile because each control
   // carries a caption); the sheet grows upward from there.
@@ -64,7 +64,14 @@ export function Drawer({
             style={{
               left: "50%",
               bottom: bottomGap,
-              width: "min(34rem, calc(100vw - 1.5rem))",
+              // Match the cockpit navbar width exactly. The published width is the
+              // bar's real rendered size (already constrained to its padded
+              // container), so use it verbatim — no extra viewport clamp, which
+              // could leave the sheet narrower than the bar. Fall back to the
+              // prior cap only until the first measurement lands.
+              width: cockpitWidth
+                ? `${cockpitWidth}px`
+                : "min(34rem, calc(100vw - 1.5rem))",
               maxHeight: `calc(100dvh - ${bottomGap} - ${bannerHeight}px - 0.75rem)`,
             }}
             className="custom-scrollbar absolute overflow-y-auto border-2 border-edge bg-bg/95 p-5 backdrop-blur-xl sm:p-7"

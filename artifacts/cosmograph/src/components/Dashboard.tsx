@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Show } from "@clerk/react";
 import { Info, Orbit, Rocket, Lock, Map, Telescope } from "lucide-react";
@@ -30,13 +31,38 @@ export function Dashboard() {
     customizeOpen,
     startTour,
     canExplore,
+    setCockpitWidth,
   } = useAppState();
   const filtersActive = isFiltersActive(filters);
+  const barRef = useRef<HTMLDivElement>(null);
+  const lastWidth = useRef(0);
+
+  // Publish the cockpit bar's rendered width so the rich panels (Drawer) can
+  // match the navbar exactly. Re-measures on resize and on content changes
+  // (e.g. signing in adds the avatar, the star count toggles). Rounds and only
+  // publishes on a meaningful delta to avoid spurious global re-renders.
+  useEffect(() => {
+    const el = barRef.current;
+    if (!el) return;
+    const publish = () => {
+      const w = Math.round(el.getBoundingClientRect().width);
+      if (Math.abs(w - lastWidth.current) < 1) return;
+      lastWidth.current = w;
+      setCockpitWidth(w);
+    };
+    publish();
+    const ro = new ResizeObserver(publish);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [setCockpitWidth]);
 
   return (
     <>
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex justify-center px-2 pb-2 sm:px-3 sm:pb-3 md:pb-10">
-        <div className="custom-scrollbar pointer-events-auto flex max-w-full items-center gap-1.5 overflow-x-auto border-2 border-edge bg-bg/80 px-2 py-2 backdrop-blur-xl">
+        <div
+          ref={barRef}
+          className="custom-scrollbar pointer-events-auto flex max-w-full items-center gap-1.5 overflow-x-auto border-2 border-edge bg-bg/80 px-2 py-2 backdrop-blur-xl"
+        >
           {/* Account — avatar only; signed-out renders nothing (so does the rule). */}
           <Show when="signed-in">
             <AccountIndicatorRail />

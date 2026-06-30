@@ -17,6 +17,16 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.26.0",
+    codename: "Snug Fit",
+    date: "2026-06-30",
+    summary:
+      "The rich panels (Info, Ask Cosmo, Personalize) now match the width of the cockpit navbar exactly.",
+    changes: [
+      "The Info, Ask Cosmo, and Personalize panels are now always exactly as wide as the cockpit bar below them.",
+    ],
+  },
+  {
     version: "3.25.1",
     codename: "Header Crew",
     date: "2026-06-30",

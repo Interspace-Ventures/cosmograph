@@ -116,6 +116,10 @@ interface AppState {
   // (iPhone-style push, not an overlay toast).
   bannerHeight: number;
   setBannerHeight: (h: number) => void;
+  // Width (px) of the cockpit Dashboard bar, published by the Dashboard via a
+  // ResizeObserver so the rich panels (Drawer) can match the navbar width.
+  cockpitWidth: number;
+  setCockpitWidth: (w: number) => void;
   // Right-hand "Mission Control" expanded vs collapsed-to-rail. Lifted to the store
   // so the galaxy can slide aside (GPU transform) in sync with the console width.
   consoleOpen: boolean;
@@ -328,6 +332,10 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   // make room for the active top notification banner.
   const [bannerHeight, setBannerHeight] = useState(0);
 
+  // Published by the Dashboard: the cockpit bar's measured width, so the rich
+  // panels can render exactly as wide as the navbar.
+  const [cockpitWidth, setCockpitWidth] = useState(0);
+
   // Live gate check for handlers: free on the default researcher, otherwise the
   // active researcher must be a member-unlocked one. Reads galaxyData live
   // (mutable binding) + the entitlement refs.
@@ -519,6 +527,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         dismissDealBanner,
         bannerHeight,
         setBannerHeight,
+        cockpitWidth,
+        setCockpitWidth,
         consoleOpen,
         setConsoleOpen,
         datasetVersion,
