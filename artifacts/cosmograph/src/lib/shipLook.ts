@@ -7,7 +7,7 @@
 export interface ShipLook {
   /** Overall hull tint — multiplied over the model's baked texture atlas. */
   hull: string;
-  /** Engine-plume glow color (rear sprite). */
+  /** Accent color for glow-tinted procedural parts (fins/pods running lights). */
   glow: string;
   /** Nose running-light accent color (front sprite). */
   accent: string;

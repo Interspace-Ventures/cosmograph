@@ -17,6 +17,17 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.29.0",
+    codename: "Afterburner",
+    date: "2026-07-01",
+    summary: "Real rocket fire out the back — the engines now burn like a true spaceship.",
+    changes: [
+      "Replaced the soft blue engine orb with a proper fiery exhaust: a white-hot core inside an orange plume.",
+      "The flame flickers like live combustion and stretches longer the harder you throttle.",
+      "Kept it tight so it feels like a spaceship without hogging the screen.",
+    ],
+  },
+  {
     version: "3.28.1",
     codename: "Welcome Back",
     date: "2026-06-30",

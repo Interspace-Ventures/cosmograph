@@ -45,6 +45,22 @@ export function getGlowTexture(): THREE.Texture {
   return glowTexture;
 }
 
+// Cached, open-ended cones for the engine flame, translated so the wide base
+// sits at the origin (the nozzle) and the point trails along +local-Y. Scaling a
+// mesh's local Y therefore lengthens the flame *away* from the nozzle instead of
+// growing symmetrically. Shared across every ship so the whole fleet's flames
+// allocate two geometries total.
+const flameGeoCache = new Map<string, THREE.BufferGeometry>();
+function getFlameCone(radius: number, height: number): THREE.BufferGeometry {
+  const key = `${radius}|${height}`;
+  const cached = flameGeoCache.get(key);
+  if (cached) return cached;
+  const g = new THREE.ConeGeometry(radius, height, 14, 1, true);
+  g.translate(0, height / 2, 0);
+  flameGeoCache.set(key, g);
+  return g;
+}
+
 // Self ship is "essentially transparent" so the viewer's own chase craft reads
 // as a faint glassy hint and never occludes the galaxy or UI behind it.
 const SELF_OPACITY = 0.16;
@@ -184,70 +200,104 @@ function ShipPartMeshes({
   );
 }
 
+// Fiery rocket-exhaust palette — a white-hot core wrapped in an orange plume.
+// Fixed (not per-cosmonaut) so every engine reads as real combustion rather than
+// a colored glow; ship identity still comes from the hull tint and nose accent.
+const FLAME_CORE = "#fff0b8";
+const FLAME_OUTER = "#ff5a1e";
+
+/**
+ * One rear engine flame: two additively-blended, open-ended cones (a bright
+ * inner jet inside a broader orange plume) that point straight back from the
+ * nozzle. Because the cones' bases are anchored at the nozzle (see
+ * getFlameCone), scaling their local Y stretches the flame *backward* — so it
+ * lengthens with throttle and flickers like real combustion instead of
+ * ballooning. The apex points along -Z (the tail), so the plume correctly
+ * recedes away from a chase camera instead of billboarding toward it.
+ */
+function Flame({ x, self }: { x: number; self: boolean }) {
+  return (
+    <group position={[x, 0, -0.5]} rotation={[-Math.PI / 2, 0, 0]}>
+      {/* outer plume */}
+      <mesh geometry={getFlameCone(0.09, 0.62)} scale={[0.0001, 0.0001, 0.0001]}>
+        <meshBasicMaterial
+          color={FLAME_OUTER}
+          transparent
+          opacity={0}
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+          toneMapped={false}
+        />
+      </mesh>
+      {/* inner white-hot jet */}
+      <mesh geometry={getFlameCone(0.042, 0.42)} scale={[0.0001, 0.0001, 0.0001]}>
+        <meshBasicMaterial
+          color={FLAME_CORE}
+          transparent
+          opacity={0}
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+          toneMapped={false}
+        />
+      </mesh>
+    </group>
+  );
+}
+
 /**
  * Twin rear engine thrusters that brighten and stretch with throttle. The
  * parent reports thrust (0..1) via a ref so this animates per-frame without
  * re-rendering the ship. Mounted at the model's tail (local -Z, since the nose
- * is +Z) and additively blended so they read as hot engine plumes.
+ * is +Z).
  */
 function Thrusters({
-  look,
   thrustRef,
   self,
 }: {
-  look: ShipLook;
   thrustRef: MutableRefObject<number>;
   self: boolean;
 }) {
-  const left = useRef<THREE.Sprite>(null);
-  const right = useRef<THREE.Sprite>(null);
-  const matL = useRef<THREE.SpriteMaterial>(null);
-  const matR = useRef<THREE.SpriteMaterial>(null);
+  const group = useRef<THREE.Group>(null);
   const cur = useRef(0);
 
-  useFrame((_, dt) => {
+  useFrame((state, dt) => {
+    const g = group.current;
+    if (!g) return;
     const target = THREE.MathUtils.clamp(thrustRef.current, 0, 1);
-    // Ease toward the target so the glow swells/fades smoothly instead of
+    // Ease toward the target so the flame swells/fades smoothly instead of
     // popping, and so a one-frame speed spike on (re)entry doesn't flash.
     cur.current = THREE.MathUtils.lerp(cur.current, target, Math.min(1, dt * 8));
     const t = cur.current;
-    const opacity = (self ? 0.55 : 0.95) * t;
-    // Small, tight nozzle flare (was a broad soft halo) so it reads as a focused
-    // space thruster rather than a fuzzy glow.
-    const s = 0.07 + t * 0.13;
-    if (matL.current) matL.current.opacity = opacity;
-    if (matR.current) matR.current.opacity = opacity;
-    if (left.current) left.current.scale.setScalar(s);
-    if (right.current) right.current.scale.setScalar(s);
+    // Fast, always-positive flicker so the flame looks alive (turbulent) rather
+    // than a static cone.
+    const time = state.clock.elapsedTime;
+    const flick = 0.82 + 0.18 * Math.abs(Math.sin(time * 37) * Math.sin(time * 19.7));
+    // Idle engines keep a small pilot flame so a stationary ship still reads as
+    // powered; throttle grows and lengthens it.
+    const drive = 0.18 + 0.82 * t;
+    const len = (0.55 + 1.05 * t) * flick;
+    const wid = 0.7 + 0.45 * t;
+    const outerOp = (self ? 0.32 : 0.7) * drive * flick;
+    const coreOp = (self ? 0.5 : 1.0) * drive * flick;
+    for (const flame of g.children) {
+      const outer = flame.children[0] as THREE.Mesh | undefined;
+      const core = flame.children[1] as THREE.Mesh | undefined;
+      if (outer) {
+        outer.scale.set(wid, len, wid);
+        (outer.material as THREE.MeshBasicMaterial).opacity = outerOp;
+      }
+      if (core) {
+        core.scale.set(wid * 0.8, len * 0.82, wid * 0.8);
+        (core.material as THREE.MeshBasicMaterial).opacity = coreOp;
+      }
+    }
   });
 
   return (
-    <>
-      <sprite ref={left} position={[-0.1, 0, -0.5]} scale={[0.0001, 0.0001, 0.0001]}>
-        <spriteMaterial
-          ref={matL}
-          map={getGlowTexture()}
-          color={look.glow}
-          transparent
-          opacity={0}
-          depthWrite={false}
-          blending={THREE.AdditiveBlending}
-          toneMapped={false}
-        />
-      </sprite>
-      <sprite ref={right} position={[0.1, 0, -0.5]} scale={[0.0001, 0.0001, 0.0001]}>
-        <spriteMaterial
-          ref={matR}
-          map={getGlowTexture()}
-          color={look.glow}
-          transparent
-          opacity={0}
-          depthWrite={false}
-          blending={THREE.AdditiveBlending}
-          toneMapped={false}
-        />
-      </sprite>
-    </>
+    <group ref={group}>
+      <Flame x={-0.1} self={self} />
+      <Flame x={0.1} self={self} />
+    </group>
   );
 }
 
@@ -255,8 +305,8 @@ function Thrusters({
  * One spaceship. Normalized so its longest dimension is 1 unit and centered at
  * the origin, so callers can size it purely via the parent group's scale and
  * rotate it about its own center. `variant="self"` is the translucent own-ship.
- * `look` drives per-cosmonaut variety: hull tint and engine glow. When a
- * `thrustRef` is supplied, rear thrusters glow in proportion to its 0..1 value.
+ * `look` drives per-cosmonaut variety: hull tint and glow-tinted parts. When a
+ * `thrustRef` is supplied, the fiery rear flames grow with its 0..1 value.
  */
 export function ShipModel({
   variant = "peer",
@@ -320,20 +370,24 @@ export function ShipModel({
         <ShipPartMeshes key={i} part={part} look={look} variant={variant} />
       ))}
       {glow && (
-        <sprite position={[0, 0, -0.55]} scale={[1, 1, 1]}>
+        // Small warm bloom at the nozzle: softens the base of the flame cones
+        // and acts as a distance marker so an idle ship still reads from afar.
+        // Deliberately tiny (was a ship-sized halo that looked like a colored
+        // orb) and warm to match the exhaust rather than tint it.
+        <sprite position={[0, 0, -0.5]} scale={[0.34, 0.34, 0.34]}>
           <spriteMaterial
             map={getGlowTexture()}
-            color={look.glow}
+            color={FLAME_OUTER}
             transparent
-            opacity={self ? 0.35 : 0.8}
+            opacity={self ? 0.22 : 0.55}
             depthWrite={false}
             blending={THREE.AdditiveBlending}
             toneMapped={false}
           />
         </sprite>
       )}
-      {/* Rear engine thrusters — glow in proportion to throttle when moving. */}
-      {thrustRef && <Thrusters look={look} thrustRef={thrustRef} self={self} />}
+      {/* Rear engine flames — brighten and stretch in proportion to throttle. */}
+      {thrustRef && <Thrusters thrustRef={thrustRef} self={self} />}
     </group>
   );
 }
