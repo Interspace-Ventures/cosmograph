@@ -15,6 +15,7 @@ import {
   galaxyData,
   isDefaultAuthor,
   DEFAULT_AUTHOR_ID,
+  type GalaxyData,
 } from "@/data/galaxy";
 import { buildGalaxyData } from "@/data/buildGalaxy";
 import {
@@ -167,6 +168,11 @@ interface AppState {
   activeAuthorId: string | null;
   loadAuthor: (target: string | AuthorCandidate) => Promise<void>;
   dismissDatasetError: () => void;
+  // The galaxy the visitor was exploring before the last dataset swap, kept in
+  // memory so "Return to <name>" restores it instantly (no refetch). Null until
+  // the first swap.
+  previousAuthor: { id: string | null; name: string } | null;
+  returnToPreviousAuthor: () => void;
 }
 
 const AppStateContext = createContext<AppState | undefined>(undefined);
@@ -412,6 +418,15 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   // Monotonic request id so a superseded (older) load can't clobber a newer one.
   const loadReqRef = useRef(0);
 
+  // The full dataset that was live before the last swap, retained so "Return to
+  // <name>" restores the prior galaxy instantly without refetching OpenAlex.
+  // One level deep on purpose: return flips current ↔ previous.
+  const prevDatasetRef = useRef<GalaxyData | null>(null);
+  const [previousAuthor, setPreviousAuthor] = useState<{
+    id: string | null;
+    name: string;
+  } | null>(null);
+
   // Fetch a scientist live from OpenAlex, re-derive the whole galaxy, rebuild the
   // 3D layout, reset any view state tied to the old dataset, and bump
   // datasetVersion so the data tree remounts cleanly (see key={datasetVersion}).
@@ -429,6 +444,17 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       });
       if (loadReqRef.current !== reqId) return; // superseded by a newer load
       const data = buildGalaxyData(rawAuthor, rawWorks);
+      // Snapshot the outgoing galaxy (unless we're "loading" the same author)
+      // so the visitor can jump back to it without a refetch.
+      const prevData = galaxyData;
+      const nextId = data.author.openAlexId ?? id;
+      if (nextId !== (prevData.author.openAlexId ?? null)) {
+        prevDatasetRef.current = prevData;
+        setPreviousAuthor({
+          id: prevData.author.openAlexId ?? null,
+          name: prevData.author.name,
+        });
+      }
       applyDataset(data);
       rebuildLayout();
       // Drop any selection/hover/tour/filters that referenced the old galaxy.
@@ -468,6 +494,41 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     setDatasetError(null);
     setLoadProgress(null);
   }, []);
+
+  // Instantly restore the galaxy that was live before the last swap (kept in
+  // memory — no OpenAlex refetch). Swaps current ↔ previous so the visitor can
+  // hop back and forth. Mirrors loadAuthor's post-swap resets.
+  const returnToPreviousAuthor = useCallback(() => {
+    const prev = prevDatasetRef.current;
+    if (!prev) return;
+    loadReqRef.current++; // cancel any in-flight load
+    const outgoing = galaxyData;
+    applyDataset(prev);
+    rebuildLayout();
+    setSelectedObject(null);
+    setHoveredObject(null);
+    setTourActive(false);
+    setTourStopIndex(0);
+    setCameraModeState("god");
+    setFiltersState(makeDefaultFilters());
+    setActiveAuthorLabel(prev.author.name);
+    const restoredId = prev.author.openAlexId ?? null;
+    setActiveAuthorId(restoredId);
+    writeAuthorParam(restoredId === DEFAULT_AUTHOR_ID ? null : restoredId);
+    setDatasetVersion((v) => v + 1);
+    setDatasetStatus("ready");
+    setDatasetError(null);
+    setLoadProgress(null);
+    // The galaxy we just left becomes the new "previous".
+    prevDatasetRef.current = outgoing;
+    setPreviousAuthor({
+      id: outgoing.author.openAlexId ?? null,
+      name: outgoing.author.name,
+    });
+    // Return to the galaxy, not a panel: drop any open cockpit panel so the
+    // restored galaxy is front and center.
+    openDrawer(null);
+  }, [openDrawer]);
 
   // On first load, restore the scientist named in the URL (?author=A123). This
   // covers a plain reload/shared link AND the return from Stripe Checkout, which
@@ -608,6 +669,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         activeAuthorId,
         loadAuthor,
         dismissDatasetError,
+        previousAuthor,
+        returnToPreviousAuthor,
       }}
     >
       {children}

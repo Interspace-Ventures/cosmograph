@@ -1,9 +1,10 @@
 import { Canvas } from "@react-three/fiber";
-import { Suspense, useEffect } from "react";
+import { Suspense, useEffect, useRef } from "react";
 import { Preload, Stars, useTexture } from "@react-three/drei";
 import { EffectComposer, Bloom } from "@react-three/postprocessing";
 import * as THREE from "three";
 import { GalaxySystem } from "./GalaxySystem";
+import { FlyTargetReticle } from "./FlyTargetReticle";
 import { CameraController, INTRO_START } from "./CameraControls";
 import { PresenceBroadcaster, PresencePeers, SelfShip } from "./Presence";
 import { useAppState } from "@/lib/store";
@@ -41,9 +42,18 @@ export function Scene({
   onReady?: () => void;
 }) {
   const { setSelectedObject, introFinished } = useAppState();
+  // Track where the pointer went down so a drag (orbit pan / fly mouse-look)
+  // that ends over empty space doesn't count as a "missed click" and clear the
+  // current selection/target lock.
+  const downPos = useRef<{ x: number; y: number } | null>(null);
 
   return (
-    <div className="absolute inset-0 z-0">
+    <div
+      className="absolute inset-0 z-0"
+      onPointerDown={(e) => {
+        downPos.current = { x: e.clientX, y: e.clientY };
+      }}
+    >
       <Canvas
         camera={{
           position: [INTRO_START.x, INTRO_START.y, INTRO_START.z],
@@ -70,7 +80,11 @@ export function Scene({
           // Expose the live canvas so the Share button can snapshot the current view.
           setGalaxyCanvas(gl.domElement);
         }}
-        onPointerMissed={() => setSelectedObject(null)}
+        onPointerMissed={(e) => {
+          const d = downPos.current;
+          const moved = d ? Math.hypot(e.clientX - d.x, e.clientY - d.y) : 0;
+          if (moved <= 8) setSelectedObject(null);
+        }}
       >
         <color attach="background" args={["#03030a"]} />
 
@@ -92,6 +106,7 @@ export function Scene({
           />
 
           <GalaxySystem />
+          {!captureTopDown && <FlyTargetReticle />}
           <CameraController captureTopDown={captureTopDown} />
           <SceneReady onReady={onReady} />
 

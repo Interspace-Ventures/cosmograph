@@ -4,6 +4,7 @@
 - [Cockpit dashboard HUD](cockpit-dashboard.md) — all controls live in ONE bottom bar (z-30); rail + top-right buttons gone; galaxy canvas is full-bleed inset-0 (no resize push); drawers rise z-50, banner z-40 full-width; AccountIndicator moved to CustomizeDrawer top.
 - [Live dataset swap staleness](dataset-swap-staleness.md) — values derived from galaxyData must be mount-time useMemo inside the key={datasetVersion} subtree, never module-scope consts, or they show the prior scientist after a swap.
 - [OpenAlex merged profile](openalex-merged-profile.md) — the galaxy author id merges TWO same-named people; disambiguate by institution+coauthor (not year alone) via fetch-galaxy filters; recompute headline stats from kept works.
+- [OpenAlex name search](openalex-name-search.md) — author search must use `filter=display_name.search:` (sanitize `,`/`:`); general `search=` matches affiliations and misranks famous names.
 - [Fly camera mode](fly-camera-mode.md) — first-person spaceship: dive-in on entry, OrbitControls unmounted, momentum velocity (clamp+delta-damp), never unbounded translate.
 - [Reusable identity](reusable-identity.md) — open-source template for ANY scientist: never hardcode name/pronoun/relationship; identity comes only from galaxyData; generator takes --name/--id.
 - [Intro flight camera](intro-flight-camera.md) — scroll intro drives the ONE live R3F camera via a ref (introProgressRef), not state, so per-frame progress doesn't re-render global consumers.

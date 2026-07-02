@@ -94,15 +94,22 @@ const withMailto = (url: string) =>
 
 // Search authors by name; returns the top candidates so the user can pick the
 // right person when a name is ambiguous.
+//
+// Uses `filter=display_name.search:` (name-only) rather than the general
+// `search=` param on purpose: the general search also matches affiliations and
+// alternate spellings, so e.g. "albert einstein" would rank researchers at the
+// Albert Einstein Institute above Einstein himself. Name-only search keeps the
+// results looking like what the visitor actually typed.
 export async function searchAuthors(
   name: string,
   limit = 6,
   signal?: AbortSignal,
 ): Promise<AuthorCandidate[]> {
-  const q = name.trim();
+  // Commas and colons are OpenAlex filter syntax; drop them from the query.
+  const q = name.trim().replace(/[,:]/g, " ").trim();
   if (!q) return [];
   const url = withMailto(
-    `${BASE}/authors?search=${encodeURIComponent(q)}&per-page=${limit}`,
+    `${BASE}/authors?filter=display_name.search:${encodeURIComponent(q)}&per-page=${limit}`,
   );
   const data = await getJSON<{ results?: RawAuthor[] }>(url, signal);
   return (data.results || []).map((a) => ({

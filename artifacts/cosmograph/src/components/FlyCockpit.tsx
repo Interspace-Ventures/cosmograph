@@ -13,7 +13,10 @@ export function FlyCockpit() {
   const active = introFinished && !tourActive && cameraMode === "spaceship";
   if (!active) return null;
   return (
-    <div className="absolute inset-0 z-[5]">
+    // pointer-events-none is load-bearing: this layer spans the whole viewport
+    // ABOVE the canvas, so without it every click would die here and planets
+    // would be unclickable in fly mode. The canopy is purely decorative.
+    <div className="absolute inset-0 z-[5] pointer-events-none">
       <Cockpit warpRef={warpRef} className="z-0" />
     </div>
   );

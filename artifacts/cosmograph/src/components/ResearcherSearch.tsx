@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Search, Loader2, Quote } from "lucide-react";
+import { Search, Loader2, Quote, Undo2 } from "lucide-react";
 import { useAppState } from "@/lib/store";
 import { searchAuthors, type AuthorCandidate } from "@/lib/openalex";
 
@@ -10,8 +10,15 @@ function formatCount(n: number): string {
 }
 
 export function ResearcherSearch() {
-  const { loadAuthor, activeAuthorLabel, setInfoOpen, setCustomizeOpen } =
-    useAppState();
+  const {
+    loadAuthor,
+    activeAuthorLabel,
+    activeAuthorId,
+    setInfoOpen,
+    setCustomizeOpen,
+    previousAuthor,
+    returnToPreviousAuthor,
+  } = useAppState();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<AuthorCandidate[]>([]);
   const [searching, setSearching] = useState(false);
@@ -67,6 +74,15 @@ export function ResearcherSearch() {
       <p className="mb-3 font-mono text-[10px] leading-relaxed text-ink-dim/70">
         Now exploring: <span className="text-ink-dim">{activeAuthorLabel}</span>
       </p>
+      {previousAuthor && previousAuthor.id !== activeAuthorId && (
+        <button
+          onClick={returnToPreviousAuthor}
+          className="mb-3 inline-flex max-w-full items-center gap-1.5 border-2 border-edge px-3 py-1.5 font-mono text-[10px] uppercase tracking-wider text-ink-dim transition-colors hover:border-accent/70 hover:text-ink"
+        >
+          <Undo2 size={12} className="shrink-0" />
+          <span className="truncate">Return to {previousAuthor.name}</span>
+        </button>
+      )}
       <div className="relative">
         <Search
           size={15}

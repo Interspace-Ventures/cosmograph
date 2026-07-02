@@ -1067,6 +1067,8 @@ function Sun({
       <mesh
         ref={ref}
         onClick={(e) => {
+          // Ignore "clicks" that were really drags (orbit pan / fly mouse-look).
+          if (e.delta > 8) return;
           e.stopPropagation();
           onSelect();
         }}
@@ -1233,6 +1235,8 @@ const PlanetSystem = React.memo(function PlanetSystem({
           if (el) planetRefs[paperId] = el;
         }}
         onClick={(e) => {
+          // Ignore "clicks" that were really drags (orbit pan / fly mouse-look).
+          if (e.delta > 8) return;
           e.stopPropagation();
           setSelectedObject({ type: "planet", id: paperId });
         }}

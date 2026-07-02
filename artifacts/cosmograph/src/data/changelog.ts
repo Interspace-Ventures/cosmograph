@@ -17,6 +17,18 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.31.0",
+    codename: "Target Lock",
+    date: "2026-07-02",
+    summary: "Fly mode gets a real targeting HUD, search finds the right scientist, and you can hop back to the last galaxy.",
+    changes: [
+      "Planets and suns are now clickable while flying — a pulsing corner-bracket reticle locks onto your target and tracks it through the canopy, with its name underneath.",
+      "Dragging to look around no longer counts as a click, so steering the ship won't select planets or drop your target lock.",
+      "Personalize search now matches on the scientist's name only — searching \"Albert Einstein\" no longer surfaces researchers who merely work at an institute named after him.",
+      "After exploring a new scientist, a \"Return to …\" button in Personalize jumps you straight back to the previous galaxy — instantly, no re-download.",
+    ],
+  },
+  {
     version: "3.30.0",
     codename: "Sliding Hatch",
     date: "2026-07-02",
