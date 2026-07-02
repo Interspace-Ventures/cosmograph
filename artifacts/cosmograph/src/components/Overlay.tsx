@@ -122,7 +122,7 @@ function Header() {
         </div>
         <SocialActions />
       </div>
-      <p className="pointer-events-none text-ink/75 font-mono text-[11px] mt-1 uppercase tracking-[0.12em]">
+      <p className="pointer-events-none text-ink/75 font-mono text-[13px] mt-1 uppercase tracking-[0.12em]">
         Scientific Work at Galactic Scale · {galaxyData.author.name}
       </p>
       <div className="pointer-events-none mt-3 flex flex-wrap gap-x-4 gap-y-1">
@@ -148,9 +148,9 @@ function Header() {
 
 function HeaderStat({ label, value }: { label: string; value: string }) {
   return (
-    <span className="inline-flex items-baseline gap-1 font-mono text-[11px] text-ink-dim">
+    <span className="inline-flex items-baseline gap-1 font-mono text-[13px] text-ink-dim">
       <span className="text-ink">{value}</span>
-      <span className="text-[10px] uppercase tracking-widest">{label}</span>
+      <span className="text-[12px] uppercase tracking-widest">{label}</span>
     </span>
   );
 }
@@ -194,7 +194,7 @@ function LivePresence() {
 
   if (count < 1) return null;
   return (
-    <div className="pointer-events-none mt-2 inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-ink-dim">
+    <div className="pointer-events-none mt-2 inline-flex items-center gap-1.5 font-mono text-[12px] uppercase tracking-widest text-ink-dim">
       <span className="relative flex h-1.5 w-1.5">
         <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75" />
         <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-accent" />
