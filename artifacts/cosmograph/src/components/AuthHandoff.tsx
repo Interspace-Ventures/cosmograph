@@ -27,16 +27,24 @@ function inIframe(): boolean {
  */
 export function AuthHandoff({
   mode,
+  bare = false,
   children,
 }: {
   mode: "sign-in" | "sign-up";
+  /**
+   * Drop the card chrome (border, background, shadow). Use inside the cockpit
+   * panel, where the panel itself is the container — a card-in-a-panel reads
+   * as a redundant box-in-a-box. The standalone routes keep the card, since
+   * there it's the only frame against the blurred backdrop.
+   */
+  bare?: boolean;
   children: ReactNode;
 }) {
   const [framed] = useState(inIframe);
 
   if (!framed) return <>{children}</>;
 
-  const verb = mode === "sign-in" ? "Sign in" : "Create your account";
+  const verb = mode === "sign-in" ? "Welcome back, cosmonaut" : "Become a cosmonaut";
   // Open the full-page auth ROUTE (not window.location.href): this component now
   // also renders inside the in-app auth panel at "/", where the current URL is
   // the galaxy, not an auth page. Building the route from `mode` lands the new
@@ -50,7 +58,13 @@ export function AuthHandoff({
     );
 
   return (
-    <div className="w-full max-w-md rounded-none border border-white/10 bg-white/[0.03] p-8 text-center shadow-2xl backdrop-blur">
+    <div
+      className={
+        bare
+          ? "w-full max-w-md py-4 text-center"
+          : "w-full max-w-md rounded-none border border-white/10 bg-white/[0.03] p-8 text-center shadow-2xl backdrop-blur"
+      }
+    >
       <h1 className="text-xl font-semibold text-foreground">{verb}</h1>
       <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
         For your security, sign-in opens in its own window — Google and GitHub

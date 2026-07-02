@@ -42,7 +42,7 @@ export function AuthDrawer() {
         {authMode === "sign-in" ? "Welcome back, cosmonaut" : "Become a cosmonaut"}
       </h2>
       <div className="flex justify-center">
-        <AuthHandoff mode={authMode}>
+        <AuthHandoff mode={authMode} bare>
           {authMode === "sign-in" ? (
             <SignIn
               routing="hash"
