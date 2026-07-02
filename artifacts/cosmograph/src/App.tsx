@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { X } from "lucide-react";
 import { ClerkProvider, SignIn, SignUp, useClerk } from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { Switch, Route, useLocation, Router as WouterRouter } from "wouter";
@@ -128,9 +129,46 @@ function GalaxyHome() {
   );
 }
 
+// Dismissible shell for the auth widget: a blurred backdrop over the galaxy with
+// an explicit close button, click-outside, and Escape — all navigating back to
+// the galaxy so sign-in/up reads as a panel you can leave, not a dead-end
+// full-screen takeover.
+function AuthModal({ children }: { children: React.ReactNode }) {
+  const [, setLocation] = useLocation();
+  const close = () => setLocation("/");
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") close();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      onClick={close}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-background/85 px-4 backdrop-blur-sm"
+    >
+      <div className="relative" onClick={(e) => e.stopPropagation()}>
+        <button
+          type="button"
+          onClick={close}
+          aria-label="Back to the galaxy"
+          className="absolute -right-3 -top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full border-2 border-edge bg-background text-ink shadow-lg transition-colors hover:bg-white/10"
+        >
+          <X size={18} />
+        </button>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 function SignInPage() {
   return (
-    <div className="flex min-h-[100dvh] items-center justify-center bg-background px-4">
+    <AuthModal>
       <AuthHandoff mode="sign-in">
         {/* path must be the full browser path — Clerk reads window.location.pathname directly */}
         <SignIn
@@ -140,13 +178,13 @@ function SignInPage() {
           forceRedirectUrl={basePath || "/"}
         />
       </AuthHandoff>
-    </div>
+    </AuthModal>
   );
 }
 
 function SignUpPage() {
   return (
-    <div className="flex min-h-[100dvh] items-center justify-center bg-background px-4">
+    <AuthModal>
       <AuthHandoff mode="sign-up">
         <SignUp
           routing="path"
@@ -155,7 +193,7 @@ function SignUpPage() {
           forceRedirectUrl={basePath || "/"}
         />
       </AuthHandoff>
-    </div>
+    </AuthModal>
   );
 }
 
