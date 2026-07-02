@@ -2,10 +2,17 @@ import { useEffect, useMemo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { X, ChevronRight, Compass } from "lucide-react";
 import { useAppState } from "@/lib/store";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { getTourStops } from "@/lib/tour";
 
 export function TourOverlay() {
-  const { tourActive, tourStopIndex, setTourStopIndex, endTour } = useAppState();
+  const { tourActive, tourStopIndex, setTourStopIndex, endTour, cockpitWidth } =
+    useAppState();
+  const isMobile = useIsMobile();
+  // Same geometry as the Drawer panels: clear the cockpit bar at the bottom
+  // and match the navbar's real rendered width so the tour card reads as part
+  // of the same instrument cluster.
+  const bottomGap = isMobile ? "5.75rem" : "5rem";
 
   const tourStops = useMemo(() => getTourStops(), []);
   const stop = tourStops[tourStopIndex];
@@ -31,7 +38,7 @@ export function TourOverlay() {
   };
 
   return (
-    <div className="absolute inset-0 z-30 pointer-events-none flex flex-col justify-end items-center pb-12">
+    <div className="absolute inset-0 z-30 pointer-events-none">
       <button
         onClick={endTour}
         className="absolute top-6 right-6 pointer-events-auto glass-panel glass-panel-interactive flex items-center gap-2 px-4 py-2 text-xs font-display uppercase tracking-wider text-ink"
@@ -43,11 +50,20 @@ export function TourOverlay() {
       <AnimatePresence mode="wait">
         <motion.div
           key={tourStopIndex}
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -20 }}
+          initial={{ opacity: 0, y: 30, x: "-50%" }}
+          animate={{ opacity: 1, y: 0, x: "-50%" }}
+          exit={{ opacity: 0, y: -20, x: "-50%" }}
           transition={{ duration: 0.6, ease: "easeOut" }}
-          className="pointer-events-auto glass-panel p-6 max-w-xl mx-6 text-center"
+          style={{
+            left: "50%",
+            bottom: bottomGap,
+            // Match the cockpit navbar width exactly (same fallback as Drawer
+            // until the first measurement lands).
+            width: cockpitWidth
+              ? `${cockpitWidth}px`
+              : "min(34rem, calc(100vw - 1.5rem))",
+          }}
+          className="absolute pointer-events-auto glass-panel p-6 text-center"
         >
           <div className="flex items-center justify-center gap-2 mb-3 text-accent">
             {(() => {
