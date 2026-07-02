@@ -7,6 +7,7 @@ import { Footer } from "./Footer";
 import { InfoDrawer } from "./InfoDrawer";
 import { AskDrawer } from "./AskDrawer";
 import { CustomizeDrawer } from "./CustomizeDrawer";
+import { AuthDrawer } from "./AuthDrawer";
 import { BannerHost } from "./BannerHost";
 import { EngagePrompt } from "./EngagePrompt";
 import { SocialActions } from "./SocialActions";
@@ -90,6 +91,7 @@ export function Overlay() {
           <InfoDrawer />
           <AskDrawer />
           <CustomizeDrawer />
+          <AuthDrawer />
         </>
       )}
     </div>

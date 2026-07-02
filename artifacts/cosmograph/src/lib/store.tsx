@@ -131,6 +131,11 @@ interface AppState {
   setInfoTab: (tab: "about" | "log") => void;
   customizeOpen: boolean;
   setCustomizeOpen: (val: boolean) => void;
+  // Sign-in / sign-up panel. Rises from the cockpit like the other rich panels
+  // (mutually exclusive with them). `authMode` picks which Clerk widget shows.
+  authOpen: boolean;
+  authMode: "sign-in" | "sign-up";
+  setAuthOpen: (val: boolean, mode?: "sign-in" | "sign-up") => void;
   // The slim top "deal" banner: shown to non-members until dismissed (persisted).
   showDealBanner: boolean;
   dismissDealBanner: () => void;
@@ -236,6 +241,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     setConsoleOpen(false);
     setInfoOpen(false);
     setCustomizeOpen(false);
+    setAuthOpen(false);
   }, []);
 
   const forgetIntro = useCallback(() => {
@@ -246,6 +252,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     setConsoleOpen(false);
     setInfoOpen(false);
     setCustomizeOpen(false);
+    setAuthOpen(false);
   }, []);
   const [cameraMode, setCameraModeState] = useState<CameraMode>("god");
   // Whether the viewer's own (faint) chase ship is drawn in Orbit view. Persisted
@@ -305,16 +312,19 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [askOpen, setAskOpen] = useState(false);
   const [infoTab, setInfoTab] = useState<"about" | "log">("about");
   const [customizeOpen, setCustomizeOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<"sign-in" | "sign-up">("sign-in");
 
-  // Drawers (info / ask / customize) are mutually exclusive: opening any one
-  // closes the others so only a single panel is ever open at a time. The
+  // Drawers (info / ask / customize / auth) are mutually exclusive: opening any
+  // one closes the others so only a single panel is ever open at a time. The
   // exclusive setters below replace the raw useState setters in the context value
   // (the raw ones stay for internal "close all" use in replay/forget intro).
   const openDrawer = useCallback(
-    (target: "info" | "ask" | "customize" | null) => {
+    (target: "info" | "ask" | "customize" | "auth" | null) => {
       setInfoOpen(target === "info");
       setAskOpen(target === "ask");
       setCustomizeOpen(target === "customize");
+      setAuthOpen(target === "auth");
     },
     [],
   );
@@ -328,6 +338,13 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   );
   const setCustomizeOpenExclusive = useCallback(
     (v: boolean) => openDrawer(v ? "customize" : null),
+    [openDrawer],
+  );
+  const setAuthOpenExclusive = useCallback(
+    (v: boolean, mode?: "sign-in" | "sign-up") => {
+      if (v && mode) setAuthMode(mode);
+      openDrawer(v ? "auth" : null);
+    },
     [openDrawer],
   );
 
@@ -564,6 +581,9 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         setInfoTab,
         customizeOpen,
         setCustomizeOpen: setCustomizeOpenExclusive,
+        authOpen,
+        authMode,
+        setAuthOpen: setAuthOpenExclusive,
         showDealBanner,
         dismissDealBanner,
         bannerHeight,

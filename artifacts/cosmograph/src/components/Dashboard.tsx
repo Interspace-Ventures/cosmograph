@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { useLocation } from "wouter";
 import { Show } from "@clerk/react";
 import {
   Info,
@@ -43,9 +42,9 @@ export function Dashboard() {
     startTour,
     canExplore,
     setCockpitWidth,
+    setAuthOpen,
   } = useAppState();
   const filtersActive = isFiltersActive(filters);
-  const [, setLocation] = useLocation();
   const barRef = useRef<HTMLDivElement>(null);
   const lastWidth = useRef(0);
 
@@ -82,11 +81,18 @@ export function Dashboard() {
             <Divider />
           </Show>
           <Show when="signed-out">
-            <SignedOutAuthButton onNavigate={setLocation} />
+            <SignedOutAuthButton onOpenAuth={setAuthOpen} />
             <Divider />
           </Show>
 
-          {/* Camera mode — the centrepiece throttle. */}
+          {/* Ways to explore the galaxy: a guided Tour plus the Orbit/Fly
+              throttle, grouped together in one section. */}
+          <DashButton
+            label="Tour"
+            onClick={startTour}
+            locked={!canExplore}
+            icon={<Map size={15} />}
+          />
           <CameraToggle />
 
           <Divider />
@@ -119,12 +125,6 @@ export function Dashboard() {
             open={customizeOpen}
             icon={<Telescope size={15} />}
           />
-          <DashButton
-            label="Tour"
-            onClick={startTour}
-            locked={!canExplore}
-            icon={<Map size={15} />}
-          />
         </div>
       </div>
     </>
@@ -140,9 +140,9 @@ function Divider() {
 // remember the social provider they last used, we name it ("Sign in with
 // Google") so the path back in is one obvious click.
 function SignedOutAuthButton({
-  onNavigate,
+  onOpenAuth,
 }: {
-  onNavigate: (to: string) => void;
+  onOpenAuth: (open: boolean, mode?: "sign-in" | "sign-up") => void;
 }) {
   // Read once on mount: it's signed-out, so the flag was written in a prior
   // session and won't change while this button is shown.
@@ -156,7 +156,7 @@ function SignedOutAuthButton({
   return (
     <DashButton
       label={label}
-      onClick={() => onNavigate(mem.seen ? "/sign-in" : "/sign-up")}
+      onClick={() => onOpenAuth(true, mem.seen ? "sign-in" : "sign-up")}
       icon={mem.seen ? <LogIn size={15} /> : <UserPlus size={15} />}
     />
   );

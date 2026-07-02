@@ -17,6 +17,16 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.30.0",
+    codename: "Sliding Hatch",
+    date: "2026-07-02",
+    summary: "Signing in stays in the galaxy, and the Tour sits with the other ways to fly.",
+    changes: [
+      "Sign In / Sign Up now rise as a dismissible cockpit panel — like Info, Ask, and Personalize — instead of taking over the whole screen.",
+      "Moved the Tour button next to the Orbit/Fly switch, grouping all the ways to explore the galaxy together.",
+    ],
+  },
+  {
     version: "3.29.0",
     codename: "Afterburner",
     date: "2026-07-01",

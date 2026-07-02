@@ -37,8 +37,17 @@ export function AuthHandoff({
   if (!framed) return <>{children}</>;
 
   const verb = mode === "sign-in" ? "Sign in" : "Create your account";
+  // Open the full-page auth ROUTE (not window.location.href): this component now
+  // also renders inside the in-app auth panel at "/", where the current URL is
+  // the galaxy, not an auth page. Building the route from `mode` lands the new
+  // top-level window on the real widget in both places.
+  const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
   const open = () =>
-    window.open(window.location.href, "_blank", "noopener,noreferrer");
+    window.open(
+      `${window.location.origin}${basePath}/${mode}`,
+      "_blank",
+      "noopener,noreferrer",
+    );
 
   return (
     <div className="w-full max-w-md rounded-none border border-white/10 bg-white/[0.03] p-8 text-center shadow-2xl backdrop-blur">
