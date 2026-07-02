@@ -233,13 +233,13 @@ function ClerkProviderWithRoutes() {
       localization={{
         signIn: {
           start: {
-            title: "Welcome back",
+            title: "Welcome back, cosmonaut",
             subtitle: "Sign in to unlock the full galaxy",
           },
         },
         signUp: {
           start: {
-            title: "Create your account",
+            title: "Become a cosmonaut",
             subtitle: "One account, every researcher's galaxy",
           },
         },

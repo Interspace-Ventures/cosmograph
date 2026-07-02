@@ -23,6 +23,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     summary: "Signing in stays in the galaxy, and the Tour sits with the other ways to fly.",
     changes: [
       "Sign In / Sign Up now rise as a dismissible cockpit panel — like Info, Ask, and Personalize — instead of taking over the whole screen.",
+      "The auth form blends straight into the panel (no box-in-a-box), and the copy is on-theme: \"Become a cosmonaut\" / \"Welcome back, cosmonaut\".",
       "Moved the Tour button next to the Orbit/Fly switch, grouping all the ways to explore the galaxy together.",
     ],
   },
