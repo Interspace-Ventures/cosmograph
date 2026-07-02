@@ -117,7 +117,6 @@ export function Dashboard() {
             label="Personalize"
             onClick={() => setCustomizeOpen(true)}
             open={customizeOpen}
-            paidTag
             icon={<Telescope size={15} />}
           />
           <DashButton
@@ -198,12 +197,6 @@ function DashButton({
             : "border-edge bg-white/5 text-ink hover:bg-white/10"
       }`}
     >
-      {openOnly && (
-        <span
-          aria-hidden
-          className="absolute left-1 top-1 h-1.5 w-1.5 rounded-full bg-accent shadow-[0_0_6px_var(--accent)]"
-        />
-      )}
       {icon}
       <span className="font-display text-[11px] uppercase tracking-wider">
         {label}
