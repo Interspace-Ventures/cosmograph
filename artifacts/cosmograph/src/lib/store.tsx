@@ -490,9 +490,12 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         setPaywallOpen(true);
         return;
       }
+      // A perspective change is a show — drop any open cockpit panel so the
+      // camera move is visible, not hidden behind Info/Ask/Personalize/auth.
+      openDrawer(null);
       setCameraModeState(mode);
     },
-    [canExploreNow],
+    [canExploreNow, openDrawer],
   );
 
   const startTour = useCallback(() => {
@@ -500,11 +503,14 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       setPaywallOpen(true);
       return;
     }
+    // Same as camera switches: close any open panel so the tour flight is
+    // front and center from its first move.
+    openDrawer(null);
     setSelectedObject(null);
     setCameraModeState("god");
     setTourStopIndex(0);
     setTourActive(true);
-  }, [canExploreNow]);
+  }, [canExploreNow, openDrawer]);
 
   const endTour = () => {
     setTourActive(false);
