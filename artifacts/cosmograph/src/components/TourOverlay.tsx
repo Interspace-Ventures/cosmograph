@@ -63,48 +63,50 @@ export function TourOverlay() {
               ? `${cockpitWidth}px`
               : "min(34rem, calc(100vw - 1.5rem))",
           }}
-          className="absolute pointer-events-auto glass-panel p-6 text-center"
+          className="absolute pointer-events-auto glass-panel px-5 py-3.5 text-left sm:px-6 sm:py-4"
         >
-          <div className="flex items-center justify-center gap-2 mb-3 text-accent">
+          <div className="mb-1 flex items-center gap-2 text-accent">
             {(() => {
               const Icon = stop.icon ?? Compass;
-              return <Icon size={14} />;
+              return <Icon size={12} />;
             })()}
-            <span className="text-xs font-display uppercase tracking-[0.3em]">
+            <span className="text-[10px] font-display uppercase tracking-[0.3em]">
               Guided Tour
             </span>
+            <h2 className="ml-1 text-sm md:text-base font-display font-bold text-ink leading-tight">
+              {stop.title}
+            </h2>
           </div>
 
-          <h2 className="text-2xl md:text-3xl font-display font-bold text-ink mb-3 leading-tight">
-            {stop.title}
-          </h2>
-          <p className="text-sm md:text-base text-ink-dim leading-relaxed">
-            {stop.caption}
-          </p>
+          <div className="flex items-end justify-between gap-4">
+            <p className="text-xs md:text-sm text-ink-dim leading-relaxed">
+              {stop.caption}
+            </p>
 
-          <div className="flex items-center justify-between mt-6">
-            <div className="flex items-center gap-1.5">
-              {tourStops.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => setTourStopIndex(i)}
-                  className={`h-1.5 rounded-full transition-all ${
-                    i === tourStopIndex
-                      ? "w-6 bg-accent"
-                      : "w-1.5 bg-white/25 hover:bg-white/50"
-                  }`}
-                  aria-label={`Go to stop ${i + 1}`}
-                />
-              ))}
+            <div className="flex shrink-0 items-center gap-3 pb-0.5">
+              <div className="flex items-center gap-1.5">
+                {tourStops.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setTourStopIndex(i)}
+                    className={`h-1.5 rounded-full transition-all ${
+                      i === tourStopIndex
+                        ? "w-6 bg-accent"
+                        : "w-1.5 bg-white/25 hover:bg-white/50"
+                    }`}
+                    aria-label={`Go to stop ${i + 1}`}
+                  />
+                ))}
+              </div>
+
+              <button
+                onClick={advance}
+                className="glass-panel glass-panel-interactive flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-display uppercase tracking-wider text-ink"
+              >
+                {isLast ? "Finish" : "Next"}
+                <ChevronRight size={12} />
+              </button>
             </div>
-
-            <button
-              onClick={advance}
-              className="glass-panel glass-panel-interactive flex items-center gap-1.5 px-4 py-2 text-xs font-display uppercase tracking-wider text-ink"
-            >
-              {isLast ? "Finish" : "Next"}
-              <ChevronRight size={14} />
-            </button>
           </div>
         </motion.div>
       </AnimatePresence>
