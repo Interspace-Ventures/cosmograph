@@ -47,7 +47,7 @@ export function InfoDrawer() {
               id="info-drawer-title"
               className="mt-1 mb-5 text-2xl font-title font-bold tracking-tight text-ink"
             >
-              Scientific work on galactic scale
+              Research on galactic scale
             </h2>
 
             <div className="space-y-4 text-[13px] leading-relaxed text-ink-dim">
@@ -61,9 +61,10 @@ export function InfoDrawer() {
               </p>
               <p>
                 It began as a Father's Day gift — a way to make one researcher's life's work feel as
-                vast as it truly is. A career in science usually disappears into citation counts and
-                PDFs; this is an attempt to let you <em>feel</em> the scale of it, and to say thank
-                you to the people who spend their lives expanding what we know.
+                vast as it truly is. A career of research — in science, economics, or any field —
+                usually disappears into citation counts and PDFs; this is an attempt to let you{" "}
+                <em>feel</em> the scale of it, and to say thank you to the people who spend their
+                lives expanding what we know.
               </p>
               <p>
                 Cosmograph is open source and built for anyone. Point it at any researcher — a parent,

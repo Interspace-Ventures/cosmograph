@@ -125,7 +125,7 @@ function Header() {
         <SocialActions />
       </div>
       <p className="pointer-events-none text-ink/75 font-mono text-[13px] mt-1 uppercase tracking-[0.12em]">
-        Scientific Work at Galactic Scale · {galaxyData.author.name}
+        Research at Galactic Scale · {galaxyData.author.name}
       </p>
       <div className="pointer-events-none mt-3 flex flex-wrap gap-x-4 gap-y-1">
         <HeaderStat label="Papers" value={stats.totalPapers.toLocaleString()} />
