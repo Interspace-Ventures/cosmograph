@@ -275,8 +275,8 @@ function Thrusters({
     // Idle engines keep a small pilot flame so a stationary ship still reads as
     // powered; throttle grows and lengthens it.
     const drive = 0.18 + 0.82 * t;
-    const len = (0.55 + 1.05 * t) * flick;
-    const wid = 0.7 + 0.45 * t;
+    const len = (0.45 + 0.6 * t) * flick;
+    const wid = 0.6 + 0.28 * t;
     const outerOp = (self ? 0.32 : 0.7) * drive * flick;
     const coreOp = (self ? 0.5 : 1.0) * drive * flick;
     for (const flame of g.children) {
