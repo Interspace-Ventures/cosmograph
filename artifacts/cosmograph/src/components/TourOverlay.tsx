@@ -38,7 +38,7 @@ export function TourOverlay() {
   };
 
   return (
-    <div className="absolute inset-0 z-30 pointer-events-none">
+    <div className="absolute inset-0 z-40 pointer-events-none">
       <button
         onClick={endTour}
         className="absolute top-6 right-6 pointer-events-auto glass-panel glass-panel-interactive flex items-center gap-2 px-4 py-2 text-xs font-display uppercase tracking-wider text-ink"
@@ -63,7 +63,7 @@ export function TourOverlay() {
               ? `${cockpitWidth}px`
               : "min(34rem, calc(100vw - 1.5rem))",
           }}
-          className="absolute pointer-events-auto glass-panel px-5 py-3.5 text-left sm:px-6 sm:py-4"
+          className="absolute pointer-events-auto border-2 border-edge bg-bg/95 backdrop-blur-xl px-5 py-3.5 text-left sm:px-6 sm:py-4"
         >
           <div className="mb-1 flex items-center gap-2 text-accent">
             {(() => {
