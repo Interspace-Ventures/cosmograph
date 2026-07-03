@@ -948,6 +948,79 @@ interface SolarSystemProps {
   matchingIds: Set<string> | null;
 }
 
+// All of a domain's orbit rings merged into ONE lineSegments draw call. They
+// used to be one LineLoop per planet (~1 draw call + raycast target per paper);
+// merging cuts hundreds of draw calls to one per sun, and disabling raycast
+// stops every mouse-move from hit-testing hundreds of line strips. The rings
+// are static per layout (ellipse shape + inclination never animate), so the
+// merged geometry only rebuilds when the paper set changes (dataset swap).
+const OrbitLines = React.memo(function OrbitLines({
+  paperIds,
+}: {
+  paperIds: string[];
+}) {
+  const geometry = useMemo(() => {
+    const SEG = 96;
+    const euler = new THREE.Euler();
+    const v = new THREE.Vector3();
+    const positions = new Float32Array(paperIds.length * SEG * 2 * 3);
+    let ptr = 0;
+    for (const id of paperIds) {
+      const o = planetOrbits[id];
+      if (!o) continue;
+      // Match the per-planet group rotation exactly: rotation={[incl, node, 0]}.
+      euler.set(o.incl, o.node, 0);
+      let fx = 0,
+        fy = 0,
+        fz = 0,
+        px = 0,
+        py = 0,
+        pz = 0;
+      for (let i = 0; i < SEG; i++) {
+        const th = (i / SEG) * Math.PI * 2;
+        const r = ellipseR(o.a, o.e, th);
+        v.set(Math.cos(th) * r, 0, Math.sin(th) * r).applyEuler(euler);
+        if (i === 0) {
+          fx = v.x;
+          fy = v.y;
+          fz = v.z;
+        } else {
+          positions[ptr++] = px;
+          positions[ptr++] = py;
+          positions[ptr++] = pz;
+          positions[ptr++] = v.x;
+          positions[ptr++] = v.y;
+          positions[ptr++] = v.z;
+        }
+        px = v.x;
+        py = v.y;
+        pz = v.z;
+      }
+      // Close the loop.
+      positions[ptr++] = px;
+      positions[ptr++] = py;
+      positions[ptr++] = pz;
+      positions[ptr++] = fx;
+      positions[ptr++] = fy;
+      positions[ptr++] = fz;
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute(
+      "position",
+      new THREE.BufferAttribute(positions.subarray(0, ptr), 3),
+    );
+    return geo;
+  }, [paperIds]);
+
+  useEffect(() => () => geometry.dispose(), [geometry]);
+
+  return (
+    <lineSegments geometry={geometry} raycast={() => null} frustumCulled={false}>
+      <lineBasicMaterial color={0x8b8fa3} transparent opacity={0.13} />
+    </lineSegments>
+  );
+});
+
 const SolarSystem = React.memo(function SolarSystem({
   domainId,
   domainName,
@@ -968,6 +1041,7 @@ const SolarSystem = React.memo(function SolarSystem({
 }: SolarSystemProps) {
   const color = useMemo(() => getStellarColor(index), [index]);
   const papers = papersByDomain[domainId] || [];
+  const paperIds = useMemo(() => papers.map((p) => p.id), [papers]);
 
   const domainHasMatch =
     !filtersActive || !matchingIds || papers.some((p) => matchingIds.has(p.id));
@@ -991,6 +1065,7 @@ const SolarSystem = React.memo(function SolarSystem({
         }
         onOut={() => setHoveredObject(null)}
       />
+      <OrbitLines paperIds={paperIds} />
       {papers.map((p) => {
         const isSelected =
           selectedObject?.type === "planet" && selectedObject.id === p.id;
@@ -1209,26 +1284,8 @@ const PlanetSystem = React.memo(function PlanetSystem({
   const isRocky = ROCKY.has(o.texIndex);
   const isGas = GAS.has(o.texIndex);
 
-  const orbitLine = useMemo(() => {
-    const pts: THREE.Vector3[] = [];
-    const seg = 110;
-    for (let i = 0; i <= seg; i++) {
-      const th = (i / seg) * Math.PI * 2;
-      const r = ellipseR(o.a, o.e, th);
-      pts.push(new THREE.Vector3(Math.cos(th) * r, 0, Math.sin(th) * r));
-    }
-    const geo = new THREE.BufferGeometry().setFromPoints(pts);
-    const mat = new THREE.LineBasicMaterial({
-      color: 0x8b8fa3,
-      transparent: true,
-      opacity: 0.13,
-    });
-    return new THREE.LineLoop(geo, mat);
-  }, [o.a, o.e]);
-
   return (
     <group rotation={[o.incl, o.node, 0]}>
-      <primitive object={orbitLine} />
       <mesh
         rotation-x={o.axialTilt}
         ref={(el: THREE.Mesh | null) => {
@@ -1250,7 +1307,7 @@ const PlanetSystem = React.memo(function PlanetSystem({
           document.body.style.cursor = "auto";
         }}
       >
-        <sphereGeometry args={[o.planetRadius, 32, 32]} />
+        <sphereGeometry args={[o.planetRadius, 20, 20]} />
         <meshStandardMaterial
           map={tex}
           normalMap={isEarth ? earthNormalTex : undefined}
@@ -1273,7 +1330,7 @@ const PlanetSystem = React.memo(function PlanetSystem({
           <>
             <CloudLayer tex={earthCloudsTex} radius={o.planetRadius} />
             <mesh scale={1.035}>
-              <sphereGeometry args={[o.planetRadius, 32, 32]} />
+              <sphereGeometry args={[o.planetRadius, 20, 20]} />
               <meshBasicMaterial
                 color="#5b8bd6"
                 transparent
@@ -1377,7 +1434,7 @@ function CloudLayer({ tex, radius }: { tex: THREE.Texture; radius: number }) {
   });
   return (
     <mesh ref={ref} scale={1.012}>
-      <sphereGeometry args={[radius, 32, 32]} />
+      <sphereGeometry args={[radius, 20, 20]} />
       <meshStandardMaterial
         map={tex}
         transparent
@@ -1426,7 +1483,7 @@ function Moon({
 
   return (
     <mesh ref={ref}>
-      <sphereGeometry args={[Math.max(0.14, planetRadius * 0.2), 24, 24]} />
+      <sphereGeometry args={[Math.max(0.14, planetRadius * 0.2), 16, 16]} />
       <meshStandardMaterial
         map={tex}
         bumpMap={tex}

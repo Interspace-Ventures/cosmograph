@@ -1,6 +1,6 @@
 import { Canvas } from "@react-three/fiber";
-import { Suspense, useEffect, useRef } from "react";
-import { Preload, Stars, useTexture } from "@react-three/drei";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { PerformanceMonitor, Preload, Stars, useTexture } from "@react-three/drei";
 import { EffectComposer, Bloom } from "@react-three/postprocessing";
 import * as THREE from "three";
 import { GalaxySystem } from "./GalaxySystem";
@@ -47,6 +47,13 @@ export function Scene({
   // current selection/target lock.
   const downPos = useRef<{ x: number; y: number } | null>(null);
 
+  // Adaptive resolution: start at up to 1.5x DPR, drop to 1x when the measured
+  // frame rate declines (weaker GPUs, thermal throttling), climb back when it
+  // recovers. PerformanceMonitor handles the sampling + hysteresis.
+  const [dpr, setDpr] = useState(() =>
+    typeof window === "undefined" ? 1.5 : Math.min(1.5, window.devicePixelRatio),
+  );
+
   return (
     <div
       className="absolute inset-0 z-0"
@@ -62,12 +69,17 @@ export function Scene({
           far: 60000,
         }}
         gl={{
-          antialias: true,
+          // Canvas-level MSAA is wasted work here: the EffectComposer renders
+          // into its own (multisampled) buffers and blits the result, so AA is
+          // handled there instead (see multisampling on EffectComposer below).
+          antialias: false,
           alpha: false,
           stencil: false,
           preserveDrawingBuffer: true,
+          // Ask dual-GPU laptops for the discrete GPU instead of the iGPU.
+          powerPreference: "high-performance",
         }}
-        dpr={[1, 1.5]}
+        dpr={dpr}
         // Debounce the WebGL buffer resize so neither a window resize NOR the
         // console push (the canvas is confined to the space left of the console,
         // so opening/closing it changes the canvas width) triggers a per-frame
@@ -86,6 +98,17 @@ export function Scene({
           if (moved <= 8) setSelectedObject(null);
         }}
       >
+        {/* flipflops+onFallback: if the fps hovers around the threshold and the
+            monitor keeps toggling, stop oscillating after 3 flips and settle at
+            1x for the session (each dpr change resizes the render buffers). */}
+        <PerformanceMonitor
+          flipflops={3}
+          onDecline={() => setDpr(1)}
+          onIncline={() =>
+            setDpr(Math.min(1.5, window.devicePixelRatio))
+          }
+          onFallback={() => setDpr(1)}
+        />
         <color attach="background" args={["#03030a"]} />
 
         {/* Low fill so the sun pointLights (decay=0) carve day/night terminators,
@@ -118,7 +141,7 @@ export function Scene({
           )}
           {!captureTopDown && <SelfShip />}
 
-          <EffectComposer enableNormalPass={false}>
+          <EffectComposer enableNormalPass={false} multisampling={4}>
             <Bloom
               luminanceThreshold={0.9}
               luminanceSmoothing={0.03}

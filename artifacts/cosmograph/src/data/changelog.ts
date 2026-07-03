@@ -17,6 +17,19 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.32.0",
+    codename: "Slipstream",
+    date: "2026-07-02",
+    summary: "A faster galaxy — the same view, drawn with a fraction of the work.",
+    changes: [
+      "Merged every solar system's orbit rings into a single draw call each (they used to be one per paper — hundreds per frame).",
+      "Orbit rings no longer respond to the mouse, so moving the cursor doesn't hit-test hundreds of invisible lines anymore.",
+      "Planets, clouds, and moons use leaner sphere meshes — visually identical at galaxy scale, far fewer vertices per frame.",
+      "The galaxy now adapts its render resolution to your machine: if the frame rate dips, it quietly drops sharpness a notch and climbs back when things recover.",
+      "Asks dual-GPU laptops for the fast graphics card, and stopped paying for antialiasing twice.",
+    ],
+  },
+  {
     version: "3.31.0",
     codename: "Target Lock",
     date: "2026-07-02",
