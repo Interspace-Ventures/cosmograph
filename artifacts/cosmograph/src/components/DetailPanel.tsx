@@ -3,6 +3,7 @@ import { galaxyData, getDomain, papersByDomain } from "@/data/galaxy";
 import { motion } from "framer-motion";
 import { X, ExternalLink } from "lucide-react";
 import { getDomainColorStr } from "@/lib/colors";
+import { useLayoutEffect, useRef, useState } from "react";
 
 export function DetailPanel() {
   const { selectedObject, setSelectedObject } = useAppState();
@@ -151,16 +152,10 @@ function PlanetDetail({ id }: { id: string }) {
           <div className="font-mono text-[10px] uppercase tracking-widest text-ink-dim mb-2">
             Co-authors ({paper.coAuthorCount})
           </div>
-          <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto custom-scrollbar pr-1 pb-1">
-            {paper.coAuthors.map((author, i) => (
-              <span
-                key={i}
-                className="px-2 py-1 bg-white/5 border-2 border-edge text-[11px] text-ink-dim"
-              >
-                {author}
-              </span>
-            ))}
-          </div>
+          <CoAuthorChips
+            authors={paper.coAuthors}
+            total={paper.coAuthorCount}
+          />
         </div>
       )}
 
@@ -175,6 +170,128 @@ function PlanetDetail({ id }: { id: string }) {
           <span>View Source</span>
           <ExternalLink size={14} />
         </a>
+      )}
+    </div>
+  );
+}
+
+const CHIP_GAP = 6; // matches gap-1.5
+
+/**
+ * Co-author chips confined to a single line: we measure (in a hidden clone of
+ * the row) how many name chips fit alongside a "+N" chip and collapse the rest
+ * into it. Clicking "+N" expands to the full scrollable list; "Show less"
+ * collapses back. Re-measures on container resize (the panel width changes
+ * with the viewport and the console rail).
+ */
+function CoAuthorChips({
+  authors,
+  total,
+}: {
+  authors: string[];
+  total: number;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [visible, setVisible] = useState(authors.length);
+  const measureRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const el = measureRef.current;
+    if (!el) return;
+
+    const compute = () => {
+      const children = Array.from(el.children) as HTMLElement[];
+      const probe = children.pop(); // last child is the "+N" width probe
+      if (!probe) return;
+      const width = el.clientWidth;
+      if (width <= 0) return;
+
+      let used = 0;
+      let count = 0;
+      for (const chip of children) {
+        const next = used + (count > 0 ? CHIP_GAP : 0) + chip.offsetWidth;
+        if (next > width) break;
+        used = next;
+        count++;
+      }
+
+      // Everything fits and the snapshot isn't truncated — no "+N" needed.
+      if (count >= children.length && total <= authors.length) {
+        setVisible(children.length);
+        return;
+      }
+
+      // Otherwise make room for the "+N" chip on the same line.
+      while (count > 0 && used + CHIP_GAP + probe.offsetWidth > width) {
+        used -= children[count - 1].offsetWidth + (count > 1 ? CHIP_GAP : 0);
+        count--;
+      }
+      setVisible(Math.max(1, count));
+    };
+
+    compute();
+    const ro = new ResizeObserver(compute);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [authors, total]);
+
+  const hidden = total - visible;
+  const chipClass =
+    "px-2 py-1 bg-white/5 border-2 border-edge text-[11px] text-ink-dim";
+  const moreClass =
+    "px-2 py-1 bg-white/10 border-2 border-edge text-[11px] text-ink hover:bg-accent/20 hover:border-accent transition-colors";
+
+  return (
+    <div className="relative">
+      {/* Invisible measuring row: all chips + a "+N" probe, never wraps. */}
+      <div
+        ref={measureRef}
+        aria-hidden="true"
+        className="absolute inset-x-0 top-0 flex flex-nowrap gap-1.5 overflow-hidden invisible pointer-events-none"
+      >
+        {authors.map((author, i) => (
+          <span key={i} className={`${chipClass} whitespace-nowrap shrink-0`}>
+            {author}
+          </span>
+        ))}
+        <span className={`${moreClass} whitespace-nowrap shrink-0`}>
+          +{total}
+        </span>
+      </div>
+
+      {expanded ? (
+        <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto custom-scrollbar pr-1 pb-1">
+          {authors.map((author, i) => (
+            <span key={i} className={chipClass}>
+              {author}
+            </span>
+          ))}
+          <button
+            type="button"
+            onClick={() => setExpanded(false)}
+            className={moreClass}
+          >
+            Show less
+          </button>
+        </div>
+      ) : (
+        <div className="flex flex-nowrap gap-1.5 overflow-hidden">
+          {authors.slice(0, visible).map((author, i) => (
+            <span key={i} className={`${chipClass} whitespace-nowrap shrink-0`}>
+              {author}
+            </span>
+          ))}
+          {hidden > 0 && (
+            <button
+              type="button"
+              onClick={() => setExpanded(true)}
+              title={`Show all ${total} co-authors`}
+              className={`${moreClass} whitespace-nowrap shrink-0`}
+            >
+              +{hidden}
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

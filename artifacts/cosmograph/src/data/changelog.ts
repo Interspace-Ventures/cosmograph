@@ -17,6 +17,19 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.33.0",
+    codename: "Station Keeping",
+    date: "2026-07-03",
+    summary:
+      "The paper card slims down, and your ship now holds formation with a selected planet.",
+    changes: [
+      "Co-authors in the paper card now fit on a single line — the rest collapse into a \"+N\" chip you can tap to see everyone.",
+      "The paper card no longer hides under the header on desktop.",
+      "Selecting a planet in Fly mode engages a tracking cam: the ship smoothly holds formation with the planet as it orbits, so you can read the card without chasing it.",
+      "Touch the controls (keys or mouse-look) and the ship hands the stick back to you without snapping the view; click the planet again to re-engage tracking.",
+    ],
+  },
+  {
     version: "3.32.0",
     codename: "Slipstream",
     date: "2026-07-02",

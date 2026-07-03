@@ -77,7 +77,7 @@ export function Overlay() {
 
               <AnimatePresence>
                 {selectedObject && (
-                  <div className="absolute z-30 left-3 right-3 bottom-[5.5rem] max-h-[42vh] md:inset-x-auto md:right-auto md:bottom-auto md:top-36 md:left-5 md:w-[min(384px,calc(100vw-2.5rem))] md:max-h-[calc(100vh-15rem)] md:!block overflow-y-auto custom-scrollbar pointer-events-auto block">
+                  <div className="absolute z-30 left-3 right-3 bottom-[5.5rem] max-h-[42vh] md:inset-x-auto md:right-auto md:bottom-auto md:top-48 md:left-5 md:w-[min(384px,calc(100vw-2.5rem))] md:max-h-[calc(100vh-18rem)] md:!block overflow-y-auto custom-scrollbar pointer-events-auto block">
                     <DetailPanel />
                   </div>
                 )}

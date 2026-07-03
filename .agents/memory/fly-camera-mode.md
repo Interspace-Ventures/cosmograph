@@ -58,6 +58,15 @@ OrbitControls cannot express.
   scale a child `useFrame` lerps (`dt*8`) — never a React prop, or every ship
   re-renders each frame. Reset thrust + prevPos on Fly (re)entry or the first
   frame's stale-delta spikes the glow.
+- **Planet tracking cam (select-to-follow):** selecting a planet in Fly engages
+  a chase lock — hold a world-fixed offset from the planet ((camera−planet)
+  normalized to `pr*10+14`, elevation floor `y ≥ dist*0.18`), exponential-smooth
+  position (`1−exp(−dt*2.2)`) and slerp a look-at quaternion (`1−exp(−dt*3)`),
+  sync yaw/pitch refs each frame so breaking the lock never snaps, zero velocity,
+  and `return` before manual flight. ANY key or mouse-look drag breaks the lock
+  (selection stays). The engage effect must depend on the **selectedObject
+  reference**, not `type/id` primitives — each click creates a fresh object, so
+  re-clicking the same planet re-engages tracking after a manual break.
 - **Per-mode camera persistence:** each mode records its latest vantage every frame
   (Orbit: pos+orbit target; Fly: pos+yaw+pitch) and the mode-enter effects restore
   it instead of resetting — Fly skips the dive-in once it has a saved vantage.

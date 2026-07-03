@@ -32,6 +32,8 @@ const _offset = new THREE.Vector3();
 const _lookAt = new THREE.Vector3();
 const _move = new THREE.Vector3();
 const _euler = new THREE.Euler();
+const _mat = new THREE.Matrix4();
+const _quat = new THREE.Quaternion();
 
 function easeInOutCubic(t: number): number {
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
@@ -151,6 +153,47 @@ export function CameraController({ captureTopDown = false }: { captureTopDown?: 
     pitch: 0,
     has: false,
   });
+
+  // Fly-mode tracking cam: selecting a planet in Fly locks the ship into a
+  // steady, damped chase that keeps a fixed offset from the planet as it moves
+  // along its orbit — so the datacard can be read without manual
+  // station-keeping. Any flight input (keys or mouse-look drag) breaks the lock
+  // but keeps the selection; re-clicking the planet re-engages it.
+  const flyTrack = useRef<{ active: boolean; offset: THREE.Vector3 }>({
+    active: false,
+    offset: new THREE.Vector3(),
+  });
+
+  useEffect(() => {
+    if (cameraMode !== "spaceship" || selectedObject?.type !== "planet") {
+      flyTrack.current.active = false;
+      return;
+    }
+    const planet = planetRefs[selectedObject.id];
+    if (!planet) {
+      flyTrack.current.active = false;
+      return;
+    }
+    const pos = new THREE.Vector3();
+    planet.getWorldPosition(pos);
+    const pr = planetOrbits[selectedObject.id]?.planetRadius || 1;
+    const dist = pr * 10 + 14;
+    // Approach from wherever the ship currently is, normalized to a reading
+    // distance, with a floor on elevation so the view isn't edge-on to the
+    // orbital plane.
+    const off = flyTrack.current.offset.copy(camera.position).sub(pos);
+    if (off.lengthSq() < 1e-6) off.set(0, 0.35, 1);
+    off.setLength(dist);
+    if (off.y < dist * 0.18) {
+      off.y = dist * 0.18;
+      off.setLength(dist);
+    }
+    flyTrack.current.active = true;
+    velocity.current.set(0, 0, 0);
+    // Deps use the selectedObject REFERENCE (not just type/id) on purpose:
+    // every planet click creates a fresh object, so re-clicking the same
+    // planet after manually breaking the lock re-engages tracking.
+  }, [cameraMode, selectedObject, camera]);
 
   useEffect(() => {
     if (cameraMode !== "spaceship") return;
@@ -409,6 +452,40 @@ export function CameraController({ captureTopDown = false }: { captureTopDown?: 
           pitch.current = eu.x;
         }
         return;
+      }
+
+      // Planet tracking: hold a fixed offset from the selected planet with
+      // exponential smoothing (frame-rate independent, never jerky). Any manual
+      // input hands control back to the pilot without snapping the view.
+      if (flyTrack.current.active && selectedObject?.type === "planet") {
+        const k = keys.current;
+        const manualInput =
+          dragging.current ||
+          k.forward || k.backward || k.left || k.right || k.up || k.down ||
+          k.lookLeft || k.lookRight || k.lookUp || k.lookDown ||
+          k.rollLeft || k.rollRight;
+        const planet = planetRefs[selectedObject.id];
+        if (manualInput || !planet) {
+          flyTrack.current.active = false;
+        } else {
+          planet.getWorldPosition(_worldPos);
+          _lookAt.copy(_worldPos).add(flyTrack.current.offset);
+          state.camera.position.lerp(_lookAt, 1 - Math.exp(-delta * 2.2));
+          _mat.lookAt(state.camera.position, _worldPos, state.camera.up);
+          _quat.setFromRotationMatrix(_mat);
+          state.camera.quaternion.slerp(_quat, 1 - Math.exp(-delta * 3));
+          // Keep yaw/pitch synced so breaking the lock doesn't snap the view.
+          _euler.setFromQuaternion(state.camera.quaternion, "YXZ");
+          yaw.current = _euler.y;
+          pitch.current = _euler.x;
+          roll.current = 0;
+          velocity.current.set(0, 0, 0);
+          savedFly.current.pos.copy(state.camera.position);
+          savedFly.current.yaw = yaw.current;
+          savedFly.current.pitch = pitch.current;
+          savedFly.current.has = true;
+          return;
+        }
       }
 
       // Keyboard look: arrow keys turn (yaw) and tilt (pitch), matching the
