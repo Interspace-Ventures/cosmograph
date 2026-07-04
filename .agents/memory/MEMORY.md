@@ -18,5 +18,7 @@
 - [Iframe auth handoff](iframe-auth-handoff.md) — Clerk OAuth+bot-challenge split is an iframe-preview artifact; in-frame auth pages show a "open in new window" handoff, real widget renders top-level/prod.
 - [Cosmonaut presence ships](cosmonaut-ships.md) — peers + self are low-poly ships; ship look = a seed now broadcast over presence + saved to users.ship_seed (/me/ship); hydrate saved seed once per sign-in.
 - [Ask Cosmos chat](ask-cosmos-chat.md) — streaming SSE assistant; action+THINK/ANSWER markers → typed frames; data-turn numbers are deterministic (client ignores model prose), never model-stated.
+- [Presence load testing](presence-load-testing.md) — verified solid to 100 concurrent (peers[] caps at 60, 10Hz holds); to bench, vary X-Forwarded-For last entry against direct :8080 (proxy overwrites XFF, per-IP cap=4 blocks same-IP floods).
+- [Planet render scaling](planet-render-scaling.md) — orbit motion is ONE central O(n) useFrame (not per-planet); draw calls scale 1:1 with paper count (each planet a unique mesh/material); frustum cull + adaptive DPR are the only safety nets, no planet cap.
 - [Galaxy perf budget](galaxy-perf-budget.md) — orbit rings are ONE merged non-raycast lineSegments per sun; sphere segs capped; adaptive DPR. Don't reintroduce per-planet line objects.
 - [Ship types monetization](ship-types-monetization.md) — premium ship TYPES are $1 one-time (or free member slot); BOTH free-claim and paid-confirm must auto-equip (confirm writes users.ship_type server-side) or buyers aren't switched.
