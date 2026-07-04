@@ -11,6 +11,7 @@ import { AppStateProvider, useAppState } from "@/lib/store";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Scene } from "@/components/Scene";
 import { Overlay } from "@/components/Overlay";
+import { TourOverlay } from "@/components/TourOverlay";
 import { AuthHandoff } from "@/components/AuthHandoff";
 import { Dashboard } from "@/components/Dashboard";
 import { FlyCockpit } from "@/components/FlyCockpit";
@@ -94,6 +95,11 @@ function GalaxyView() {
           {/* The cockpit dashboard is hidden during the intro so nothing covers
               the title screen. */}
           {introFinished && <Dashboard />}
+          {/* Hoisted OUT of the Overlay (z-10) subtree to a top-level sibling so
+              its z-40 actually stacks ABOVE the navbar (z-30) — otherwise the
+              tour card is trapped under the Overlay's stacking context and the
+              navbar clips its bottom edge. Self-gates on tourActive. */}
+          {introFinished && <TourOverlay />}
         </>
       ) : (
         // Non-member on a non-default scientist: the interactive galaxy is

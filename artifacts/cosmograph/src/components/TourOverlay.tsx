@@ -9,10 +9,11 @@ export function TourOverlay() {
   const { tourActive, tourStopIndex, setTourStopIndex, endTour, cockpitWidth } =
     useAppState();
   const isMobile = useIsMobile();
-  // Same geometry as the Drawer panels: clear the cockpit bar at the bottom
-  // and match the navbar's real rendered width so the tour card reads as part
-  // of the same instrument cluster.
-  const bottomGap = isMobile ? "5.75rem" : "5rem";
+  // Clear the cockpit navbar at the bottom and match its real rendered width so
+  // the tour card reads as part of the same instrument cluster. Desktop needs a
+  // larger gap than the Drawer panels because the navbar sits higher there
+  // (md:pb-10) — 5rem left the card's bottom edge tucked under the bar.
+  const bottomGap = isMobile ? "5.75rem" : "6.75rem";
 
   const tourStops = useMemo(() => getTourStops(), []);
   const stop = tourStops[tourStopIndex];

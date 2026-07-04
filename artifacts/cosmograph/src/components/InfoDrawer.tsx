@@ -1,3 +1,4 @@
+import { Rewind } from "lucide-react";
 import { useAppState } from "@/lib/store";
 import { galaxyData } from "@/data/galaxy";
 import { SITE } from "@/config/site";
@@ -6,7 +7,8 @@ import { Drawer } from "./Drawer";
 import { ChangelogContent } from "./ChangelogContent";
 
 export function InfoDrawer() {
-  const { infoOpen, setInfoOpen, infoTab, setInfoTab } = useAppState();
+  const { infoOpen, setInfoOpen, infoTab, setInfoTab, replayIntro } =
+    useAppState();
 
   return (
     <Drawer
@@ -80,6 +82,14 @@ export function InfoDrawer() {
                 {galaxyData.domains.length} domains.
               </p>
             </div>
+
+            <button
+              onClick={replayIntro}
+              className="mt-6 flex w-full items-center justify-center gap-2 border-2 border-edge bg-white/5 px-4 py-3 font-display text-[11px] uppercase tracking-wider text-ink transition-colors hover:bg-white/10"
+            >
+              <Rewind size={15} />
+              Replay intro
+            </button>
 
             <div className="mt-8 border-t-2 border-edge pt-6">
               <span className="font-mono text-[10px] uppercase tracking-widest text-accent">

@@ -248,6 +248,10 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     setInfoOpen(false);
     setCustomizeOpen(false);
     setAuthOpen(false);
+    // Clear any in-progress tour so it can't resume once the replayed intro
+    // finishes — replay should always land back on a clean title screen.
+    setTourActive(false);
+    setTourStopIndex(0);
   }, []);
 
   const forgetIntro = useCallback(() => {
@@ -259,6 +263,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     setInfoOpen(false);
     setCustomizeOpen(false);
     setAuthOpen(false);
+    setTourActive(false);
+    setTourStopIndex(0);
   }, []);
   const [cameraMode, setCameraModeState] = useState<CameraMode>("god");
   // Whether the viewer's own (faint) chase ship is drawn in Orbit view. Persisted

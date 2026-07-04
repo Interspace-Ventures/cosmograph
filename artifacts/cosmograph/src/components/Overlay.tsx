@@ -2,7 +2,6 @@ import { useAppState } from "@/lib/store";
 import { AnimatePresence, motion } from "framer-motion";
 import { ScrollIntro } from "./ScrollIntro";
 import { DetailPanel } from "./DetailPanel";
-import { TourOverlay } from "./TourOverlay";
 import { Footer } from "./Footer";
 import { InfoDrawer } from "./InfoDrawer";
 import { AskDrawer } from "./AskDrawer";
@@ -87,7 +86,6 @@ export function Overlay() {
               <EngagePrompt />
             </>
           )}
-          <TourOverlay />
           <InfoDrawer />
           <AskDrawer />
           <CustomizeDrawer />

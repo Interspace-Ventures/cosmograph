@@ -17,6 +17,17 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.35.0",
+    codename: "Second Pass",
+    date: "2026-07-04",
+    summary:
+      "Replay the opening flight any time, and the tour card clears the controls.",
+    changes: [
+      "Added a \"Replay intro\" button in Info → About, so you can run the opening title sequence again — handy for showing someone the galaxy from the start.",
+      "The guided-tour card no longer tucks its bottom edge under the cockpit bar on desktop; it now floats cleanly above the controls.",
+    ],
+  },
+  {
     version: "3.34.0",
     codename: "Event Horizon",
     date: "2026-07-04",
