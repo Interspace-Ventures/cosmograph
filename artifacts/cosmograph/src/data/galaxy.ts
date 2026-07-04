@@ -85,14 +85,47 @@ export function isDefaultAuthor(): boolean {
   return DEFAULT_AUTHOR_ID != null && current === DEFAULT_AUTHOR_ID;
 }
 
+// Draw calls scale 1:1 with planet count — every paper is a unique textured
+// mesh. For a pathologically prolific corpus (a ~150K-citation scientist can
+// have 2,000+ works) that many individual planets can overwhelm a weaker GPU on
+// the wide overview even with frustum culling + adaptive resolution. So beyond
+// this many papers we render only the MOST-CITED ones as planets. The long tail
+// still counts everywhere it matters — every headline stat, each domain's paper
+// count (sun size), and Ask/filter results — it just doesn't get its own
+// orbiting world. Any realistic scientist sits well under the cap, so for them
+// nothing changes: every paper is a planet. Single tunable knob.
+export const MAX_RENDERED_PLANETS = 1200;
+
+// The papers that actually become planets, grouped by domain. When the corpus
+// exceeds MAX_RENDERED_PLANETS we keep the globally most-cited papers (ties
+// broken by id for a stable, deterministic layout across reloads); the rest
+// still exist in galaxyData for stats/domains/Ask, they just get no planet.
 function computePapersByDomain(d: GalaxyData): Record<string, Paper[]> {
+  let papers = d.papers;
+  if (papers.length > MAX_RENDERED_PLANETS) {
+    papers = [...papers]
+      .sort((a, b) => b.citations - a.citations || (a.id < b.id ? -1 : 1))
+      .slice(0, MAX_RENDERED_PLANETS);
+  }
   return d.domains.reduce(
     (acc, dom) => {
-      acc[dom.id] = d.papers.filter((p) => p.domainId === dom.id);
+      acc[dom.id] = papers.filter((p) => p.domainId === dom.id);
       return acc;
     },
     {} as Record<string, Paper[]>,
   );
+}
+
+// The flat set of paper ids that have a planet (i.e. survived the cap). Used to
+// keep search from surfacing a paper the user can't actually fly to. When the
+// corpus is under the cap this contains every paper, so nothing is hidden.
+function computeRenderedPaperIds(
+  byDomain: Record<string, Paper[]>,
+): Set<string> {
+  const ids = new Set<string>();
+  for (const list of Object.values(byDomain))
+    for (const p of list) ids.add(p.id);
+  return ids;
 }
 
 function computeYearRange(d: GalaxyData): { min: number; max: number } {
@@ -108,6 +141,7 @@ function computeMaxCitations(d: GalaxyData): number {
 }
 
 export let papersByDomain: Record<string, Paper[]> = computePapersByDomain(galaxyData);
+export let renderedPaperIds: Set<string> = computeRenderedPaperIds(papersByDomain);
 export let yearRange = computeYearRange(galaxyData);
 export let maxCitations = computeMaxCitations(galaxyData);
 
@@ -117,6 +151,7 @@ export let maxCitations = computeMaxCitations(galaxyData);
 export function applyDataset(data: GalaxyData): void {
   galaxyData = data;
   papersByDomain = computePapersByDomain(data);
+  renderedPaperIds = computeRenderedPaperIds(papersByDomain);
   yearRange = computeYearRange(data);
   maxCitations = computeMaxCitations(data);
 }
@@ -227,6 +262,9 @@ export function searchGalaxy(query: string, limit = 8): SearchResult[] {
 
   const paperHits: SearchResult[] = galaxyData.papers
     .filter((p) => {
+      // Only papers with an actual planet are selectable (capped corpora hide
+      // the long tail); no-op when every paper is rendered.
+      if (!renderedPaperIds.has(p.id)) return false;
       if (p.title.toLowerCase().includes(q)) return true;
       if (p.year != null && String(p.year).includes(q)) return true;
       if (p.domainName && p.domainName.toLowerCase().includes(q)) return true;

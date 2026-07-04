@@ -16,4 +16,8 @@ For a heavily-cited scientist the risk axis is **paper count**, not citation cou
 
 **Why not instance:** per-planet emissiveIntensity/opacity (used by the filter + Ask light-up path) and the Earth-clouds/Saturn-rings special meshes make InstancedMesh a shader-level rewrite with visual risk — not a "pass"-sized change.
 
-**How to apply:** if a huge-corpus scientist stutters, the lever is a graceful cap (render top-N papers by citations; the rest still count in stats/domains) — but that changes the "every paper is a planet" semantic, so confirm with the user before adding.
+**Graceful cap (shipped):** `computePapersByDomain` (galaxy.ts) caps rendered planets at `MAX_RENDERED_PLANETS` (1200) — over that, only the globally most-cited papers get planets (id tie-break for determinism). It's the one choke point feeding both layout and render. Stats (`galaxyData.stats`) and sun size (`domain.paperCount`) are untouched, so the long tail still counts in stats/domains. `renderedPaperIds` (recomputed in `applyDataset`) gates `searchGalaxy` so search can't select an unrendered paper. Filters/Ask still iterate the full corpus, so matched-but-unrendered papers just don't light up (accepted degradation). It's a true no-op below the threshold — the shipped ~364-paper default is unchanged.
+
+**Why 1200 / why cited-rank:** guaranteed-smooth on weak GPUs while keeping the scientifically important (most-cited) work visible. The tunable knob is the single `MAX_RENDERED_PLANETS` const.
+
+**Presence concurrency is NOT a scaling risk** — a real 100-client load test passed clean (peers[] hard-capped at 60 server-side); see presence-load-testing.md.

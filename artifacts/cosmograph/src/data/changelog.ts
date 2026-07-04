@@ -17,6 +17,17 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.34.0",
+    codename: "Event Horizon",
+    date: "2026-07-04",
+    summary:
+      "The galaxy stays smooth even for the most prolific scientists alive.",
+    changes: [
+      "For an enormous body of work (think thousands of papers), the galaxy now renders the most-cited papers as planets and keeps the rest counted in every stat, domain, and answer — so the view stays buttery on any machine instead of drowning in planets.",
+      "Every realistic scientist is unchanged: if the corpus fits, every single paper still gets its own planet.",
+    ],
+  },
+  {
     version: "3.33.0",
     codename: "Station Keeping",
     date: "2026-07-03",
