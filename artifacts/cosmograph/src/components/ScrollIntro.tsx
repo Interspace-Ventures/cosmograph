@@ -240,7 +240,7 @@ export function ScrollIntro() {
                 Research at Galactic Scale
               </p>
               <p className="font-mono text-base tracking-widest text-ink-dim md:text-xl">
-                | {galaxyData.author.name}
+                {galaxyData.author.name}
               </p>
             </motion.div>
 
