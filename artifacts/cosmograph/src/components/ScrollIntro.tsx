@@ -237,7 +237,7 @@ export function ScrollIntro() {
               className="space-y-2"
             >
               <p className="font-display text-lg font-semibold uppercase tracking-[0.3em] text-accent md:text-2xl">
-                Research at Galactic Scale
+                A Lifetime of Discovery, at Galactic Scale
               </p>
               <p className="font-mono text-base tracking-widest text-ink-dim md:text-xl">
                 {galaxyData.author.name}
