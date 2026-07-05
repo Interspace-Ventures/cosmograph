@@ -1,13 +1,25 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { X, ChevronRight, Compass } from "lucide-react";
 import { useAppState } from "@/lib/store";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { getTourStops } from "@/lib/tour";
+import { askQueryToFilters } from "@/data/galaxy";
 
 export function TourOverlay() {
-  const { tourActive, tourStopIndex, setTourStopIndex, endTour, cockpitWidth } =
-    useAppState();
+  const {
+    tourActive,
+    tourStopIndex,
+    setTourStopIndex,
+    endTour,
+    cockpitWidth,
+    filters,
+    setFilters,
+  } = useAppState();
+  // Always-current filters snapshot so the ask-demo can restore whatever the
+  // user had before the tour (rather than blindly resetting to all-on).
+  const filtersRef = useRef(filters);
+  filtersRef.current = filters;
   const isMobile = useIsMobile();
   // Clear the cockpit navbar at the bottom and match its real rendered width so
   // the tour card reads as part of the same instrument cluster. Desktop needs a
@@ -30,6 +42,17 @@ export function TourOverlay() {
     }, stop.duration);
     return () => clearTimeout(timer);
   }, [tourActive, tourStopIndex, stop, isLast, setTourStopIndex, endTour]);
+
+  // Ask-Cosmo demo: while an "ask" stop is showing, push its deterministic
+  // query through the normal filters path so matching planets light up. On leave
+  // (stop change, Skip/end, unmount) restore the exact filters the user had
+  // before the demo — not a blanket reset — so a pre-filtered session survives.
+  useEffect(() => {
+    if (!tourActive || !stop?.ask) return;
+    const prev = filtersRef.current;
+    setFilters(askQueryToFilters(stop.ask));
+    return () => setFilters(prev);
+  }, [tourActive, tourStopIndex, stop, setFilters]);
 
   if (!tourActive || !stop) return null;
 

@@ -1,6 +1,12 @@
 import type { LucideIcon } from "lucide-react";
-import { Compass, Sparkles, TrendingUp } from "lucide-react";
-import { galaxyData } from "@/data/galaxy";
+import {
+  Compass,
+  MessageCircleQuestion,
+  Rocket,
+  Sparkles,
+  TrendingUp,
+} from "lucide-react";
+import { galaxyData, type AskQuery } from "@/data/galaxy";
 import { LEGEND_BY_KEY } from "@/lib/legend";
 
 export type TourTarget =
@@ -14,6 +20,14 @@ export interface TourStop {
   target: TourTarget;
   duration: number;
   icon?: LucideIcon;
+  // Camera treatment for this stop. "fly" scripts a low, immersive first-person
+  // glide through the galactic plane (to show off Fly view); anything else uses
+  // the planetarium Orbit vantage with a gentle rotating sweep. Default "orbit".
+  view?: "orbit" | "fly";
+  // Optional deterministic Ask-Cosmo demo: while this stop is showing, papers
+  // matching this query light up in the galaxy (rest dim), then clear on leave.
+  // Computed in-browser via the normal filters path — no LLM call.
+  ask?: AskQuery;
 }
 
 const compactWords = (n: number) =>
@@ -26,6 +40,20 @@ function buildTourStops(): TourStop[] {
     (a, b) => b.totalCitations - a.totalCitations,
   );
   const topPapers = [...papers].sort((a, b) => b.citations - a.citations);
+  const firstName = author.name.split(/\s+/)[0] || author.name;
+
+  // A citation threshold that always lights up a visible-but-selective cluster
+  // for the Ask-Cosmo demo (~top 15% of the corpus, floored so tiny galaxies
+  // still show a handful). Derived from real data so the highlighted count and
+  // the caption's number always agree.
+  const askThreshold = (() => {
+    if (topPapers.length === 0) return 0;
+    const idx = Math.min(
+      topPapers.length - 1,
+      Math.max(3, Math.floor(topPapers.length * 0.15)),
+    );
+    return topPapers[idx]?.citations ?? 0;
+  })();
 
   // 1. The ONLY explainer: one slide that doubles as the welcome and the key.
   stops.push({
@@ -58,6 +86,19 @@ function buildTourStops(): TourStop[] {
     });
   }
 
+  // Fly vs Orbit: drop out of the planetarium view and glide first-person
+  // through the plane toward the brightest sun, to show off the second nav mode.
+  if (domains[0]) {
+    stops.push({
+      title: "Two ways to travel",
+      caption: `This is Fly mode — drop into the plane and pilot first-person past the stars, right through ${domains[0].name}. The planetarium Orbit view you've been watching is the other way to move. Switch between them anytime from the cockpit.`,
+      target: { type: "sun", id: domains[0].id },
+      duration: 9000,
+      icon: Rocket,
+      view: "fly",
+    });
+  }
+
   // 4. The signature paper (largest planet).
   const mostCited = topPapers[0];
   if (mostCited) {
@@ -79,6 +120,24 @@ function buildTourStops(): TourStop[] {
       target: { type: "planet", id: secondCited.id },
       duration: 8500,
       icon: LEGEND_BY_KEY.planets.icon,
+    });
+  }
+
+  // Ask Cosmo demo: light up a real, deterministic slice of the corpus so the
+  // natural-language query panel's payoff is visible before free exploration.
+  if (askThreshold > 0) {
+    stops.push({
+      title: "Ask Cosmo",
+      caption: `Ask a plain-English question and matching worlds light up. Try "which of ${firstName}'s papers have at least ${askThreshold.toLocaleString()} citations?" — here they are now, glowing while the rest fade. Your turn once the tour ends.`,
+      target: { type: "overview" },
+      duration: 9000,
+      icon: MessageCircleQuestion,
+      ask: {
+        intent: "list",
+        minCitations: askThreshold,
+        sortBy: "citations",
+        sortDir: "desc",
+      },
     });
   }
 

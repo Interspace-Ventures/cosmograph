@@ -17,6 +17,18 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.36.0",
+    codename: "Grand Tour",
+    date: "2026-07-05",
+    summary:
+      "The guided tour now shows off flying, rotating angles, and Ask Cosmo.",
+    changes: [
+      "The tour now dips into Fly mode — dropping into the plane for a first-person glide through the brightest field — so you can see both ways to travel, not just the planetarium Orbit view.",
+      "Each stop now slowly sweeps its camera angle, so the galaxy's real 3D depth reads instead of a flat straight-on shot.",
+      "New \"Ask Cosmo\" stop: a real plain-English question runs live and the matching papers light up while the rest fade — a taste of the query panel before you try it yourself.",
+    ],
+  },
+  {
     version: "3.35.0",
     codename: "Second Pass",
     date: "2026-07-04",

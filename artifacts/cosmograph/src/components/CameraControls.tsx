@@ -74,6 +74,11 @@ export function CameraController({ captureTopDown = false }: { captureTopDown?: 
   const targetPosition = useRef(new THREE.Vector3().copy(HOME_POS));
   const targetLookAt = useRef(new THREE.Vector3());
 
+  // Per-tour-stop clock: reset whenever the stop index changes so scripted
+  // camera moves (e.g. the Fly-demo dolly) restart cleanly on each stop.
+  const tourStopElapsed = useRef(0);
+  const tourLastStop = useRef(-1);
+
   // Fly-to animation runs only briefly after a selection changes; afterwards we
   // hand control back to OrbitControls so scroll-to-zoom and orbit work freely.
   const focusing = useRef(false);
@@ -347,39 +352,69 @@ export function CameraController({ captureTopDown = false }: { captureTopDown?: 
 
     if (tourActive) {
       const stop = tourStops[tourStopIndex];
+
+      // Restart the per-stop clock when the stop changes.
+      if (tourLastStop.current !== tourStopIndex) {
+        tourLastStop.current = tourStopIndex;
+        tourStopElapsed.current = 0;
+      }
+      tourStopElapsed.current += delta;
+
       const worldPos = _worldPos.set(0, 0, 0);
-      let hasTarget = false;
-      const offset = _offset.set(0, 40, 110);
+      // Default framing = slow orbit of the whole galaxy at the home vantage.
+      const offset = _offset.set(0, HOME_POS.y, HOME_POS.z);
+      let targeted = false;
+      let sunRadius = 20;
 
-      if (stop && stop.target.type !== "overview") {
-        if (stop.target.type === "sun") {
-          const sun = sunRefs[stop.target.id];
-          if (sun) {
-            sun.getWorldPosition(worldPos);
-            hasTarget = worldPos.lengthSq() > 0;
-          }
-          const r = sunRadii[stop.target.id] || 20;
-          offset.set(0, r * 4 + 30, r * 9 + 60);
-        } else {
-          const planet = planetRefs[stop.target.id];
-          if (planet) {
-            planet.getWorldPosition(worldPos);
-            hasTarget = worldPos.lengthSq() > 0;
-          }
-          const pr = planetOrbits[stop.target.id]?.planetRadius || 1;
-          offset.set(0, pr * 6 + 8, pr * 16 + 16);
-        }
+      if (stop && stop.target.type === "sun") {
+        const sun = sunRefs[stop.target.id];
+        if (sun) sun.getWorldPosition(worldPos);
+        sunRadius = sunRadii[stop.target.id] || 20;
+        offset.set(0, sunRadius * 4 + 30, sunRadius * 9 + 60);
+        targeted = true;
+      } else if (stop && stop.target.type === "planet") {
+        const planet = planetRefs[stop.target.id];
+        if (planet) planet.getWorldPosition(worldPos);
+        const pr = planetOrbits[stop.target.id]?.planetRadius || 1;
+        offset.set(0, pr * 6 + 8, pr * 16 + 16);
+        targeted = true;
       }
 
-      if (hasTarget) {
-        targetLookAt.current.copy(worldPos);
-        targetPosition.current.copy(worldPos).add(offset);
+      // If a targeted object hasn't been positioned yet (layout not ready),
+      // fall back to the whole-galaxy overview framing instead of the origin.
+      if (targeted && worldPos.lengthSq() === 0) {
+        offset.set(0, HOME_POS.y, HOME_POS.z);
+      }
+
+      if (stop?.view === "fly") {
+        // Immersive first-person glide: drop low into the galactic plane and
+        // dolly forward toward the target over the stop's duration, so the
+        // perspective flips from planetarium god-view to flying among the stars.
+        const baseR = stop.target.type === "sun" ? sunRadius : 60;
+        const durSec = (stop.duration ?? 8000) / 1000;
+        const p = easeInOutCubic(
+          THREE.MathUtils.clamp(tourStopElapsed.current / durSec, 0, 1),
+        );
+        const az = state.clock.elapsedTime * 0.05;
+        offset.set(
+          Math.sin(az) * baseR * 1.2,
+          baseR * 0.5 + 14,
+          THREE.MathUtils.lerp(baseR * 9 + 240, baseR * 3 + 80, p),
+        );
       } else {
-        targetLookAt.current.set(0, 0, 0);
-        targetPosition.current.copy(HOME_POS);
+        // Orbit stops: slowly sweep the vantage around the target so the 3D
+        // depth reads and the "rotate the camera" capability is on display.
+        const az = state.clock.elapsedTime * 0.16;
+        const radial = Math.hypot(offset.x, offset.z);
+        offset.x = Math.sin(az) * radial;
+        offset.z = Math.cos(az) * radial;
       }
 
-      state.camera.position.lerp(targetPosition.current, delta * 1.5);
+      targetLookAt.current.copy(worldPos);
+      targetPosition.current.copy(worldPos).add(offset);
+
+      const followSpeed = stop?.view === "fly" ? 2.2 : 1.5;
+      state.camera.position.lerp(targetPosition.current, delta * followSpeed);
       if (orbitRef.current) {
         orbitRef.current.target.lerp(targetLookAt.current, delta * 1.5);
       }
