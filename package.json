@@ -16,5 +16,14 @@
   "dependencies": {
     "stripe": "^22.2.2",
     "stripe-replit-sync": "^1.0.0"
-  }
+  },
+  "description": "**A scientist's life's work, rendered as a galaxy you can fly through.**",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "lib": "lib"
+  },
+  "keywords": [],
+  "author": "",
+  "type": "commonjs"
 }

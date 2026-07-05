@@ -10,6 +10,14 @@ It started as a Father's Day gift for stem-cell scientist **Dr. Mahendra S. Rao*
 
 🔭 **Live demo:** [https://cosmograph.space](https://cosmograph.space) (or [https://galactic.dad](https://galactic.dad))
 
+🎬 **Watch the launch trailer:** [cosmograph.space/trailer](https://cosmograph.space/trailer/) — a 30-second flight through the galaxy before you dive in yourself. (There's also a **Watch the trailer** button on the site's title screen, right below **Ad Astra**.)
+
+<video src="https://raw.githubusercontent.com/heyinterspace/cosmograph/main/docs/trailer.mp4" controls muted loop playsinline width="100%">
+  Your browser does not support the video tag — <a href="https://cosmograph.space/trailer/">watch the trailer here</a>.
+</video>
+
+> The trailer above is a rendered capture of the standalone `/trailer/` video artifact (`artifacts/trailer/`). To regenerate it after changing the trailer, re-capture the running `/trailer/` route to MP4 and overwrite [`docs/trailer.mp4`](docs/trailer.mp4).
+
 ---
 
 ## Highlights

@@ -17,6 +17,16 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.37.0",
+    codename: "Opening Credits",
+    date: "2026-07-05",
+    summary:
+      "Watch the launch trailer straight from the title screen.",
+    changes: [
+      "Added a \"Watch the trailer\" button on the opening title screen, right below \"Ad Astra\" — a quick flight through the galaxy before you dive in yourself.",
+    ],
+  },
+  {
     version: "3.36.1",
     codename: "Steady Hand",
     date: "2026-07-05",

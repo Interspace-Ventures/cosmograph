@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, Play, Compass } from "lucide-react";
+import { ChevronDown, Play, Compass, Film } from "lucide-react";
 import { useAppState } from "@/lib/store";
 import { galaxyData } from "@/data/galaxy";
 import { Cockpit } from "./Cockpit";
@@ -257,6 +257,15 @@ export function ScrollIntro() {
               >
                 {reduced ? "Enter the Galaxy" : "Ad Astra"}
               </button>
+              <a
+                href="/trailer/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="glass-panel glass-panel-interactive flex items-center gap-2 px-6 py-2.5 font-display text-xs uppercase tracking-[0.25em] text-ink-dim transition-colors hover:text-ink"
+              >
+                <Film className="h-3.5 w-3.5" />
+                Watch the trailer
+              </a>
             </motion.div>
           </motion.div>
         )}
