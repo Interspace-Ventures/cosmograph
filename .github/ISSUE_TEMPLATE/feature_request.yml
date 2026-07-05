@@ -1,0 +1,37 @@
+name: 💡 Feature request
+description: Suggest an idea or improvement for Cosmograph
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea! Tell us what you'd like Cosmograph to do.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: What are you trying to do that's hard or impossible today?
+      placeholder: I want to compare two scientists side by side, but…
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Describe the solution you'd like
+      description: What should happen? A rough sketch is fine.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you've considered
+      description: Other approaches or workarounds you thought about.
+    validations:
+      required: false
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Mockups, links, or anything else that helps explain the idea.
+    validations:
+      required: false

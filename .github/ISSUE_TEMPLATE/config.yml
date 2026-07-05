@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Questions & discussion
+    url: https://github.com/heyinterspace/cosmograph/discussions
+    about: Ask questions and share what you built with the community.
+  - name: 🔒 Report a security vulnerability
+    url: https://github.com/heyinterspace/cosmograph/security/advisories/new
+    about: Please report vulnerabilities privately, not as a public issue.

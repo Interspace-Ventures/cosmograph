@@ -1,0 +1,53 @@
+name: 🐛 Bug report
+description: Report something that isn't working as expected
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug! The more detail you give, the faster we can fix it.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug, and what you expected instead.
+      placeholder: When I clicked a planet in Fly mode, the camera…
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: How can we make it happen?
+      placeholder: |
+        1. Go to '…'
+        2. Click on '…'
+        3. See error
+    validations:
+      required: true
+  - type: input
+    id: scientist
+    attributes:
+      label: Whose galaxy? (optional)
+      description: If it's data-specific, the scientist name or OpenAlex ID you generated the snapshot for.
+      placeholder: Ada Lovelace / A5111365293
+    validations:
+      required: false
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Where did you see this?
+      options:
+        - The live site (cosmograph.space)
+        - A local build
+        - A fork / self-hosted deployment
+    validations:
+      required: true
+  - type: textarea
+    id: environment-details
+    attributes:
+      label: Browser / device / console errors
+      description: Browser + OS, and any errors from the developer console.
+      placeholder: Chrome 126 on macOS; console shows "…"
+    validations:
+      required: false

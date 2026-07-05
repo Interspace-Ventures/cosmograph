@@ -7,7 +7,7 @@
 //   node scripts/fetch-galaxy.mjs --name "Ada Lovelace"   > src/data/galaxyData.json
 //   node scripts/fetch-galaxy.mjs --id A5111365293         > src/data/galaxyData.json
 // You can also use env vars: GALAXY_AUTHOR_NAME or GALAXY_AUTHOR_ID.
-// Set a contact email with --mailto you@example.com (OpenAlex etiquette).
+// Set a contact email with --mailto you@yourdomain.com (OpenAlex etiquette).
 //
 // Disambiguation filters — use these when OpenAlex has merged a *different*
 // same-named researcher into the profile. Each filter drops matching works
@@ -54,7 +54,7 @@ function parseArgs(argv) {
 }
 
 const args = parseArgs(process.argv.slice(2));
-const MAILTO = args.mailto || process.env.GALAXY_MAILTO || "galaxy-gift@example.com";
+const MAILTO = args.mailto || process.env.GALAXY_MAILTO || "hello@cosmograph.space";
 
 const splitEnv = (v) => (v ? v.split(",").map((s) => stripId(s.trim())).filter(Boolean) : []);
 const EXCLUDE_INSTITUTIONS = new Set([

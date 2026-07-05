@@ -60,6 +60,24 @@ Disambiguate by research cluster (institution + co-author), **not** by year alon
 - Both routes are public and contract-first (OpenAPI → codegen → Zod → `useTranslateAsk`/`useReportFeedback` hooks). They degrade gracefully: if the server/translator is unreachable the galaxy still works, the Ask panel just shows an error.
 - Requires the **OpenAI AI integration** (`AI_INTEGRATIONS_OPENAI_*` env, auto-provisioned) and a bound **Linear connector** connection for issue filing.
 
+## Maintenance pipeline (Linear ↔ GitHub)
+
+Goal: maintain the project from **Linear** without living in GitHub. Two feedback paths land in Linear:
+
+- **Ask-chat reports go straight to Linear** via the server-side Linear connector (`POST /api/feedback/issue` — see "Ask the galaxy (chat)" above). They never touch GitHub.
+- **Issues opened directly on GitHub** (by outside contributors, via the issue templates) reach Linear through Linear's **native GitHub integration** (issue sync + linked pull requests), not a custom webhook or server.
+
+The native integration has **no code** in this repo; it's configured in the Linear and GitHub dashboards. Setup is one-time and repeatable:
+
+1. **Connect GitHub in Linear.** Linear → *Settings → Integrations → GitHub → Connect*, and authorize the `heyinterspace/cosmograph` repository (Linear installs its GitHub App on that repo).
+2. **Turn on issue sync (GitHub → Linear).** In the same GitHub integration settings, enable *Issue sync* and map the `heyinterspace/cosmograph` repo to the maintainer's Linear team. Choose **"Sync all issues"** (recommended) — or, to keep it selective, "Sync issues with a specific label" and use `triage`, which the issue templates already apply.
+   - New GitHub issues then create a linked Linear issue; comments and open/close state stay in sync both ways.
+3. **Confirm the labels line up.** The issue templates in `.github/ISSUE_TEMPLATE/` apply `bug` + `triage` (bug report) and `enhancement` + `triage` (feature request), so GitHub-filed reports arrive in Linear pre-triaged. Optionally map GitHub labels → Linear labels in the integration settings.
+4. **Enable pull-request linking.** In Linear's GitHub settings, keep *Link pull requests* on. Then a branch or PR that references a Linear issue id (e.g. branch `mrao/gal-123-fix-wisps` or "Closes GAL-123" / "Closes #123" in the PR body — the PR template prompts for this) automatically links the PR to the Linear issue and can auto-move it through the workflow (In Progress → Done on merge).
+5. **Verify.** Open a throwaway GitHub issue → confirm a matching Linear issue appears; open a PR referencing it → confirm the link shows on the Linear issue. Delete the test issue when done.
+
+To re-run/confirm later, revisit Linear → *Settings → Integrations → GitHub*; the same page shows the connected repo, the sync mode, and the linked team.
+
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
@@ -101,7 +119,6 @@ _Populate as you build — explicit user instructions worth remembering across s
 - **`api-server` must be always-on (Reserved VM) for presence AND paid unlocks.** Don't deploy it as static/scale-to-zero (autoscale) — the presence WebSocket needs a persistent process, and the Stripe webhook + entitlement endpoints must stay reachable or purchases silently fail. The deployment type is chosen in the Publishing pane (the agent can't edit `.replit`), not in `artifact.toml`. The galaxy bundle stays static and degrades gracefully if the server is down.
 - **One remaining `pnpm audit` LOW is intentional:** esbuild `0.27.3` (Windows-only dev-server file read, GHSA-g7r4-m6w7-qqqr). It's a build tool not shipped in production and bumping to 0.28.x risks a Vite↔esbuild range mismatch. Leave it pinned.
 - **Artifact `id` intentionally stays `artifacts/galaxy`.** The web app's folder/package were renamed `galaxy`→`cosmograph`, but the artifact `id` in `artifacts/cosmograph/.replit-artifact/artifact.toml` remains `artifacts/galaxy` because `verifyAndReplaceArtifactToml` rejects id changes (`INVALID_ARTIFACT_ID`). It's an internal, never-user-visible handle; everything else (dir, `@workspace/cosmograph`, build/publicDir, workflow) points at `cosmograph`. Don't "fix" the id mismatch unless the platform adds id migration.
-- **Known doc gaps (not blockers):** repo has no `LICENSE` file despite being described as open-source, and `scripts/fetch-galaxy.mjs` still uses a placeholder OpenAlex `mailto`. Add a license and a real contact email before a public launch.
 
 ## Credits
 

@@ -1,14 +1,14 @@
 // Browser-side OpenAlex client. OpenAlex is free, needs no API key, and serves
 // permissive CORS headers, so we can fetch directly from the browser. The
-// `mailto` param is OpenAlex etiquette (the "polite pool"); replace with a real
-// contact address before a public launch.
+// `mailto` param is OpenAlex etiquette (the "polite pool"); if you fork this for
+// your own scientist, set it to your own contact address.
 //
 // This is the runtime counterpart to scripts/fetch-galaxy.mjs: it pulls the raw
 // author + works, which buildGalaxy.ts then derives into a GalaxyData snapshot —
 // the same shape baked into galaxyData.json.
 
 const BASE = "https://api.openalex.org";
-const MAILTO = "galaxy-gift@example.com";
+const MAILTO = "hello@cosmograph.space";
 
 export const stripId = (s: string | null | undefined): string =>
   String(s || "")

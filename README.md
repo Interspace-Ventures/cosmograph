@@ -1,14 +1,14 @@
-# Cosmograph
+# Cosmograph / Galactic 🌌
 
 **A scientist's life's work, rendered as a galaxy you can fly through.**
 
-[cosmograph.space](https://cosmograph.space) turns any researcher's complete body of work into an explorable 3D universe: research domains become **suns**, papers become **planets** orbiting them (size = citations, orbit distance = topic relevance), and frequent co-authors become **moons**. Fly the spaceship through the disk or pull back into a god's-eye planetarium view, click any world for its details, and watch the whole corpus light up at once.
+[Cosmograph](https://cosmograph.space) (also known as **Galactic**) turns any researcher's complete body of work into an explorable 3D universe: research domains become **suns**, papers become **planets** orbiting them (size = citations, orbit distance = topic relevance), and frequent co-authors become **moons**. Fly the spaceship through the disk or pull back into a god's-eye planetarium view, click any world for its details, and watch the whole corpus light up at once.
 
-It started as a Father's Day gift for stem-cell scientist **Dr. Mahendra S. Rao** — and is now an open-source template you can point at *any* scientist: a dad, a mom, a mentor, or yourself.
+It started as a Father's Day gift for stem-cell scientist **Dr. Mahendra S. Rao** — and is now an open-source template you can point at *any* scientist: a parent, a mentor, a hero, or yourself.
 
 > The shipped snapshot (Dr. Rao) spans **364 papers**, **28,860 citations**, **1,191 co-authors**, and **12 research domains** across **30 years** (1994–2024) — roughly 1.4 million words of published science, drawn as one navigable galaxy.
 
-<!-- Tip: drop a hero screenshot or screen recording here, e.g. ![Cosmograph](docs/hero.png) -->
+🔭 **Live demo:** [https://cosmograph.space](https://cosmograph.space) (or [https://galactic.dad](https://galactic.dad))
 
 ---
 
@@ -68,7 +68,7 @@ pnpm --filter @workspace/cosmograph run fetch:galaxy -- --id A5111365293 \
 
 Then restart the galaxy — the title, stats, domains, papers, and co-authors all redraw from the new snapshot.
 
-### When OpenAlex has merged two same-named researchers
+### Disambiguation
 
 OpenAlex occasionally lumps two distinct scientists who share a name under one author ID. The fetch script can drop the wrong person's works and **recompute every headline stat** from only the kept works:
 
@@ -78,7 +78,7 @@ OpenAlex occasionally lumps two distinct scientists who share a name under one a
 | `--exclude-coauthor <OpenAlexAuthorId>` | Drop works co-authored with this person (repeatable) |
 | `--min-year <YYYY>` / `--max-year <YYYY>` | Drop works outside this publication-year range |
 
-Disambiguate by **research cluster** (institution + co-author), not by year alone — same-named researchers often publish in overlapping decades. See the project notes for the exact command that produced the shipped Dr. Rao snapshot.
+Disambiguate by **research cluster** (institution + co-author), not by year alone. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for a detailed walkthrough.
 
 ## Project structure
 
@@ -105,19 +105,12 @@ lib/
 - **Contracts & validation:** OpenAPI → Orval codegen, Zod (`zod/v4`)
 - **Build:** Vite (web), esbuild (server)
 
-## Realtime presence
+## 🤝 Contributing
 
-The API server hosts an ephemeral multiplayer layer at `/api/presence`: each visitor's camera position is streamed so others see faint wisps and a live headcount. It's anonymous and in-memory only — nothing is persisted — and it ships with abuse/DDoS guards (connection caps, rate limits, payload limits, coordinate clamping, and a throttled broadcast). Because it needs a long-lived process, deploy the API server as an always-on instance; the galaxy bundle stays static and works without it.
+Contributions are welcome — bug reports, feature ideas, and pull requests alike. Start with [`CONTRIBUTING.md`](CONTRIBUTING.md) for local setup, the disambiguation guide, and our development workflow. Please also review our [Code of Conduct](CODE_OF_CONDUCT.md).
 
-## Deployment
+Found something exploitable? See [`SECURITY.md`](SECURITY.md) for how to report it privately.
 
-- **Galaxy web app** — a static bundle; host it anywhere.
-- **API server** — must run as an always-on process (the presence WebSocket needs persistence). Set `DATABASE_URL` (Postgres). Optionally set `GITHUB_REPO` (`owner/repo`) for the footer star count.
+## 📜 License
 
-## Credits
-
-Built by [Interspace Venture](https://interspace.ventures). Publication data from [OpenAlex](https://openalex.org). Made with love, first for Dr. Mahendra S. Rao — and now for any scientist you want to celebrate.
-
-## License
-
-MIT.
+MIT © [Interspace Venture](https://interspace.ventures). Publication data from [OpenAlex](https://openalex.org).
