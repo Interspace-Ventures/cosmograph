@@ -17,6 +17,19 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.36.1",
+    codename: "Steady Hand",
+    date: "2026-07-05",
+    summary:
+      "The guided tour is calmer, clearer, and actually shows off Ask Cosmo.",
+    changes: [
+      "The \"Two ways to travel\" stop now demonstrates both modes in one shot — starting in the overhead Orbit view, then dropping down into a first-person Fly glide so you can watch the switch happen.",
+      "Steadied the tour camera: instead of drifting in a full circle, it now gently sways to show depth while keeping each subject centered and in focus.",
+      "The \"Ask Cosmo\" stop now pulls up a live preview of the Ask panel — showing the question and Cosmo's answer — while the matching papers light up behind it.",
+      "Tidied the tour card: the page dots now sit below the text instead of crowding it.",
+    ],
+  },
+  {
     version: "3.36.0",
     codename: "Grand Tour",
     date: "2026-07-05",

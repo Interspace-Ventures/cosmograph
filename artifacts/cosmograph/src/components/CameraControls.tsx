@@ -29,6 +29,7 @@ const FLY_FOV = 42;
 // safely share these.
 const _worldPos = new THREE.Vector3();
 const _offset = new THREE.Vector3();
+const _offB = new THREE.Vector3();
 const _lookAt = new THREE.Vector3();
 const _move = new THREE.Vector3();
 const _euler = new THREE.Euler();
@@ -386,28 +387,50 @@ export function CameraController({ captureTopDown = false }: { captureTopDown?: 
         offset.set(0, HOME_POS.y, HOME_POS.z);
       }
 
+      // Gentle bounded sway (a small ±~16° arc around the FRONT of the target,
+      // NOT a full orbit) so 3D depth/parallax reads while the subject stays
+      // framed and focused. Shared by the orbit stops and the orbit phase of the
+      // fly demo below.
+      const sway = Math.sin(state.clock.elapsedTime * 0.4) * 0.28;
+
       if (stop?.view === "fly") {
-        // Immersive first-person glide: drop low into the galactic plane and
-        // dolly forward toward the target over the stop's duration, so the
-        // perspective flips from planetarium god-view to flying among the stars.
+        // "Two ways to travel": demo BOTH modes in one shot. Start in the
+        // overhead Orbit (planetarium) vantage, then blend down into an immersive
+        // low, first-person Fly vantage — so the viewer literally watches the
+        // orbit view drop into flight.
         const baseR = stop.target.type === "sun" ? sunRadius : 60;
-        const durSec = (stop.duration ?? 8000) / 1000;
-        const p = easeInOutCubic(
-          THREE.MathUtils.clamp(tourStopElapsed.current / durSec, 0, 1),
-        );
-        const az = state.clock.elapsedTime * 0.05;
+        const durSec = (stop.duration ?? 9000) / 1000;
+        const t = THREE.MathUtils.clamp(tourStopElapsed.current / durSec, 0, 1);
+
+        // Orbit vantage: high above the target, gently swaying.
+        const orbRadial = baseR * 9 + 60;
         offset.set(
-          Math.sin(az) * baseR * 1.2,
-          baseR * 0.5 + 14,
-          THREE.MathUtils.lerp(baseR * 9 + 240, baseR * 3 + 80, p),
+          Math.sin(sway) * orbRadial,
+          baseR * 4 + 30,
+          Math.cos(sway) * orbRadial,
         );
+
+        // Fly vantage: dropped low into the galactic plane, close and forward,
+        // easing inward toward the target over the stop.
+        const flyIn = easeInOutCubic(t);
+        _offB.set(
+          Math.sin(state.clock.elapsedTime * 0.05) * baseR * 1.2,
+          baseR * 0.5 + 14,
+          THREE.MathUtils.lerp(baseR * 9 + 220, baseR * 3 + 80, flyIn),
+        );
+
+        // Blend orbit → fly across the middle of the stop so the planetarium
+        // view visibly morphs into flying among the stars.
+        const blend = easeInOutCubic(
+          THREE.MathUtils.clamp((t - 0.35) / 0.4, 0, 1),
+        );
+        offset.lerp(_offB, blend);
       } else {
-        // Orbit stops: slowly sweep the vantage around the target so the 3D
-        // depth reads and the "rotate the camera" capability is on display.
-        const az = state.clock.elapsedTime * 0.16;
+        // Orbit stops: sway the vantage gently around the target so 3D depth
+        // reads without spinning away and losing the subject.
         const radial = Math.hypot(offset.x, offset.z);
-        offset.x = Math.sin(az) * radial;
-        offset.z = Math.cos(az) * radial;
+        offset.x = Math.sin(sway) * radial;
+        offset.z = Math.cos(sway) * radial;
       }
 
       targetLookAt.current.copy(worldPos);

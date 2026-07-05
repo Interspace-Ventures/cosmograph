@@ -28,6 +28,9 @@ export interface TourStop {
   // matching this query light up in the galaxy (rest dim), then clear on leave.
   // Computed in-browser via the normal filters path — no LLM call.
   ask?: AskQuery;
+  // The human-readable question shown in the Ask-Cosmo demo card (the plain
+  // English the `ask` spec stands in for). Only set on the ask stop.
+  askPrompt?: string;
 }
 
 const compactWords = (n: number) =>
@@ -91,9 +94,9 @@ function buildTourStops(): TourStop[] {
   if (domains[0]) {
     stops.push({
       title: "Two ways to travel",
-      caption: `This is Fly mode — drop into the plane and pilot first-person past the stars, right through ${domains[0].name}. The planetarium Orbit view you've been watching is the other way to move. Switch between them anytime from the cockpit.`,
+      caption: `Two ways to move: first the overhead Orbit view you've been watching — then watch it drop into Fly mode, diving low to pilot first-person past the stars, right through ${domains[0].name}. Switch between them anytime from the cockpit.`,
       target: { type: "sun", id: domains[0].id },
-      duration: 9000,
+      duration: 11000,
       icon: Rocket,
       view: "fly",
     });
@@ -132,6 +135,7 @@ function buildTourStops(): TourStop[] {
       target: { type: "overview" },
       duration: 9000,
       icon: MessageCircleQuestion,
+      askPrompt: `Which of ${firstName}'s papers have at least ${askThreshold.toLocaleString()} citations?`,
       ask: {
         intent: "list",
         minCitations: askThreshold,

@@ -4,7 +4,9 @@ import { X, ChevronRight, Compass } from "lucide-react";
 import { useAppState } from "@/lib/store";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { getTourStops } from "@/lib/tour";
-import { askQueryToFilters } from "@/data/galaxy";
+import { askQueryToFilters, runAskQuery } from "@/data/galaxy";
+import { ChatMessage } from "./ui/chat";
+import { MessageCircleStar } from "./MessageCircleStar";
 
 export function TourOverlay() {
   const {
@@ -13,6 +15,7 @@ export function TourOverlay() {
     setTourStopIndex,
     endTour,
     cockpitWidth,
+    bannerHeight,
     filters,
     setFilters,
   } = useAppState();
@@ -30,6 +33,14 @@ export function TourOverlay() {
   const tourStops = useMemo(() => getTourStops(), []);
   const stop = tourStops[tourStopIndex];
   const isLast = tourStopIndex >= tourStops.length - 1;
+
+  // Deterministic result for the Ask-Cosmo demo card (same query that lights up
+  // the galaxy). Computed in-browser — the count shown always matches what's lit.
+  const askDemo = useMemo(() => {
+    if (!stop?.ask || !stop.askPrompt) return null;
+    const r = runAskQuery(stop.ask);
+    return { prompt: stop.askPrompt, count: r.count, total: r.total };
+  }, [stop]);
 
   useEffect(() => {
     if (!tourActive || !stop) return;
@@ -71,6 +82,41 @@ export function TourOverlay() {
         <X size={14} />
       </button>
 
+      {/* Ask-Cosmo demo: a faithful, non-modal mock of the Ask panel so the
+          feature is visible without the real drawer's scrim hiding the galaxy
+          (the whole point is watching papers light up behind it). */}
+      <AnimatePresence>
+        {askDemo && (
+          <motion.div
+            initial={{ opacity: 0, y: -16, x: "-50%" }}
+            animate={{ opacity: 1, y: 0, x: "-50%" }}
+            exit={{ opacity: 0, y: -16, x: "-50%" }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            style={{
+              left: "50%",
+              top: `calc(${bannerHeight}px + 4.75rem)`,
+              width: "min(24rem, calc(100vw - 1.5rem))",
+            }}
+            className="absolute pointer-events-auto border-2 border-edge bg-bg/95 px-4 py-3.5 backdrop-blur-xl"
+          >
+            <span className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-accent">
+              <MessageCircleStar size={12} /> Ask Cosmo
+            </span>
+            <div className="mt-3 flex flex-col gap-2">
+              <ChatMessage role="user">{askDemo.prompt}</ChatMessage>
+              <span className="self-start font-mono text-[10px] uppercase tracking-widest text-accent">
+                {askDemo.count} of {askDemo.total} papers match
+              </span>
+              <ChatMessage role="assistant">
+                {askDemo.count.toLocaleString()}{" "}
+                {askDemo.count === 1 ? "paper matches" : "papers match"} —
+                they're lit up across the galaxy now, and the rest fade away.
+              </ChatMessage>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence mode="wait">
         <motion.div
           key={tourStopIndex}
@@ -102,35 +148,34 @@ export function TourOverlay() {
             </h2>
           </div>
 
-          <div className="flex items-end justify-between gap-4">
-            <p className="text-xs md:text-sm text-ink-dim leading-relaxed">
-              {stop.caption}
-            </p>
+          <p className="text-xs md:text-sm text-ink-dim leading-relaxed">
+            {stop.caption}
+          </p>
 
-            <div className="flex shrink-0 items-center gap-3 pb-0.5">
-              <div className="flex items-center gap-1.5">
-                {tourStops.map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setTourStopIndex(i)}
-                    className={`h-1.5 rounded-full transition-all ${
-                      i === tourStopIndex
-                        ? "w-6 bg-accent"
-                        : "w-1.5 bg-white/25 hover:bg-white/50"
-                    }`}
-                    aria-label={`Go to stop ${i + 1}`}
-                  />
-                ))}
-              </div>
-
-              <button
-                onClick={advance}
-                className="glass-panel glass-panel-interactive flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-display uppercase tracking-wider text-ink"
-              >
-                {isLast ? "Finish" : "Next"}
-                <ChevronRight size={12} />
-              </button>
+          {/* Page indicator + Next sit BELOW the text, full-width. */}
+          <div className="mt-3 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-1.5">
+              {tourStops.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setTourStopIndex(i)}
+                  className={`h-1.5 rounded-full transition-all ${
+                    i === tourStopIndex
+                      ? "w-6 bg-accent"
+                      : "w-1.5 bg-white/25 hover:bg-white/50"
+                  }`}
+                  aria-label={`Go to stop ${i + 1}`}
+                />
+              ))}
             </div>
+
+            <button
+              onClick={advance}
+              className="glass-panel glass-panel-interactive flex shrink-0 items-center gap-1.5 px-3 py-1.5 text-[10px] font-display uppercase tracking-wider text-ink"
+            >
+              {isLast ? "Finish" : "Next"}
+              <ChevronRight size={12} />
+            </button>
           </div>
         </motion.div>
       </AnimatePresence>
