@@ -1,0 +1,31 @@
+kind = "video"
+previewPath = "/trailer/"
+title = "Cosmograph Trailer"
+version = "1.0.0"
+id = "artifacts/trailer"
+router = "path"
+
+[[integratedSkills]]
+name = "video-js"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/trailer/" ]
+localPort = 23822
+
+[services.development]
+run = "pnpm --filter @workspace/trailer run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/trailer", "run", "build" ]
+publicDir = "artifacts/trailer/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23822"
+BASE_PATH = "/trailer/"

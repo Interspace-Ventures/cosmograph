@@ -90,6 +90,7 @@ artifacts/
     src/data/        #   galaxyData.json — the baked-in snapshot (source of truth)
     scripts/         #   fetch-galaxy.mjs — regenerates the snapshot from OpenAlex
   api-server/        # Express API: realtime presence (WebSocket) + GitHub-stars cache
+  trailer/           # ~45s launch trailer (motion-graphics video artifact), previewed at /trailer/
 lib/
   api-spec/          # OpenAPI spec — the source of truth for the API contract
   api-client-react/  # Generated React Query hooks (Orval)
