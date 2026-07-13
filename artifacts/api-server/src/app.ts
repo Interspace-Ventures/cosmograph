@@ -1,4 +1,5 @@
 import express, { type Express } from "express";
+import path from "node:path";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
 import pinoHttp from "pino-http";
@@ -105,5 +106,30 @@ const apiLimiter = rateLimit({
 });
 
 app.use("/api", apiLimiter, router);
+
+// Railway runs the API and web client as a single service. This keeps relative
+// /api requests, Clerk proxying, and provider callbacks on the canonical domain.
+const clientDist = process.env["CLIENT_DIST"] ?? path.resolve(
+  process.cwd(),
+  "artifacts",
+  "cosmograph",
+  "dist",
+  "public",
+);
+
+app.use(express.static(clientDist));
+app.use((req, res, next) => {
+  if (
+    (req.method !== "GET" && req.method !== "HEAD") ||
+    req.path.startsWith("/api")
+  ) {
+    next();
+    return;
+  }
+
+  res.sendFile("index.html", { root: clientDist }, (err) => {
+    if (err) next(err);
+  });
+});
 
 export default app;

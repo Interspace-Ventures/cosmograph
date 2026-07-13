@@ -1,0 +1,32 @@
+/* shadcn/typeset-compatible, scoped rich-content styling. */
+  .typeset {
+    --typeset-font-body: inherit;
+    --typeset-font-heading: inherit;
+    --typeset-font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+    --typeset-size: 1em;
+    --typeset-leading: 1.75;
+    --typeset-flow: 1.25em;
+    color: inherit;
+    font-family: var(--typeset-font-body);
+    font-size: var(--typeset-size);
+    line-height: var(--typeset-leading);
+  }
+  .typeset-docs { --typeset-size: 15px; --typeset-flow: 1.25em; }
+  .typeset :where(h1,h2,h3,h4,h5,h6,p,ul,ol,blockquote,pre,table,figure,hr) { margin-block: 0; }
+  .typeset :where(* + h1,* + h2,* + h3,* + h4,* + h5,* + h6,* + p,* + ul,* + ol,* + blockquote,* + pre,* + table,* + figure,* + hr) { margin-block-start: var(--typeset-flow); }
+  .typeset :where(h1,h2,h3,h4,h5,h6) { color: inherit; font-family: var(--typeset-font-heading); font-weight: 650; line-height: 1.15; text-wrap: balance; }
+  .typeset :where(h1) { font-size: 2.25em; letter-spacing: -.035em; }
+  .typeset :where(h2) { font-size: 1.65em; letter-spacing: -.025em; }
+  .typeset :where(h3) { font-size: 1.3em; }
+  .typeset :where(ul,ol) { padding-inline-start: 1.5em; }
+  .typeset :where(li + li) { margin-block-start: .35em; }
+  .typeset :where(a) { color: inherit; text-decoration: underline; text-underline-offset: .16em; }
+  .typeset :where(strong) { font-weight: 650; }
+  .typeset :where(code) { border-radius: .25em; font-family: var(--typeset-font-mono); font-size: .875em; padding: .15em .35em; }
+  .typeset :where(pre) { overflow-x: auto; border-radius: .5em; padding: 1em; }
+  .typeset :where(pre code) { background: transparent; padding: 0; }
+  .typeset :where(blockquote) { border-inline-start: .2em solid currentColor; padding-inline-start: 1em; }
+  .typeset :where(img,video,svg) { height: auto; max-width: 100%; }
+  .typeset :where(table) { border-collapse: collapse; display: block; max-width: 100%; overflow-x: auto; }
+  .typeset :where(th,td) { border-bottom: 1px solid color-mix(in srgb, currentColor 18%, transparent); padding: .55em .7em; text-align: start; }
+  .typeset :where(.not-typeset,[data-not-typeset]) { all: revert; }
