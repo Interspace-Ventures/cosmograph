@@ -74,6 +74,12 @@ onlyBuiltDependencies:
   - msw
   - unrs-resolver
 
+# Railway builds are non-interactive. Make the package build policy explicit so
+# pnpm does not stop to ask for approval during a production install.
+allowBuilds:
+  '@clerk/shared': false
+  esbuild: true
+
 overrides:
   # replit uses linux-x64 only, we can exclude all other platforms
   "esbuild>@esbuild/darwin-arm64": "-"
