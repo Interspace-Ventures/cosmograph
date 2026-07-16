@@ -110,8 +110,9 @@ app.use("/api", apiLimiter, router);
 // Railway runs the API and web client as a single service. This keeps relative
 // /api requests, Clerk proxying, and provider callbacks on the canonical domain.
 const clientDist = process.env["CLIENT_DIST"] ?? path.resolve(
-  process.cwd(),
-  "artifacts",
+  import.meta.dirname,
+  "..",
+  "..",
   "cosmograph",
   "dist",
   "public",
