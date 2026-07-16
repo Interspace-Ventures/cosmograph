@@ -350,6 +350,11 @@ export async function streamAsk(
   log: Logger,
   emit: (e: AskEvent) => void,
 ): Promise<void> {
+  if (!openai) {
+    emit({ type: "error", error: "The assistant is unavailable right now." });
+    return;
+  }
+
   const history = (req.messages ?? [])
     .filter((m) => m.role === "user" || m.role === "assistant")
     .map((m) => ({
