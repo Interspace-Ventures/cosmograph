@@ -18,7 +18,7 @@ import { grantSkinFromWebhook } from "./lib/ship";
 
 const app: Express = express();
 
-// Behind the Replit reverse proxy (one hop). Required so per-IP rate limiting
+// Behind the Railway reverse proxy (one hop). Required so per-IP rate limiting
 // reads the real client IP from X-Forwarded-For instead of the proxy's, and so
 // req.protocol/host are correct when building Stripe redirect URLs.
 app.set("trust proxy", 1);
