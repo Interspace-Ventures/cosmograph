@@ -107,8 +107,8 @@ const apiLimiter = rateLimit({
 
 app.use("/api", apiLimiter, router);
 
-// Railway runs the API and web client as a single service. This keeps relative
-// /api requests, Clerk proxying, and provider callbacks on the canonical domain.
+// Railway builds and runs the API and web client as a single service. This
+// keeps relative /api requests, auth, and provider callbacks on one domain.
 const clientDist = process.env["CLIENT_DIST"] ?? path.resolve(
   import.meta.dirname,
   "..",

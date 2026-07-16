@@ -7,10 +7,9 @@ export const SITE = {
     name: "Interspace Venture",
     url: "https://interspace.ventures",
   },
-  replitUrl: "https://replit.com",
   github: {
-    repo: "heyinterspace/galactic",
-    url: "https://github.com/heyinterspace/galactic",
+    repo: "Interspace-Ventures/cosmograph",
+    url: "https://github.com/Interspace-Ventures/cosmograph",
     sponsors: "https://github.com/sponsors/heyinterspace",
   },
 } as const;

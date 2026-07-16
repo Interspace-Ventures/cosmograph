@@ -31,16 +31,7 @@ export function Footer() {
           >
             {SITE.org.name}
           </a>
-          . Built at the speed of thought with{" "}
-          <a
-            href={SITE.replitUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="pointer-events-auto text-accent underline-offset-2 hover:underline"
-          >
-            Replit
-          </a>
-          .
+          . Built at the speed of thought.
         </span>
       </div>
     </footer>
