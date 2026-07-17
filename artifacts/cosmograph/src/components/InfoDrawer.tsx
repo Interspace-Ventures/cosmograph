@@ -199,7 +199,13 @@ export function InfoDrawer() {
               >
                 v{SITE.version}
               </button>{" "}
-              · <span className="text-ink-dim">{SITE.domain}</span> is an{" "}
+              · <a
+                href="/"
+                className="text-ink-dim underline-offset-2 hover:underline"
+              >
+                Cosmograph
+              </a>{" "}
+              is an{" "}
               <a
                 href={SITE.org.url}
                 target="_blank"
@@ -208,7 +214,7 @@ export function InfoDrawer() {
               >
                 {SITE.org.name}
               </a>
-              . Built at the speed of thought.
+              . Built at the speed of thought with AI.
             </p>
         </div>
       ) : (
