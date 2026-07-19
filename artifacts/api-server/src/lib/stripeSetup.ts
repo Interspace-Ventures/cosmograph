@@ -18,7 +18,9 @@ export async function initStripe(): Promise<void> {
 
     const sync = await getStripeSync();
 
-    const domain = process.env.REPLIT_DOMAINS?.split(",")[0];
+    const domain =
+      process.env.PUBLIC_APP_DOMAIN?.trim() ||
+      process.env.RAILWAY_PUBLIC_DOMAIN?.trim();
     if (domain) {
       const webhook = await sync.findOrCreateManagedWebhook(
         `https://${domain}/api/stripe/webhook`,

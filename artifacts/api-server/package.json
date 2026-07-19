@@ -12,7 +12,6 @@
   "dependencies": {
     "@clerk/express": "^2.1.30",
     "@clerk/shared": "^4.20.0",
-    "@replit/connectors-sdk": "^0.4.1",
     "@workspace/api-zod": "workspace:*",
     "@workspace/db": "workspace:*",
     "@workspace/integrations-openai-ai-server": "workspace:*",

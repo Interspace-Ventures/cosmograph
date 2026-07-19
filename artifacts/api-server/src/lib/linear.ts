@@ -1,10 +1,6 @@
-import { ReplitConnectors } from "@replit/connectors-sdk";
 import type { Logger } from "pino";
 
-// Linear integration (Replit connector). The connector proxy injects the OAuth
-// token automatically and refreshes it as needed, so we never handle a token.
-// Linear's API is GraphQL at /graphql. See the Linear blueprint added via the
-// integrations system.
+// Provider-neutral Linear integration. LINEAR_API_KEY stays server-side.
 
 export interface CreatedIssue {
   url: string;
@@ -20,10 +16,16 @@ async function linearGraphql<T>(
   variables: Record<string, unknown>,
   log: Logger,
 ): Promise<T> {
-  const connectors = new ReplitConnectors();
-  const res = await connectors.proxy("linear", "/graphql", {
+  const apiKey = process.env.LINEAR_API_KEY?.trim();
+  if (!apiKey) throw new Error("LINEAR_API_KEY is not configured");
+  const res = await fetch("https://api.linear.app/graphql", {
     method: "POST",
-    body: { query, variables },
+    headers: {
+      Authorization: apiKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ query, variables }),
+    signal: AbortSignal.timeout(10_000),
   });
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
