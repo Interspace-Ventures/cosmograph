@@ -1,6 +1,11 @@
 import { Canvas } from "@react-three/fiber";
 import { Suspense, useEffect, useRef, useState } from "react";
-import { PerformanceMonitor, Preload, Stars, useTexture } from "@react-three/drei";
+import {
+  PerformanceMonitor,
+  Preload,
+  Stars,
+  useTexture,
+} from "@react-three/drei";
 import { EffectComposer, Bloom } from "@react-three/postprocessing";
 import * as THREE from "three";
 import { GalaxySystem } from "./GalaxySystem";
@@ -9,6 +14,7 @@ import { CameraController, INTRO_START } from "./CameraControls";
 import { PresenceBroadcaster, PresencePeers, SelfShip } from "./Presence";
 import { useAppState } from "@/lib/store";
 import { setGalaxyCanvas } from "@/lib/share";
+import { featureEnabled } from "@/config/features";
 
 function Background() {
   const tex = useTexture(
@@ -51,7 +57,9 @@ export function Scene({
   // frame rate declines (weaker GPUs, thermal throttling), climb back when it
   // recovers. PerformanceMonitor handles the sampling + hysteresis.
   const [dpr, setDpr] = useState(() =>
-    typeof window === "undefined" ? 1.5 : Math.min(1.5, window.devicePixelRatio),
+    typeof window === "undefined"
+      ? 1.5
+      : Math.min(1.5, window.devicePixelRatio),
   );
 
   return (
@@ -104,9 +112,7 @@ export function Scene({
         <PerformanceMonitor
           flipflops={3}
           onDecline={() => setDpr(1)}
-          onIncline={() =>
-            setDpr(Math.min(1.5, window.devicePixelRatio))
-          }
+          onIncline={() => setDpr(Math.min(1.5, window.devicePixelRatio))}
           onFallback={() => setDpr(1)}
         />
         <color attach="background" args={["#03030a"]} />
@@ -133,12 +139,14 @@ export function Scene({
           <CameraController captureTopDown={captureTopDown} />
           <SceneReady onReady={onReady} />
 
-          {!captureTopDown && introFinished && (
-            <>
-              <PresenceBroadcaster />
-              <PresencePeers />
-            </>
-          )}
+          {!captureTopDown &&
+            introFinished &&
+            featureEnabled("live-presence") && (
+              <>
+                <PresenceBroadcaster />
+                <PresencePeers />
+              </>
+            )}
           {!captureTopDown && <SelfShip />}
 
           <EffectComposer enableNormalPass={false} multisampling={4}>

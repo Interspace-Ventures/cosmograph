@@ -19,6 +19,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAppState } from "@/lib/store";
 import { shipLookFromSeed } from "@/lib/shipLook";
 import { SHIP_TYPES } from "@/lib/shipTypes";
+import { featureEnabled } from "@/config/features";
 
 // Lightweight auth state in the console: when signed-out it renders nothing
 // (Personalize is the single upgrade entry point), and when signed-in it shows
@@ -54,6 +55,7 @@ export function AccountIndicator() {
 // claim/price action. Save persists the equipped seed + type so the ship follows
 // the account across devices and is broadcast to other cosmonauts.
 function ShipCustomizer() {
+  const premiumShipsEnabled = featureEnabled("premium-ships");
   const {
     shipSeed,
     shuffleShip,
@@ -140,55 +142,59 @@ function ShipCustomizer() {
 
       {/* Ship TYPE grid — equip an owned type, or claim/buy a locked one. */}
       <div className="grid grid-cols-2 gap-1.5">
-        {SHIP_TYPES.map((type) => {
-          const owned = ownedShipTypes.includes(type.id);
-          const equipped = shipTypeId === type.id;
-          const claiming = claimingId === type.id;
-          const priceLabel = type.premium
-            ? memberFreeAvailable
-              ? "Included"
-              : "$1"
-            : "Free";
-          return (
-            <button
-              key={type.id}
-              onClick={() => (owned ? setShipTypeId(type.id) : onClaim(type.id))}
-              disabled={claiming}
-              className={`flex flex-col items-start gap-1 border-2 px-2 py-1.5 text-left transition-colors disabled:cursor-wait ${
-                equipped
-                  ? "border-accent bg-accent/10"
-                  : "border-edge hover:border-accent/60"
-              }`}
-            >
-              <span className="flex w-full items-center justify-between gap-1">
-                <span className="font-mono text-[11px] uppercase tracking-wide text-ink">
-                  {type.name}
-                </span>
-                {owned ? (
-                  equipped ? (
-                    <Check size={11} className="shrink-0 text-accent" />
-                  ) : null
-                ) : (
-                  <Lock size={10} className="shrink-0 text-ink-dim" />
-                )}
-              </span>
-              <span
-                className={`flex items-center gap-1 font-mono text-[9px] uppercase tracking-widest ${
-                  type.premium ? "text-accent" : "text-ink-dim"
+        {SHIP_TYPES.filter((type) => premiumShipsEnabled || !type.premium).map(
+          (type) => {
+            const owned = ownedShipTypes.includes(type.id);
+            const equipped = shipTypeId === type.id;
+            const claiming = claimingId === type.id;
+            const priceLabel = type.premium
+              ? memberFreeAvailable
+                ? "Included"
+                : "$1"
+              : "Free";
+            return (
+              <button
+                key={type.id}
+                onClick={() =>
+                  owned ? setShipTypeId(type.id) : onClaim(type.id)
+                }
+                disabled={claiming}
+                className={`flex flex-col items-start gap-1 border-2 px-2 py-1.5 text-left transition-colors disabled:cursor-wait ${
+                  equipped
+                    ? "border-accent bg-accent/10"
+                    : "border-edge hover:border-accent/60"
                 }`}
               >
-                {type.premium && <Crown size={8} />}
-                {claiming
-                  ? "…"
-                  : owned
-                    ? equipped
-                      ? "Equipped"
-                      : "Owned"
-                    : priceLabel}
-              </span>
-            </button>
-          );
-        })}
+                <span className="flex w-full items-center justify-between gap-1">
+                  <span className="font-mono text-[11px] uppercase tracking-wide text-ink">
+                    {type.name}
+                  </span>
+                  {owned ? (
+                    equipped ? (
+                      <Check size={11} className="shrink-0 text-accent" />
+                    ) : null
+                  ) : (
+                    <Lock size={10} className="shrink-0 text-ink-dim" />
+                  )}
+                </span>
+                <span
+                  className={`flex items-center gap-1 font-mono text-[9px] uppercase tracking-widest ${
+                    type.premium ? "text-accent" : "text-ink-dim"
+                  }`}
+                >
+                  {type.premium && <Crown size={8} />}
+                  {claiming
+                    ? "…"
+                    : owned
+                      ? equipped
+                        ? "Equipped"
+                        : "Owned"
+                      : priceLabel}
+                </span>
+              </button>
+            );
+          },
+        )}
       </div>
 
       {/* COLOR — free on any owned type; shuffles the per-ship look seed. */}

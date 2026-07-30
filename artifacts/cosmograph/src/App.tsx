@@ -25,6 +25,7 @@ import { ScreenshotGate } from "@/components/ScreenshotGate";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { WebGLFallback } from "@/components/WebGLFallback";
 import { isWebGLAvailable } from "@/lib/webgl";
+import { featureEnabled } from "@/config/features";
 
 // REQUIRED — copy verbatim. Resolves the key from window.location.hostname so the
 // same build serves multiple Clerk custom domains. Do not inline the env var, leave
@@ -57,12 +58,8 @@ if (!clerkPubKey) {
 // wrapper so loading a new scientist fully remounts the 3D scene and panels,
 // re-registering all object refs against the freshly rebuilt galaxy.
 function GalaxyView() {
-  const {
-    datasetVersion,
-    introFinished,
-    canExplore,
-    selectedObject,
-  } = useAppState();
+  const { datasetVersion, introFinished, canExplore, selectedObject } =
+    useAppState();
   const isMobile = useIsMobile();
   // When a detail panel is open it floats over the top-LEFT on desktop, so nudge
   // the framed (camera-centered) object to the right with a cheap GPU transform
@@ -99,7 +96,7 @@ function GalaxyView() {
               its z-40 actually stacks ABOVE the navbar (z-30) — otherwise the
               tour card is trapped under the Overlay's stacking context and the
               navbar clips its bottom edge. Self-gates on tourActive. */}
-          {introFinished && <TourOverlay />}
+          {introFinished && featureEnabled("guided-tour") && <TourOverlay />}
         </>
       ) : (
         // Non-member on a non-default scientist: the interactive galaxy is
@@ -259,7 +256,7 @@ function ClerkProviderWithRoutes() {
           <DocumentTitle />
           <EntitlementBridge />
           <ShipBridge />
-          <ReferralBridge />
+          {featureEnabled("referrals") && <ReferralBridge />}
           <AuthMemoryBridge />
           <Switch>
             <Route path="/" component={GalaxyHome} />

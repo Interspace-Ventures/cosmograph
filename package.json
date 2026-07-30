@@ -6,6 +6,7 @@
   "scripts": {
     "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
+    "release:check": "pnpm --filter @workspace/release-flags exec tsx --test src/index.test.ts && pnpm --filter @workspace/scripts exec tsx src/check-release-version.ts",
     "railway:build": "pnpm --filter @workspace/cosmograph run build && pnpm --filter @workspace/api-server run build",
     "railway:start": "pnpm --filter @workspace/api-server run start",
     "typecheck:libs": "tsc --build",

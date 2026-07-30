@@ -4,7 +4,7 @@
 
 [Cosmograph](https://cosmograph.space) (also known as **Galactic**) turns any researcher's complete body of work into an explorable 3D universe: research domains become **suns**, papers become **planets** orbiting them (size = citations, orbit distance = topic relevance), and frequent co-authors become **moons**. Fly the spaceship through the disk or pull back into a god's-eye planetarium view, click any world for its details, and watch the whole corpus light up at once.
 
-It started as a Father's Day gift for stem-cell scientist **Dr. Mahendra S. Rao** — and is now an open-source template you can point at *any* scientist: a parent, a mentor, a hero, or yourself.
+It started as a Father's Day gift for stem-cell scientist **Dr. Mahendra S. Rao** — and is now an open-source template you can point at _any_ scientist: a parent, a mentor, a hero, or yourself.
 
 > The shipped snapshot (Dr. Rao) spans **364 papers**, **28,860 citations**, **1,191 co-authors**, and **12 research domains** across **30 years** (1994–2024) — roughly 1.4 million words of published science, drawn as one navigable galaxy.
 
@@ -25,7 +25,7 @@ It started as a Father's Day gift for stem-cell scientist **Dr. Mahendra S. Rao*
 - 🌌 **A real galaxy, not a chart.** Photoreal suns, orbiting planets, and moons rendered with React Three Fiber, drei, and postprocessing — each domain gets its own stellar color and every orbit reads like a planetary system.
 - 🚀 **Two ways to explore.** A first-person spaceship fly-through with momentum, and a god/planetarium orbit view with an adjustable axis.
 - 🔭 **Everything is clickable.** Open any planet for paper details, any sun for a domain breakdown, and a stats layer that summarizes the entire body of work.
-- 🛰️ **Live presence (optional).** Faint "wisps" mark other visitors exploring the same galaxy, with a live "*N cosmonauts streaming now*" headcount — anonymous and in-memory, nothing is persisted.
+- 🛰️ **Live presence (optional).** Faint "wisps" mark other visitors exploring the same galaxy, with a live "_N cosmonauts streaming now_" headcount — anonymous and in-memory, nothing is persisted.
 - 🧬 **No hardcoded identity.** The title, stats, domains, papers, and co-authors all come from a generated data snapshot. Regenerate it for a different scientist and the whole universe redraws.
 - ⚡ **Fast and reliable by design.** The full dataset is fetched once at build time and baked into a static JSON file — no backend or database is needed for the core visualization.
 
@@ -37,7 +37,7 @@ Cosmograph pulls a researcher's complete publication record from **[OpenAlex](ht
 - Each **paper** ("planet") is sized by citation count and placed at an orbit distance reflecting its relevance to the domain.
 - Headline **stats** (papers, citations, h-index, i10, counts-by-year, top institution) are computed from the kept works.
 
-The galaxy itself is a fully static bundle. Realtime presence and the GitHub star count are an *optional* enhancement served by a small always-on API server — the galaxy degrades gracefully if it's unreachable.
+The galaxy itself is a fully static bundle. Realtime presence and the GitHub star count are an _optional_ enhancement served by a small always-on API server — the galaxy degrades gracefully if it's unreachable.
 
 ## Quick start
 
@@ -58,7 +58,15 @@ Useful repo-wide commands:
 ```bash
 pnpm run typecheck     # full typecheck across all packages
 pnpm run build         # typecheck + build everything
+pnpm run release:check # feature schedule and override behavior
 ```
+
+## Feature release cadence
+
+Cosmograph uses channel-aware, date-based feature flags to drip completed
+features to friends-and-family without treating that cohort as a public launch.
+The current weekly plan, operational overrides, and rollback procedure are in
+[`docs/release-management.md`](docs/release-management.md).
 
 ## Make it for your own scientist
 
@@ -80,11 +88,11 @@ Then restart the galaxy — the title, stats, domains, papers, and co-authors al
 
 OpenAlex occasionally lumps two distinct scientists who share a name under one author ID. The fetch script can drop the wrong person's works and **recompute every headline stat** from only the kept works:
 
-| Flag | Effect |
-| --- | --- |
-| `--exclude-institution <OpenAlexInstId>` | Drop works affiliated with this institution (repeatable) |
-| `--exclude-coauthor <OpenAlexAuthorId>` | Drop works co-authored with this person (repeatable) |
-| `--min-year <YYYY>` / `--max-year <YYYY>` | Drop works outside this publication-year range |
+| Flag                                      | Effect                                                   |
+| ----------------------------------------- | -------------------------------------------------------- |
+| `--exclude-institution <OpenAlexInstId>`  | Drop works affiliated with this institution (repeatable) |
+| `--exclude-coauthor <OpenAlexAuthorId>`   | Drop works co-authored with this person (repeatable)     |
+| `--min-year <YYYY>` / `--max-year <YYYY>` | Drop works outside this publication-year range           |
 
 Disambiguate by **research cluster** (institution + co-author), not by year alone. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for a detailed walkthrough.
 
@@ -104,6 +112,7 @@ lib/
   api-client-react/  # Generated React Query hooks (Orval)
   api-zod/           # Generated Zod schemas
   db/                # PostgreSQL schema + Drizzle ORM
+  release-flags/     # Shared browser/server release registry and evaluator
 ```
 
 ## Tech stack

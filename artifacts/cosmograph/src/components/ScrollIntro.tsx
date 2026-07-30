@@ -4,8 +4,10 @@ import { ChevronDown, Play, Compass, Film } from "lucide-react";
 import { useAppState } from "@/lib/store";
 import { galaxyData } from "@/data/galaxy";
 import { Cockpit } from "./Cockpit";
+import { featureEnabled } from "@/config/features";
 
-const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+const clamp = (v: number, lo: number, hi: number) =>
+  Math.max(lo, Math.min(hi, v));
 
 function usePrefersReducedMotion() {
   const [reduced, setReduced] = useState(false);
@@ -30,53 +32,53 @@ interface Beat {
 function buildBeats(): Beat[] {
   const s = galaxyData.stats;
   return [
-  {
-    start: 0.06,
-    end: 0.2,
-    kicker: "It began over five decades ago",
-    value: String(s.yearsActive),
-    caption: `years of discovery · ${s.firstYear}–${s.lastYear}`,
-  },
-  {
-    start: 0.21,
-    end: 0.34,
-    kicker: "A lifetime of inquiry, written down",
-    value: s.totalPapers.toLocaleString(),
-    caption: "published papers",
-  },
-  {
-    start: 0.35,
-    end: 0.48,
-    kicker: "Ideas that travelled the world",
-    value: s.totalCitations.toLocaleString(),
-    caption: "citations earned",
-  },
-  {
-    start: 0.49,
-    end: 0.62,
-    kicker: "No discovery made alone",
-    value: s.uniqueCoAuthors.toLocaleString(),
-    caption: "collaborators along the way",
-  },
-  {
-    start: 0.63,
-    end: 0.76,
-    kicker: "Spanning many frontiers of science",
-    value: String(s.domainCount),
-    caption: "research domains",
-  },
-  {
-    start: 0.77,
-    end: 0.9,
-    kicker: "At least",
-    value: `${new Intl.NumberFormat("en", {
-      notation: "compact",
-      maximumFractionDigits: 1,
-    }).format(s.estimatedWords)}+`,
-    caption: `words written — about ${Math.round(
-      s.estimatedWords / 90_000,
-    ).toLocaleString()} novels' worth`,
-  },
+    {
+      start: 0.06,
+      end: 0.2,
+      kicker: "It began over five decades ago",
+      value: String(s.yearsActive),
+      caption: `years of discovery · ${s.firstYear}–${s.lastYear}`,
+    },
+    {
+      start: 0.21,
+      end: 0.34,
+      kicker: "A lifetime of inquiry, written down",
+      value: s.totalPapers.toLocaleString(),
+      caption: "published papers",
+    },
+    {
+      start: 0.35,
+      end: 0.48,
+      kicker: "Ideas that travelled the world",
+      value: s.totalCitations.toLocaleString(),
+      caption: "citations earned",
+    },
+    {
+      start: 0.49,
+      end: 0.62,
+      kicker: "No discovery made alone",
+      value: s.uniqueCoAuthors.toLocaleString(),
+      caption: "collaborators along the way",
+    },
+    {
+      start: 0.63,
+      end: 0.76,
+      kicker: "Spanning many frontiers of science",
+      value: String(s.domainCount),
+      caption: "research domains",
+    },
+    {
+      start: 0.77,
+      end: 0.9,
+      kicker: "At least",
+      value: `${new Intl.NumberFormat("en", {
+        notation: "compact",
+        maximumFractionDigits: 1,
+      }).format(s.estimatedWords)}+`,
+      caption: `words written — about ${Math.round(
+        s.estimatedWords / 90_000,
+      ).toLocaleString()} novels' worth`,
+    },
   ];
 }
 
@@ -87,6 +89,7 @@ function beatOpacity(p: number, start: number, end: number) {
 }
 
 export function ScrollIntro() {
+  const guidedTourEnabled = featureEnabled("guided-tour");
   const {
     introStarted,
     setIntroStarted,
@@ -251,8 +254,13 @@ export function ScrollIntro() {
               className="pointer-events-auto mt-14 flex flex-col items-center gap-4"
             >
               <button
-                onClick={() => (reduced ? finishExplore() : setIntroStarted(true))}
-                style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
+                onClick={() =>
+                  reduced ? finishExplore() : setIntroStarted(true)
+                }
+                style={{
+                  background: "var(--accent)",
+                  color: "var(--accent-ink)",
+                }}
                 className="glass-panel glass-panel-interactive px-10 py-3.5 font-display text-sm font-semibold uppercase tracking-[0.25em]"
               >
                 {reduced ? "Enter the Galaxy" : "Ad Astra"}
@@ -338,14 +346,19 @@ export function ScrollIntro() {
               Welcome to the {galaxyData.author.name} galaxy
             </p>
             <div className="pointer-events-auto relative flex flex-col items-center gap-4 sm:flex-row">
-              <button
-                onClick={finishTour}
-                style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
-                className="glass-panel glass-panel-interactive flex items-center gap-2.5 px-9 py-3.5 font-display text-sm font-semibold uppercase tracking-[0.2em]"
-              >
-                <Play className="h-4 w-4" />
-                Tour
-              </button>
+              {guidedTourEnabled && (
+                <button
+                  onClick={finishTour}
+                  style={{
+                    background: "var(--accent)",
+                    color: "var(--accent-ink)",
+                  }}
+                  className="glass-panel glass-panel-interactive flex items-center gap-2.5 px-9 py-3.5 font-display text-sm font-semibold uppercase tracking-[0.2em]"
+                >
+                  <Play className="h-4 w-4" />
+                  Tour
+                </button>
+              )}
               <button
                 onClick={finishExplore}
                 className="glass-panel glass-panel-interactive flex items-center gap-2.5 px-9 py-3.5 font-display text-sm uppercase tracking-[0.2em] text-ink"

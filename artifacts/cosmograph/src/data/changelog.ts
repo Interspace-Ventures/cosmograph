@@ -17,6 +17,17 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.38.0",
+    codename: "Mission Clock",
+    date: "2026-07-30",
+    summary:
+      "Cosmograph now reveals completed features on a deliberate weekly flight plan.",
+    changes: [
+      "Added a friends-and-family release cadence so finished features can arrive in steady weekly waves, with browser and server safeguards plus emergency overrides.",
+      "Replaced the browser tab's generic red square with the canonical Cosmograph globe mark.",
+    ],
+  },
+  {
     version: "3.37.0",
     codename: "Opening Credits",
     date: "2026-07-05",

@@ -16,6 +16,7 @@ import { isFiltersActive } from "@/data/galaxy";
 import { readAuthMemory, ssoLabel } from "@/lib/authMemory";
 import { AccountIndicatorRail } from "./AccountIndicator";
 import { MessageCircleStar } from "./MessageCircleStar";
+import { featureEnabled } from "@/config/features";
 
 /**
  * The cockpit dashboard — the bottom HUD that replaces the old Mission Control
@@ -30,6 +31,8 @@ import { MessageCircleStar } from "./MessageCircleStar";
  * narrow phones), so no control is ever unreachable.
  */
 export function Dashboard() {
+  const guidedTourEnabled = featureEnabled("guided-tour");
+  const askCosmoEnabled = featureEnabled("ask-cosmo");
   const {
     filters,
     setInfoOpen,
@@ -87,12 +90,14 @@ export function Dashboard() {
 
           {/* Ways to explore the galaxy: a guided Tour plus the Orbit/Fly
               throttle, grouped together in one section. */}
-          <DashButton
-            label="Tour"
-            onClick={startTour}
-            locked={!canExplore}
-            icon={<Map size={15} />}
-          />
+          {guidedTourEnabled && (
+            <DashButton
+              label="Tour"
+              onClick={startTour}
+              locked={!canExplore}
+              icon={<Map size={15} />}
+            />
+          )}
           <CameraToggle />
 
           <Divider />
@@ -107,18 +112,20 @@ export function Dashboard() {
             open={infoOpen}
             icon={<Info size={15} />}
           />
-          <DashButton
-            label="Ask Cosmo"
-            onClick={() => setAskOpen(true)}
-            open={askOpen}
-            active={filtersActive}
-            icon={
-              <MessageCircleStar
-                size={15}
-                className={filtersActive ? "text-accent" : undefined}
-              />
-            }
-          />
+          {askCosmoEnabled && (
+            <DashButton
+              label="Ask Cosmo"
+              onClick={() => setAskOpen(true)}
+              open={askOpen}
+              active={filtersActive}
+              icon={
+                <MessageCircleStar
+                  size={15}
+                  className={filtersActive ? "text-accent" : undefined}
+                />
+              }
+            />
+          )}
           <DashButton
             label="Personalize"
             onClick={() => setCustomizeOpen(true)}

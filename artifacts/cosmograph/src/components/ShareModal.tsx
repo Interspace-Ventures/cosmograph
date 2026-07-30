@@ -10,8 +10,15 @@ import {
   nativeShareCard,
 } from "@/lib/share";
 import { InviteSection } from "./InviteSection";
+import { featureEnabled } from "@/config/features";
 
-export function ShareModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function ShareModal({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [building, setBuilding] = useState(false);
   const [imageCopied, setImageCopied] = useState(false);
@@ -79,7 +86,10 @@ export function ShareModal({ open, onClose }: { open: boolean; onClose: () => vo
     setImageCopied(ok);
     if (ok) {
       if (imageResetTimer.current) window.clearTimeout(imageResetTimer.current);
-      imageResetTimer.current = window.setTimeout(() => setImageCopied(false), 2400);
+      imageResetTimer.current = window.setTimeout(
+        () => setImageCopied(false),
+        2400,
+      );
     }
   };
 
@@ -88,7 +98,10 @@ export function ShareModal({ open, onClose }: { open: boolean; onClose: () => vo
     setLinkCopied(ok);
     if (ok) {
       if (linkResetTimer.current) window.clearTimeout(linkResetTimer.current);
-      linkResetTimer.current = window.setTimeout(() => setLinkCopied(false), 2400);
+      linkResetTimer.current = window.setTimeout(
+        () => setLinkCopied(false),
+        2400,
+      );
     }
   };
 
@@ -136,7 +149,9 @@ export function ShareModal({ open, onClose }: { open: boolean; onClose: () => vo
                 id="share-modal-title"
                 className="mt-1 mb-4 text-xl font-title font-bold tracking-tight text-ink"
               >
-                {imageCopied ? "Copied to your clipboard" : "Your shareable card"}
+                {imageCopied
+                  ? "Copied to your clipboard"
+                  : "Your shareable card"}
               </h2>
 
               <div className="relative aspect-[1200/630] w-full overflow-hidden border-2 border-edge bg-[#03030a]">
@@ -203,7 +218,7 @@ export function ShareModal({ open, onClose }: { open: boolean; onClose: () => vo
                 )}
               </div>
 
-              <InviteSection open={open} />
+              {featureEnabled("referrals") && <InviteSection open={open} />}
             </motion.div>
           </div>
         </motion.div>

@@ -14,6 +14,7 @@ import {
   InvalidShipTypeError,
   ShipTypeNotOwnedError,
 } from "../lib/ship";
+import { requireFeature } from "../lib/features";
 
 const router: IRouter = Router();
 
@@ -39,7 +40,10 @@ router.put("/me/ship", requireAuth, async (req, res) => {
     );
     res.json(result);
   } catch (err) {
-    if (err instanceof InvalidSeedError || err instanceof InvalidShipTypeError) {
+    if (
+      err instanceof InvalidSeedError ||
+      err instanceof InvalidShipTypeError
+    ) {
       res.status(400).json({ error: err.message });
       return;
     }
@@ -56,31 +60,36 @@ router.put("/me/ship", requireAuth, async (req, res) => {
 
 // Claim a premium ship type: free for members with an included slot left,
 // otherwise returns a hosted Stripe Checkout URL for the $1 one-time purchase.
-router.post("/me/ship/claim", requireAuth, async (req, res) => {
-  const parsed = ClaimSkinBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: "A valid ship type is required." });
-    return;
-  }
-  const origin = `${req.protocol}://${req.get("host")}`;
-  try {
-    const result = await claimOrCheckoutSkin(
-      req.userId!,
-      parsed.data.type,
-      origin,
-      parsed.data.author ?? null,
-      req.log,
-    );
-    res.json(result);
-  } catch (err) {
-    if (err instanceof InvalidShipTypeError) {
-      res.status(400).json({ error: err.message });
+router.post(
+  "/me/ship/claim",
+  requireFeature("premium-ships"),
+  requireAuth,
+  async (req, res) => {
+    const parsed = ClaimSkinBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "A valid ship type is required." });
       return;
     }
-    req.log.error({ err }, "failed to claim ship type");
-    res.status(503).json({ error: "Ship store is unavailable right now." });
-  }
-});
+    const origin = `${req.protocol}://${req.get("host")}`;
+    try {
+      const result = await claimOrCheckoutSkin(
+        req.userId!,
+        parsed.data.type,
+        origin,
+        parsed.data.author ?? null,
+        req.log,
+      );
+      res.json(result);
+    } catch (err) {
+      if (err instanceof InvalidShipTypeError) {
+        res.status(400).json({ error: err.message });
+        return;
+      }
+      req.log.error({ err }, "failed to claim ship type");
+      res.status(503).json({ error: "Ship store is unavailable right now." });
+    }
+  },
+);
 
 // Verify a returned skin checkout session and grant the type when paid.
 router.post("/me/ship/confirm", requireAuth, async (req, res) => {
