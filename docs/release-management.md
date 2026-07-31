@@ -34,6 +34,10 @@ VITE_RELEASE_CHANNEL=friends-and-family
 RELEASE_CHANNEL=friends-and-family
 ```
 
+The release channel controls feature visibility; it is not an access-control
+boundary. Private staging must also set `STAGING_AUTH_REQUIRED=true` and follow
+[`docs/staging.md`](staging.md).
+
 The browser controls feature discovery. The API separately enforces paid,
 costly, or state-changing features, so hiding a button is never the only gate.
 Dates are evaluated at midnight UTC and do not require a rebuild once a build

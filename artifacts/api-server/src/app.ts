@@ -15,6 +15,7 @@ import { logger } from "./lib/logger";
 import { getStripeSync } from "./lib/stripeClient";
 import { markUnlockedFromWebhook } from "./lib/billing";
 import { grantSkinFromWebhook } from "./lib/ship";
+import { stagingAccess } from "./middlewares/stagingAccess";
 
 const app: Express = express();
 
@@ -95,6 +96,10 @@ app.use(
     ),
   })),
 );
+
+// Staging is a private review surface. Production remains public because this
+// boundary is enabled only by an explicit environment variable in Railway.
+app.use(stagingAccess);
 
 // General per-IP request throttle for the REST API (presence WebSocket has its
 // own connection/message limits and does not pass through here).

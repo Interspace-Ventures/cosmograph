@@ -25,6 +25,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     changes: [
       "Added a friends-and-family release cadence so finished features can arrive in steady weekly waves, with browser and server safeguards plus emergency overrides.",
       "Replaced the browser tab's generic red square with the canonical Cosmograph globe mark.",
+      "Standardized the private staging URL and added a server-enforced Clerk access boundary while keeping health checks public.",
     ],
   },
   {
