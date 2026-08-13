@@ -29,6 +29,14 @@ It started as a Father's Day gift for stem-cell scientist **Dr. Mahendra S. Rao*
 - 🧬 **No hardcoded identity.** The title, stats, domains, papers, and co-authors all come from a generated data snapshot. Regenerate it for a different scientist and the whole universe redraws.
 - ⚡ **Fast and reliable by design.** The full dataset is fetched once at build time and baked into a static JSON file — no backend or database is needed for the core visualization.
 
+## Interface shell
+
+Cosmograph is an immersive full-bleed exception to the conventional page shell.
+Its cockpit is the navigation frame, and each body panel uses the cockpit's live
+measured width as a separate opaque surface above the galaxy background. This
+preserves the Exobase equal-width navigation/body contract without boxing in the
+3D canvas.
+
 ## How it works
 
 Cosmograph pulls a researcher's complete publication record from **[OpenAlex](https://openalex.org)** (free, open, no API key — Google Scholar has no public API). A one-time script crunches that record into a single static snapshot:

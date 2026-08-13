@@ -74,7 +74,7 @@ export function Drawer({
                 : "min(34rem, calc(100vw - 1.5rem))",
               maxHeight: `calc(100dvh - ${bottomGap} - ${bannerHeight}px - 0.75rem)`,
             }}
-            className="custom-scrollbar absolute overflow-y-auto border-2 border-edge bg-bg/95 p-5 backdrop-blur-xl sm:p-7"
+            className="site-body-surface custom-scrollbar absolute overflow-y-auto border-2 border-edge p-5 backdrop-blur-xl sm:p-7"
           >
             <button
               onClick={onClose}
