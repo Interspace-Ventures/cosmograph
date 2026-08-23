@@ -12,12 +12,24 @@ import {
 } from "./middlewares/clerkProxyMiddleware";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { authEnvironmentErrors, parseExactOrigins } from "./lib/authEnvironment";
 import { getStripeSync } from "./lib/stripeClient";
 import { markUnlockedFromWebhook } from "./lib/billing";
 import { grantSkinFromWebhook } from "./lib/ship";
 import { stagingAccess } from "./middlewares/stagingAccess";
 
 const app: Express = express();
+const authorizedParties = parseExactOrigins(process.env.CLERK_AUTHORIZED_PARTIES);
+const authConfigurationErrors = authEnvironmentErrors({
+  appEnvironment: process.env.APP_ENV,
+  authorizedParties: process.env.CLERK_AUTHORIZED_PARTIES,
+  publishableKey: process.env.CLERK_PUBLISHABLE_KEY,
+  secretKey: process.env.CLERK_SECRET_KEY,
+});
+
+if (authConfigurationErrors.length > 0 && process.env.APP_ENV !== "local") {
+  throw new Error(`Invalid Clerk environment configuration: ${authConfigurationErrors.join("; ")}`);
+}
 
 // Behind the Railway reverse proxy (one hop). Required so per-IP rate limiting
 // reads the real client IP from X-Forwarded-For instead of the proxy's, and so
@@ -82,7 +94,16 @@ app.post(
   },
 );
 
-app.use(cors({ credentials: true, origin: true }));
+app.use(cors({
+  credentials: true,
+  origin(origin, callback) {
+    if (!origin || process.env.APP_ENV === "local" || authorizedParties.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+    callback(new Error("Origin is not authorized"));
+  },
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -90,6 +111,7 @@ app.use(express.urlencoded({ extended: true }));
 // can serve multiple Clerk custom domains; falls back to CLERK_PUBLISHABLE_KEY.
 app.use(
   clerkMiddleware((req) => ({
+    authorizedParties,
     publishableKey: publishableKeyFromHost(
       getClerkProxyHost(req) ?? "",
       process.env.CLERK_PUBLISHABLE_KEY,

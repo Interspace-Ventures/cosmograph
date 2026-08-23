@@ -36,6 +36,10 @@ RELEASE_CHANNEL=friends-and-family
 
 The release channel controls feature visibility; it is not an access-control
 boundary. Private staging must also set `STAGING_AUTH_REQUIRED=true` and follow
+the environment-specific Clerk contract: staging may use Cosmograph's isolated development
+instance, while Release Candidate and Production require Cosmograph's production instance,
+registered domain, exact authorized party, and matching `pk_live_`/`sk_live_` keys. Auth pages
+remain path-routed through catch-all `/sign-in` and `/sign-up` routes so OAuth completes without a refresh.
 [`docs/staging.md`](staging.md).
 
 The browser controls feature discovery. The API separately enforces paid,

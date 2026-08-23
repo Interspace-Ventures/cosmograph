@@ -32,7 +32,7 @@ test("redirects anonymous browser navigation to Clerk sign-in", () => {
   );
 });
 
-test("rejects anonymous API access and allows authenticated requests", () => {
+test("rejects anonymous API access and allows explicitly authorized requests", () => {
   assert.equal(
     stagingAccessDecision({
       enabled: true,
@@ -55,10 +55,22 @@ test("rejects anonymous API access and allows authenticated requests", () => {
     stagingAccessDecision({
       enabled: true,
       userId: "user_test",
+      authorizedUserIds: ["user_test"],
       method: "GET",
       pathname: "/",
       acceptsHtml: true,
     }),
     "allow",
+  );
+  assert.equal(
+    stagingAccessDecision({
+      enabled: true,
+      userId: "user_uninvited",
+      authorizedUserIds: ["user_test"],
+      method: "GET",
+      pathname: "/",
+      acceptsHtml: true,
+    }),
+    "redirect",
   );
 });

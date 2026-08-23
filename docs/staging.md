@@ -21,6 +21,8 @@ Enable the boundary only in staging:
 
 ```text
 STAGING_AUTH_REQUIRED=true
+CLERK_AUTHORIZED_PARTIES=https://staging.cosmograph.space
+STAGING_AUTHORIZED_USER_IDS=<comma-separated invited Clerk user IDs>
 ```
 
 Production must not set this variable unless a separate production access

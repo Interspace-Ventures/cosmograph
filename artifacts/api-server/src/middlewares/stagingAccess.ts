@@ -33,15 +33,19 @@ export function isPublicStagingPath(pathname: string): boolean {
 export function stagingAccessDecision(input: {
   enabled: boolean;
   userId?: string | null;
+  organizationId?: string | null;
+  authorizedUserIds?: string[];
+  authorizedOrganizationIds?: string[];
   method: string;
   pathname: string;
   acceptsHtml: boolean;
 }): "allow" | "redirect" | "unauthorized" {
-  if (
-    !input.enabled ||
-    input.userId ||
-    isPublicStagingPath(input.pathname)
-  ) {
+  const authorized = Boolean(
+    (input.userId && input.authorizedUserIds?.includes(input.userId)) ||
+    (input.organizationId && input.authorizedOrganizationIds?.includes(input.organizationId)),
+  );
+
+  if (!input.enabled || authorized || isPublicStagingPath(input.pathname)) {
     return "allow";
   }
 
@@ -83,9 +87,16 @@ export function stagingAccess(
   });
 
   const auth = getAuth(req);
+  const authorizedUserIds = (process.env["STAGING_AUTHORIZED_USER_IDS"] ?? "")
+    .split(",").map((value) => value.trim()).filter(Boolean);
+  const authorizedOrganizationIds = (process.env["STAGING_AUTHORIZED_ORGANIZATION_IDS"] ?? "")
+    .split(",").map((value) => value.trim()).filter(Boolean);
   const decision = stagingAccessDecision({
     enabled,
     userId: auth?.userId,
+    organizationId: auth?.orgId,
+    authorizedUserIds,
+    authorizedOrganizationIds,
     method: req.method,
     pathname: req.path,
     acceptsHtml: req.accepts("html") === "html",
