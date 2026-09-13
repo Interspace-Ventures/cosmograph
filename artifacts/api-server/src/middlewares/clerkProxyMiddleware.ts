@@ -47,6 +47,27 @@ export const CLERK_PROXY_PATH = "/api/__clerk";
 export function getClerkProxyHost(req: {
   headers: IncomingHttpHeaders;
 }): string | undefined {
+  const canonical = req.headers["x-exo-canonical-host"];
+  const canonicalHost = (Array.isArray(canonical) ? canonical[0] : canonical)
+    ?.split(",")[0]
+    ?.trim();
+  const authorizedHosts = new Set(
+    (process.env["CLERK_AUTHORIZED_PARTIES"] ?? "")
+      .split(",")
+      .map((value) => {
+        try {
+          return new URL(value.trim()).host;
+        } catch {
+          return "";
+        }
+      })
+      .filter(Boolean),
+  );
+
+  if (canonicalHost && authorizedHosts.has(canonicalHost)) {
+    return canonicalHost;
+  }
+
   const forwarded = req.headers["x-forwarded-host"];
   const raw = Array.isArray(forwarded) ? forwarded[0] : forwarded;
   const firstHop = raw?.split(",")[0]?.trim();
