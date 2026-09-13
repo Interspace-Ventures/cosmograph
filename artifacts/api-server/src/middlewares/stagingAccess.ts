@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { getAuth } from "@clerk/express";
+import { withAppBasePath } from "../lib/appPath";
 
 const TRUE_VALUES = new Set(["1", "true", "yes", "on"]);
 
@@ -97,7 +98,7 @@ export function stagingAccess(
   }
 
   if (decision === "redirect") {
-    res.redirect(302, "/sign-in");
+    res.redirect(302, withAppBasePath("/sign-in"));
     return;
   }
 

@@ -22,6 +22,7 @@ export * from './feedbackRequest';
 export * from './feedbackRequestKind';
 export * from './feedbackResult';
 export * from './healthStatus';
+export * from './healthStatusDeployment';
 export * from './referralInfo';
 export * from './saveShipRequest';
 export * from './shipState';

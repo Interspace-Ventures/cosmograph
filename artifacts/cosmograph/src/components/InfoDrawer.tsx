@@ -3,6 +3,7 @@ import { useAppState } from "@/lib/store";
 import { galaxyData } from "@/data/galaxy";
 import { SITE } from "@/config/site";
 import { LEGEND, NAV_MODES } from "@/lib/legend";
+import { withAppBasePath } from "@/lib/appPath";
 import { Drawer } from "./Drawer";
 import { ChangelogContent } from "./ChangelogContent";
 
@@ -200,7 +201,7 @@ export function InfoDrawer() {
                 v{SITE.version}
               </button>{" "}
               · <a
-                href="/"
+                href={withAppBasePath("/")}
                 className="text-ink-dim underline-offset-2 hover:underline"
               >
                 Cosmograph

@@ -407,8 +407,19 @@ components:
       properties:
         status:
           type: string
+        deployment:
+          type: object
+          properties:
+            commit:
+              type: string
+            environment:
+              type: string
+          required:
+            - commit
+            - environment
       required:
         - status
+        - deployment
     Entitlement:
       type: object
       properties:

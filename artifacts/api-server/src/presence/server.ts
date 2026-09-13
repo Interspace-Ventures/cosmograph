@@ -3,6 +3,7 @@ import type { Duplex } from "node:stream";
 import { randomUUID } from "node:crypto";
 import { WebSocketServer, WebSocket } from "ws";
 import { logger } from "../lib/logger";
+import { stripAppBasePath } from "../lib/appPath";
 
 // Lightweight, ephemeral multiplayer presence: clients stream their camera
 // position; the server fans out a shared snapshot on a fixed tick so everyone
@@ -120,7 +121,7 @@ export function attachPresence(server: HttpServer): void {
   const wss = new WebSocketServer({ noServer: true, maxPayload: MAX_MSG_BYTES });
 
   server.on("upgrade", (req, socket, head) => {
-    const path = req.url?.split("?")[0];
+    const path = stripAppBasePath(req.url?.split("?")[0] ?? "/");
     if (path !== PRESENCE_PATH) {
       // Not ours — close cleanly so the socket does not hang.
       rejectUpgrade(socket, 404, "Not Found");
