@@ -27,6 +27,46 @@ import { withAppBasePath } from "../lib/appPath";
 const CLERK_FAPI = "https://frontend-api.clerk.dev";
 export const CLERK_PROXY_PATH = "/api/__clerk";
 
+function authorizedClerkHosts(): Set<string> {
+  return new Set(
+    (process.env["CLERK_AUTHORIZED_PARTIES"] ?? "")
+      .split(",")
+      .map((value) => {
+        try {
+          return new URL(value.trim()).host;
+        } catch {
+          return "";
+        }
+      })
+      .filter(Boolean),
+  );
+}
+
+export function getConfiguredClerkCanonicalHost(): string | undefined {
+  const canonicalHost = process.env["CLERK_CANONICAL_HOST"]?.trim();
+  return canonicalHost && authorizedClerkHosts().has(canonicalHost)
+    ? canonicalHost
+    : undefined;
+}
+
+/**
+ * Railway replaces forwarding headers on external rewrites. In EXO staging,
+ * set the request host to the allow-listed public gateway before Clerk runs so
+ * development-instance handshakes return to staging.exo.now, not the provider
+ * hostname. The environment value is ignored unless it is also authorized.
+ */
+export function clerkCanonicalHostMiddleware(): RequestHandler {
+  return (req, _res, next) => {
+    const canonicalHost = getConfiguredClerkCanonicalHost();
+    if (canonicalHost) {
+      req.headers.host = canonicalHost;
+      req.headers["x-forwarded-host"] = canonicalHost;
+      req.headers["x-forwarded-proto"] = "https";
+    }
+    next();
+  };
+}
+
 /**
  * Returns the first effective public hostname for the given request,
  * preferring x-forwarded-host over the Host header so callers behind a
@@ -51,18 +91,7 @@ export function getClerkProxyHost(req: {
   const canonicalHost = (Array.isArray(canonical) ? canonical[0] : canonical)
     ?.split(",")[0]
     ?.trim();
-  const authorizedHosts = new Set(
-    (process.env["CLERK_AUTHORIZED_PARTIES"] ?? "")
-      .split(",")
-      .map((value) => {
-        try {
-          return new URL(value.trim()).host;
-        } catch {
-          return "";
-        }
-      })
-      .filter(Boolean),
-  );
+  const authorizedHosts = authorizedClerkHosts();
 
   if (canonicalHost && authorizedHosts.has(canonicalHost)) {
     return canonicalHost;
