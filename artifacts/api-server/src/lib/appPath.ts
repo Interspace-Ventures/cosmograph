@@ -9,7 +9,7 @@ export function normalizeAppBasePath(value: string | undefined): string {
 }
 
 export const APP_BASE_PATH = normalizeAppBasePath(
-  process.env["APP_BASE_PATH"],
+  process.env["APP_BASE_PATH"] ?? process.env["BASE_PATH"],
 );
 
 export function withAppBasePath(pathname: string): string {
