@@ -26,6 +26,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { WebGLFallback } from "@/components/WebGLFallback";
 import { isWebGLAvailable } from "@/lib/webgl";
 import { featureEnabled } from "@/config/features";
+import { withAppBasePath } from "@/lib/appPath";
 
 // REQUIRED — copy verbatim. Resolves the key from window.location.hostname so the
 // same build serves multiple Clerk custom domains. Do not inline the env var, leave
@@ -38,7 +39,9 @@ const clerkPubKey = publishableKeyFromHost(
 // REQUIRED — copy verbatim. Empty in dev (Clerk hits dev FAPI directly), auto-set
 // in prod. Do NOT gate on import.meta.env.PROD / NODE_ENV — the empty dev value
 // is intentional, and any branching breaks the prod proxy.
-const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
+const clerkProxyUrl = withAppBasePath(
+  import.meta.env.VITE_CLERK_PROXY_URL || "/api/__clerk",
+);
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 

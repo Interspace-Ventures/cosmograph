@@ -16,6 +16,7 @@ import { getStripeSync } from "./lib/stripeClient";
 import { markUnlockedFromWebhook } from "./lib/billing";
 import { grantSkinFromWebhook } from "./lib/ship";
 import { stagingAccess } from "./middlewares/stagingAccess";
+import { appBasePathMiddleware } from "./lib/appPath";
 
 const app: Express = express();
 
@@ -23,6 +24,10 @@ const app: Express = express();
 // reads the real client IP from X-Forwarded-For instead of the proxy's, and so
 // req.protocol/host are correct when building Stripe redirect URLs.
 app.set("trust proxy", 1);
+
+// EXO's App gateway keeps the public App prefix in the upstream request.
+// Normalize it once at the service boundary so existing routes remain stable.
+app.use(appBasePathMiddleware);
 
 app.use(
   pinoHttp({

@@ -4,10 +4,11 @@ Cosmograph staging is a private review surface, not a second public launch.
 
 ## Canonical contract
 
-- URL: `https://cosmograph-staging.up.railway.app`
+- canonical URL: `https://staging.exo.now/cosmograph`
+- provider fallback: `https://cosmograph-staging.up.railway.app/cosmograph`
 - source branch: `staging`
 - provider environment: `staging`
-- health endpoint: `/api/health`
+- health endpoint: `/cosmograph/api/health`
 - database: dedicated Neon branch named `staging`
 - release audience: `friends-and-family`
 - access: authenticated Clerk sessions only
@@ -28,8 +29,8 @@ decision is explicitly approved.
 
 ## Naming
 
-Use `{project}-staging.up.railway.app` for provider domains. Generated service
-hostnames are temporary provisioning output and must not be handed to testers.
+App staging is always reviewed through `staging.exo.now/{app}`. Railway domains
+are provider fallbacks only and must not be handed to testers.
 
 ## Verification
 

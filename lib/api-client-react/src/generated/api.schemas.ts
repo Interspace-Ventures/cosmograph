@@ -5,8 +5,14 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export type HealthStatusDeployment = {
+  commit: string;
+  environment: string;
+};
+
 export interface HealthStatus {
   status: string;
+  deployment: HealthStatusDeployment;
 }
 
 export interface Entitlement {

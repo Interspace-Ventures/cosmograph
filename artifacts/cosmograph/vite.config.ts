@@ -8,7 +8,7 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error("PORT must be a positive number when provided.");
 }
 
-const basePath = process.env.BASE_PATH ?? "/";
+const basePath = process.env.APP_BASE_PATH ?? process.env.BASE_PATH ?? "/";
 
 export default defineConfig({
   base: basePath,

@@ -5,6 +5,7 @@ import { useAppState } from "@/lib/store";
 import { galaxyData } from "@/data/galaxy";
 import { Cockpit } from "./Cockpit";
 import { featureEnabled } from "@/config/features";
+import { withAppBasePath } from "@/lib/appPath";
 
 const clamp = (v: number, lo: number, hi: number) =>
   Math.max(lo, Math.min(hi, v));
@@ -266,7 +267,7 @@ export function ScrollIntro() {
                 {reduced ? "Enter the Galaxy" : "Ad Astra"}
               </button>
               <a
-                href="/trailer/"
+                href={withAppBasePath("/trailer/")}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="glass-panel glass-panel-interactive flex items-center gap-2 px-6 py-2.5 font-display text-xs uppercase tracking-[0.25em] text-ink-dim transition-colors hover:text-ink"
