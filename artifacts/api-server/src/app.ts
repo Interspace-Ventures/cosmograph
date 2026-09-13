@@ -7,6 +7,7 @@ import { clerkMiddleware } from "@clerk/express";
 import { publishableKeyFromHost } from "@clerk/shared/keys";
 import {
   CLERK_PROXY_PATH,
+  clerkCanonicalHostMiddleware,
   clerkProxyMiddleware,
   getClerkProxyHost,
 } from "./middlewares/clerkProxyMiddleware";
@@ -48,6 +49,8 @@ app.use(
     },
   }),
 );
+
+app.use(clerkCanonicalHostMiddleware());
 
 // Clerk auth proxy. Mounted before the body parsers because it streams raw
 // bytes through to Clerk's FAPI.
