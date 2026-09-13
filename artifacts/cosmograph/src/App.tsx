@@ -36,12 +36,14 @@ const clerkPubKey = publishableKeyFromHost(
   import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
 );
 
-// REQUIRED — copy verbatim. Empty in dev (Clerk hits dev FAPI directly), auto-set
-// in prod. Do NOT gate on import.meta.env.PROD / NODE_ENV — the empty dev value
-// is intentional, and any branching breaks the prod proxy.
-const clerkProxyUrl = withAppBasePath(
-  import.meta.env.VITE_CLERK_PROXY_URL || "/api/__clerk",
-);
+// Production Clerk instances can use the same-origin proxy. EXO staging shares
+// a Clerk development instance across Apps, and Clerk does not support proxying
+// development Frontend API traffic, so `direct` deliberately omits proxyUrl.
+const configuredClerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
+const clerkProxyUrl =
+  configuredClerkProxyUrl === "direct"
+    ? undefined
+    : withAppBasePath(configuredClerkProxyUrl || "/api/__clerk");
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
