@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "repository": "Interspace-Ventures/cosmograph",
+  "linear": {
+    "workspaceSlug": "interspaceventures",
+    "teamKey": "IV",
+    "projectURL": "https://linear.app/interspaceventures/project/cosmograph-80c95857b369",
+    "issueRequired": true
+  },
+  "designSystem": {
+    "name": "Structured Liquidity",
+    "componentSystem": "shadcn",
+    "registry": "https://structured.glass/r/structured-liquidity-agent.json",
+    "configs": [
+      "artifacts/cosmograph/components.json"
+    ],
+    "primitiveRoots": [
+      "artifacts/cosmograph/src/components/ui"
+    ],
+    "tokenSources": [
+      "artifacts/cosmograph/src/index.css"
+    ]
+  },
+  "delivery": {
+    "promotionOrder": [
+      "preview",
+      "staging",
+      "release-candidate",
+      "production"
+    ],
+    "releaseRecordRequired": true,
+    "securityReviewRequired": true,
+    "explicitProductionApprovalRequired": true
+  }
+}
+

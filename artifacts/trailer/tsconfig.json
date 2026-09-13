@@ -4,6 +4,7 @@
   "exclude": ["node_modules", "build", "dist", "**/*.test.ts"],
   "compilerOptions": {
     "incremental": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "tsBuildInfoFile": ".tsbuildinfo",
     "noEmit": true,
     "jsx": "preserve",

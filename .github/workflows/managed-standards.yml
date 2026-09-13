@@ -1,0 +1,17 @@
+name: Managed standards
+
+on:
+  pull_request:
+  push:
+    branches: [staging, release, main]
+
+jobs:
+  validate:
+    uses: Interspace-Ventures/Structured/.github/workflows/managed-repository.yml@9cf93bcc63b0584768a4a78fbba320f59f6272f1
+    with:
+      node-version: "24"
+      package-manager: pnpm
+      package-manager-version: "11.9.0"
+      install-command: "pnpm install --frozen-lockfile"
+      typecheck-command: "pnpm run typecheck"
+      build-command: "pnpm railway:build"
