@@ -10,7 +10,9 @@ By participating in this project you agree to abide by our [Code of Conduct](COD
 - **Suggest a feature** — open an issue with the *Feature request* template.
 - **Send a pull request** — fix a bug, improve docs, or build a feature.
 
-> Issues filed here (including bug/feature reports sent from the app's "Ask" chat) are automatically mirrored into our Linear board, so they will be triaged even if you don't hear back on GitHub right away.
+> Public issues remain available for outside contributors. EXO owns portfolio triage and status;
+> Entire carries implementation provenance. The in-app report adapter remains in compatibility mode
+> until EXO intake has passed staging parity, so reports are not dropped during the cutover.
 
 ## Prerequisites
 
@@ -71,7 +73,9 @@ Then please:
 
 ## Commit & branch naming
 
-Use clear, present-tense commit messages (e.g. `Fix wisp drift in tilted view`). If your branch corresponds to a tracked issue, including the issue number in the branch name helps our Linear board link the work back automatically.
+Use clear, present-tense commit messages (e.g. `Fix wisp drift in tilted view`) and a short-lived
+branch. Capture the implementation session in Entire and link any relevant EXO work item in the
+handoff; a Linear identifier is neither required nor authoritative.
 
 ## Questions
 

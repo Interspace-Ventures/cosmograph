@@ -9,8 +9,7 @@ Keep PRs focused — one logical change per PR.
 
 ## Related issue
 
-<!-- Link the issue this resolves so it closes automatically and links back to Linear.
-     e.g. Closes #123 -->
+<!-- Link a public GitHub issue or EXO work item when one exists. Linear is not an execution gate. -->
 
 Closes #
 

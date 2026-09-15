@@ -7,8 +7,9 @@ on:
 
 jobs:
   validate:
-    uses: Interspace-Ventures/Structured/.github/workflows/managed-repository.yml@9cf93bcc63b0584768a4a78fbba320f59f6272f1
+    uses: Interspace-Ventures/exo/.github/workflows/managed-repository.yml@7e08202dfe06abd7a4c8e3667ddf2f177ff8f2e8
     with:
+      workflow-contract-version: "2"
       node-version: "24"
       package-manager: pnpm
       package-manager-version: "11.9.0"
