@@ -1,11 +1,12 @@
 {
   "version": 1,
   "repository": "Interspace-Ventures/cosmograph",
-  "linear": {
-    "workspaceSlug": "interspaceventures",
-    "teamKey": "IV",
-    "projectURL": "https://linear.app/interspaceventures/project/cosmograph-80c95857b369",
-    "issueRequired": true
+  "work": {
+    "portfolio": "exo",
+    "execution": "entire",
+    "executionUnit": "session-checkpoint",
+    "sourceControl": "entire",
+    "githubRole": "compatibility-and-migration-mirror"
   },
   "designSystem": {
     "name": "Structured Liquidity",
@@ -33,4 +34,3 @@
     "explicitProductionApprovalRequired": true
   }
 }
-
