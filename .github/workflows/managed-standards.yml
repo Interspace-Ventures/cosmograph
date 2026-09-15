@@ -5,14 +5,84 @@ on:
   push:
     branches: [staging, release, main]
 
+permissions:
+  contents: read
+
 jobs:
   validate:
-    uses: Interspace-Ventures/exo/.github/workflows/managed-repository.yml@7e08202dfe06abd7a4c8e3667ddf2f177ff8f2e8
-    with:
-      workflow-contract-version: "2"
-      node-version: "24"
-      package-manager: pnpm
-      package-manager-version: "11.9.0"
-      install-command: "pnpm install --frozen-lockfile"
-      typecheck-command: "pnpm run typecheck"
-      build-command: "pnpm railway:build"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Check out the requested revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Public repositories cannot consume a private EXO reusable workflow.
+      # Keep this validator equivalent to EXO workflow contract v2.
+      - name: Validate EXO managed-repository contract
+        env:
+          EXPECTED_REPOSITORY: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          node --input-type=module <<'EOF'
+          import assert from "node:assert/strict";
+          import { existsSync, readFileSync, readdirSync } from "node:fs";
+
+          const contract = JSON.parse(readFileSync(".github/managed-repository.json", "utf8"));
+          assert.equal(contract.version, 1);
+          assert.equal(contract.repository, process.env.EXPECTED_REPOSITORY);
+          assert.equal(contract.work?.portfolio, "exo");
+          assert.equal(contract.work?.execution, "entire");
+          assert.equal(contract.work?.executionUnit, "session-checkpoint");
+          assert.equal(contract.work?.sourceControl, "entire");
+          assert.equal(contract.work?.githubRole, "compatibility-and-migration-mirror");
+          assert.equal(contract.linear, undefined);
+          if (process.env.EVENT_NAME === "pull_request") {
+            const context = (process.env.PR_BODY ?? "")
+              .match(/(?:^|\n)## Entire execution context\s*\n([\s\S]*?)(?=\n## |$)/i)?.[1]
+              ?.trim();
+            assert(context, 'Pull requests must include a non-empty "## Entire execution context" section');
+          }
+          assert.equal(contract.designSystem?.name, "Structured Liquidity");
+          assert.equal(contract.designSystem?.componentSystem, "shadcn");
+          assert.equal(contract.designSystem?.registry, "https://structured.glass/r/structured-liquidity-agent.json");
+          for (const configPath of contract.designSystem?.configs ?? []) {
+            assert(existsSync(configPath), `Missing shadcn config: ${configPath}`);
+            const config = JSON.parse(readFileSync(configPath, "utf8"));
+            assert.equal(config.$schema, "https://ui.shadcn.com/schema.json");
+            assert.equal(typeof config.style, "string");
+          }
+          assert((contract.designSystem?.configs ?? []).length > 0);
+          for (const primitiveRoot of contract.designSystem?.primitiveRoots ?? []) {
+            assert(existsSync(primitiveRoot), `Missing shadcn primitive root: ${primitiveRoot}`);
+            assert(readdirSync(primitiveRoot).some((name) => name.endsWith(".tsx")));
+          }
+          for (const tokenSource of contract.designSystem?.tokenSources ?? []) {
+            assert(existsSync(tokenSource), `Missing design token source: ${tokenSource}`);
+          }
+          assert.deepEqual(contract.delivery?.promotionOrder, ["preview", "staging", "release-candidate", "production"]);
+          assert.equal(contract.delivery?.releaseRecordRequired, true);
+          assert.equal(contract.delivery?.securityReviewRequired, true);
+          assert.equal(contract.delivery?.explicitProductionApprovalRequired, true);
+          console.log(`EXO managed repository contract valid for ${contract.repository}`);
+          EOF
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: 11.9.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: Build
+        run: pnpm railway:build
