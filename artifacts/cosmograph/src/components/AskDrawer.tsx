@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { X, Sparkles, ExternalLink } from "lucide-react";
+import { X, Sparkles } from "lucide-react";
 import { Drawer } from "./Drawer";
 import { useReportFeedback } from "@workspace/api-client-react";
 import { useAppState } from "@/lib/store";
@@ -72,8 +72,8 @@ export function AskDrawer() {
 
 // A single conversation turn shown in the UI. The assistant streams a reasoning
 // trace then an answer; for "data" turns the count + papers are computed locally
-// (runAskQuery), and for "feedback" turns the report is filed to Linear and the
-// turn carries the resulting issue link.
+// (runAskQuery), and for "feedback" turns the report is filed through EXO and
+// the turn carries the resulting work-item identifier.
 interface Turn {
   id: number;
   question: string;
@@ -87,8 +87,7 @@ interface Turn {
   papers: Paper[];
   matchCount: number | null;
   totalCount: number | null;
-  issueUrl?: string;
-  issueNumber?: number;
+  issueIdentifier?: string;
 }
 
 // Build the answer for a "data" turn deterministically from the in-browser
@@ -170,7 +169,7 @@ function AskPanel({
   );
 
   // Handle the model's classification. "data" runs the deterministic query and
-  // lights up the galaxy; "feedback" files a Linear issue; explain/chat are prose
+  // lights up the galaxy; "feedback" files an EXO work item; explain/chat are prose
   // only.
   const onAction = useCallback(
     (id: number, action: AskAction) => {
@@ -194,9 +193,7 @@ function AskPanel({
               message: action.message || "(no description)",
             },
           })
-          .then((issue) =>
-            patchTurn(id, { issueUrl: issue.url, issueNumber: issue.number }),
-          )
+          .then((issue) => patchTurn(id, { issueIdentifier: issue.identifier }))
           .catch(() => {
             /* the model's prose still thanks them; link just won't show */
           });
@@ -380,15 +377,10 @@ function AskPanel({
               </ChatMessage>
             )}
 
-            {t.issueUrl && (
-              <a
-                href={t.issueUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 self-start border-2 border-edge bg-white/5 px-2.5 py-1.5 text-[11px] font-display uppercase tracking-wider text-accent transition-colors hover:bg-white/10"
-              >
-                <ExternalLink size={12} /> Filed #{t.issueNumber} — view on Linear
-              </a>
+            {t.issueIdentifier && (
+              <span className="flex items-center gap-1.5 self-start border-2 border-edge bg-white/5 px-2.5 py-1.5 text-[11px] font-display uppercase tracking-wider text-accent">
+                Filed {t.issueIdentifier}
+              </span>
             )}
 
             {t.papers.length > 0 && (

@@ -958,9 +958,9 @@ export const getReportFeedbackUrl = () => {
 }
 
 /**
- * Creates an issue in the project's Linear workspace from a visitor's message. Used by the Ask panel's "report a bug / request a feature" affordance.
+ * Creates a private work item through EXO's signed intake boundary from a visitor's message. Used by the Ask panel's "report a bug / request a feature" affordance.
 
- * @summary File a bug report or feature request as a Linear issue
+ * @summary File a bug report or feature request as a private EXO work item
  */
 export const reportFeedback = async (feedbackRequest: FeedbackRequest, options?: RequestInit): Promise<FeedbackResult> => {
 
@@ -1009,7 +1009,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type ReportFeedbackMutationError = ErrorType<Error>
 
     /**
- * @summary File a bug report or feature request as a Linear issue
+ * @summary File a bug report or feature request as a private EXO work item
  */
 export const useReportFeedback = <TError = ErrorType<Error>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reportFeedback>>, TError,{data: BodyType<FeedbackRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}

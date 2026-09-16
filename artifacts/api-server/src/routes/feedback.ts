@@ -1,16 +1,25 @@
 import { Router, type IRouter } from "express";
+import rateLimit from "express-rate-limit";
 import { ReportFeedbackBody } from "@workspace/api-zod";
-import { createLinearIssue } from "../lib/linear";
+import { createExoWorkItem } from "../lib/exoIntake";
 import { requireFeature } from "../lib/features";
 
 const router: IRouter = Router();
 
 const MAX_MESSAGE = 4000;
+const feedbackLimiter = rateLimit({
+  windowMs: 60_000,
+  limit: 8,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: { error: "Too many reports just now. Please wait a minute and try again." },
+});
 
-// File a visitor's bug report / feature request as a Linear issue.
+// File a visitor's bug report / feature request through EXO's private intake.
 router.post(
   "/feedback/issue",
   requireFeature("ask-cosmo"),
+  feedbackLimiter,
   async (req, res) => {
     const parsed = ReportFeedbackBody.safeParse(req.body);
     if (!parsed.success) {
@@ -29,10 +38,10 @@ router.post(
     const body = `${message}\n\n---\n_Filed from the Cosmograph "Ask the galaxy" panel._`;
 
     try {
-      const issue = await createLinearIssue(title, body, req.log);
+      const issue = await createExoWorkItem({ kind: parsed.data.kind, title, description: body });
       res.status(201).json(issue);
     } catch (err) {
-      req.log.error({ err }, "failed to create linear issue");
+      req.log.error({ err }, "failed to create EXO work item");
       res.status(502).json({
         error: "Could not file your report right now. Please try again later.",
       });
