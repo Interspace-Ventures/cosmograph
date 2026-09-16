@@ -370,9 +370,9 @@ paths:
     post:
       operationId: reportFeedback
       tags: [feedback]
-      summary: File a bug report or feature request as a Linear issue
+      summary: File a bug report or feature request as a private EXO work item
       description: >
-        Creates an issue in the project's Linear workspace from a
+        Creates a private work item through EXO's signed intake boundary from a
         visitor's message. Used by the Ask panel's "report a bug / request a
         feature" affordance.
       requestBody:
@@ -383,7 +383,7 @@ paths:
               $ref: "#/components/schemas/FeedbackRequest"
       responses:
         "201":
-          description: The Linear issue was created
+          description: The EXO work item was created
           content:
             application/json:
               schema:
@@ -395,7 +395,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
         "502":
-          description: Linear is unreachable or issue creation failed
+          description: EXO intake is unreachable or work-item creation failed
           content:
             application/json:
               schema:
@@ -671,15 +671,15 @@ components:
     FeedbackResult:
       type: object
       properties:
-        url:
+        trackingId:
           type: string
-          description: The URL of the created Linear issue.
-        number:
-          type: integer
-          description: The Linear issue number (per-team).
+          description: Opaque EXO tracking id retained by the application.
+        identifier:
+          type: string
+          description: Human-readable EXO work-item identifier.
       required:
-        - url
-        - number
+        - trackingId
+        - identifier
     ReferralInfo:
       type: object
       properties:

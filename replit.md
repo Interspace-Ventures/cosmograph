@@ -56,27 +56,16 @@ Disambiguate by research cluster (institution + co-author), **not** by year alon
 - The Sidebar console's old Filter panel is now an **Ask** chat panel: the visitor asks a natural-language question about the scientist's work and matching papers light up in the galaxy.
 - **The LLM is only a translator.** `POST /api/ask/translate` (`src/routes/ask.ts` → `src/lib/ask.ts`, OpenAI via the `@workspace/integrations-openai-ai-server` integration) turns the question into a small, validated structured query spec (`TranslateAskResponse` Zod schema). It never returns counts, paper lists, or prose — only a spec like `{intent, text, minYear, minCitations, sortBy, ... , unsupported}`.
 - **All answers are computed deterministically in-browser** by `runAskQuery` (`artifacts/cosmograph/src/data/galaxy.ts`) over the locally-baked `galaxyData.json`. Counts and matched papers are real, never hallucinated. The spec is converted to the existing `Filters` shape and pushed through the normal `filters → matchingIds` dim/highlight path in `GalaxySystem` — no separate highlight state.
-- **Report a bug / request a feature** files a Linear issue: `POST /api/feedback/issue` (`src/routes/feedback.ts` → `src/lib/linear.ts`) via the Linear connector. Filed into the first Linear team, or set `LINEAR_TEAM_ID` to pin a specific team.
+- **Report a bug / request a feature** files a private EXO work item: `POST /api/feedback/issue` (`src/routes/feedback.ts` → `src/lib/exoIntake.ts`) through EXO's signed Convex intake boundary.
 - Both routes are public and contract-first (OpenAPI → codegen → Zod → `useTranslateAsk`/`useReportFeedback` hooks). They degrade gracefully: if the server/translator is unreachable the galaxy still works, the Ask panel just shows an error.
-- Requires the **OpenAI AI integration** (`AI_INTEGRATIONS_OPENAI_*` env, auto-provisioned) and a bound **Linear connector** connection for issue filing.
+- Requires the **OpenAI AI integration** (`AI_INTEGRATIONS_OPENAI_*` env, auto-provisioned) plus server-only `EXO_INTAKE_API_URL` and Cosmograph-scoped `EXO_INTAKE_SECRET` values.
 
-## Maintenance pipeline (Linear ↔ GitHub)
+## Maintenance pipeline (Entire + EXO)
 
-Goal: maintain the project from **Linear** without living in GitHub. Two feedback paths land in Linear:
-
-- **Ask-chat reports go straight to Linear** via the server-side Linear connector (`POST /api/feedback/issue` — see "Ask the galaxy (chat)" above). They never touch GitHub.
-- **Issues opened directly on GitHub** (by outside contributors, via the issue templates) reach Linear through Linear's **native GitHub integration** (issue sync + linked pull requests), not a custom webhook or server.
-
-The native integration has **no code** in this repo; it's configured in the Linear and GitHub dashboards. Setup is one-time and repeatable:
-
-1. **Connect GitHub in Linear.** Linear → *Settings → Integrations → GitHub → Connect*, and authorize the `heyinterspace/cosmograph` repository (Linear installs its GitHub App on that repo).
-2. **Turn on issue sync (GitHub → Linear).** In the same GitHub integration settings, enable *Issue sync* and map the `heyinterspace/cosmograph` repo to the maintainer's Linear team. Choose **"Sync all issues"** (recommended) — or, to keep it selective, "Sync issues with a specific label" and use `triage`, which the issue templates already apply.
-   - New GitHub issues then create a linked Linear issue; comments and open/close state stay in sync both ways.
-3. **Confirm the labels line up.** The issue templates in `.github/ISSUE_TEMPLATE/` apply `bug` + `triage` (bug report) and `enhancement` + `triage` (feature request), so GitHub-filed reports arrive in Linear pre-triaged. Optionally map GitHub labels → Linear labels in the integration settings.
-4. **Enable pull-request linking.** In Linear's GitHub settings, keep *Link pull requests* on. Then a branch or PR that references a Linear issue id (e.g. branch `mrao/gal-123-fix-wisps` or "Closes GAL-123" / "Closes #123" in the PR body — the PR template prompts for this) automatically links the PR to the Linear issue and can auto-move it through the workflow (In Progress → Done on merge).
-5. **Verify.** Open a throwaway GitHub issue → confirm a matching Linear issue appears; open a PR referencing it → confirm the link shows on the Linear issue. Delete the test issue when done.
-
-To re-run/confirm later, revisit Linear → *Settings → Integrations → GitHub*; the same page shows the connected repo, the sync mode, and the linked team.
+Entire is the implementation/session record and primary source forge. GitHub is a compatibility
+mirror for pull requests and outside contribution transport. In-product feedback goes to EXO's
+private, signed work-intake boundary; it does not create or synchronize Linear issues. Preserve the
+initiating prompt in commits and use short-lived remote canary branches for review.
 
 ## Stack
 
