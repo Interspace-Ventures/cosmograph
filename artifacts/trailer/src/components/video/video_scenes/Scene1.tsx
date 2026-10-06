@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
-import logoTwotone from '@assets/cosmograph-mark-twotone_1782673395435.svg';
+import logoTwotone from '@/assets/cosmograph-mark-twotone.svg';
 
 export function Scene1() {
   const [phase, setPhase] = useState(0);

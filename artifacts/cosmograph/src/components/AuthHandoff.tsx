@@ -3,7 +3,7 @@ import { ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 /**
- * True when the app is running inside an iframe (e.g. the Replit dev preview, or
+ * True when the app is running inside an iframe (e.g. an embedded dev preview, or
  * anyone embedding cosmograph.space). OAuth providers refuse to render their
  * consent screens in an iframe, so Clerk pops them into a new tab while the bot
  * challenge stays in the embedded page — a confusing split. We sidestep it by

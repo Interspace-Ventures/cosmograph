@@ -16,7 +16,7 @@
 # passed (e.g. an urgent security bugfix), you can add it to the
 # `minimumReleaseAgeExclude` allowlist below. Only consider doing this for
 # packages released by trusted organizations with an impeccable security
-# posture (e.g. Replit packsges, react from Meta, typescript from Microsoft). Even then,
+# posture (e.g. react from Meta, typescript from Microsoft). Even then,
 # remove the exclusion once the 1-day window has passed.
 #
 # Example:
@@ -27,13 +27,6 @@
 # ============================================================================
 minimumReleaseAge: 1440
 
-minimumReleaseAgeExclude:
-  # Exclude @replit scoped packages from the minimum release age check.
-  # These are published by Replit and trusted — the supply-chain attack vector
-  # this setting guards against does not apply to our own packages.
-  - '@replit/*'
-  - stripe-replit-sync
-
 packages:
   - artifacts/*
   - lib/*
@@ -41,9 +34,6 @@ packages:
   - scripts
 
 catalog:
-  '@replit/vite-plugin-cartographer': ^0.5.21
-  '@replit/vite-plugin-dev-banner': ^0.1.1
-  '@replit/vite-plugin-runtime-error-modal': ^0.0.6
   '@tailwindcss/vite': ^4.1.14
   '@tanstack/react-query': ^5.90.21
   '@types/node': ^25.3.3
@@ -165,4 +155,11 @@ overrides:
   "@babel/core": "^7.29.6"
   "js-yaml": "^4.2.0"
   "markdown-it": "^14.2.0"
-  "qs": "^6.15.2"
+  "qs": "^6.16.0"
+  # Runtime advisories (Oct 2026 audit): proxy-addr IPv4-mapped IPv6 trust bypass
+  # (critical; Express trust-proxy) and ip-address parsing (express-rate-limit).
+  # braces (http-proxy-middleware) has no patched release yet; it leaves with the
+  # Clerk proxy in the Exo Key migration.
+  "proxy-addr": "^2.0.8"
+  "ip-address": "^10.7.1"
+  "body-parser": "^2.3.0"

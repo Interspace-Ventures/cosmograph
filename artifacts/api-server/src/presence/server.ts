@@ -69,7 +69,7 @@ const perIp = new Map<string, number>();
 const handshakes = new Map<string, number[]>();
 
 function clientIp(req: IncomingMessage): string {
-  // Mirror Express `trust proxy = 1`: the immediate peer is our trusted Replit
+  // Mirror Express `trust proxy = 1`: the immediate peer is our trusted Railway
   // proxy, which appends the real client IP as the LAST X-Forwarded-For entry.
   // Taking the last (not first) entry prevents a client from spoofing its IP by
   // sending its own X-Forwarded-For header to bypass per-IP caps.

@@ -15,19 +15,6 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss({ optimize: false }),
-    ...(process.env.NODE_ENV !== "production" &&
-    process.env.REPL_ID !== undefined
-      ? [
-          await import("@replit/vite-plugin-cartographer").then((m) =>
-            m.cartographer({
-              root: path.resolve(import.meta.dirname, ".."),
-            }),
-          ),
-          await import("@replit/vite-plugin-dev-banner").then((m) =>
-            m.devBanner(),
-          ),
-        ]
-      : []),
   ],
   resolve: {
     alias: {
@@ -39,6 +26,19 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    // three.js + R3F is ~60% of the bundle and changes far less often than app
+    // code; splitting it lets returning visitors keep it cached across deploys.
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return undefined;
+          if (/[\\/](three|three-stdlib|@react-three|postprocessing|maath|troika-[^\\/]+)[\\/]/.test(id)) return "three";
+          if (/[\\/](@clerk)[\\/]/.test(id)) return "auth";
+          if (/[\\/](react|react-dom|scheduler|framer-motion|motion-dom|motion-utils)[\\/]/.test(id)) return "react";
+          return undefined;
+        },
+      },
+    },
   },
   server: {
     port,
