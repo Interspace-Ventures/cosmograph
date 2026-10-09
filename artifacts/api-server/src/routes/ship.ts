@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { returnOrigin } from "../lib/publicOrigin";
 import {
   SaveShipBody,
   ClaimSkinBody,
@@ -70,7 +71,9 @@ router.post(
       res.status(400).json({ error: "A valid ship type is required." });
       return;
     }
-    const origin = `${req.protocol}://${req.get("host")}`;
+    // Never build return URLs from Host: a forged header would send the buyer to a
+  // look-alike site after paying.
+  const origin = returnOrigin(req);
     try {
       const result = await claimOrCheckoutSkin(
         req.userId!,

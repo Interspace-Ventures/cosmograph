@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { returnOrigin } from "../lib/publicOrigin";
 import {
   ConfirmCheckoutBody,
   CreateCheckoutBody,
@@ -54,7 +55,9 @@ router.post("/me/unlock", requireAuth, async (req, res) => {
 
 // Start the one-time unlock checkout (or report the account already owns it).
 router.post("/billing/checkout", requireAuth, async (req, res) => {
-  const origin = `${req.protocol}://${req.get("host")}`;
+  // Never build return URLs from Host: a forged header would send the buyer to a
+  // look-alike site after paying.
+  const origin = returnOrigin(req);
   const parsed = CreateCheckoutBody.safeParse(req.body ?? {});
   const author = parsed.success ? parsed.data.author : null;
   try {
