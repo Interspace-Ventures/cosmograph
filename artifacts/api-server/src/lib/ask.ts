@@ -367,7 +367,9 @@ export async function streamAsk(
   try {
     const stream = await openai.chat.completions.create({
       model: MODEL,
-      max_completion_tokens: 2048,
+      // Answers are a few sentences. This caps reasoning + answer tokens, and so
+      // the worst-case cost of one turn (~$0.003 at gpt-5-mini list prices).
+      max_completion_tokens: 900,
       // gpt-5-mini is a reasoning model; keep effort low so first paint is fast.
       reasoning_effort: "low",
       stream: true,

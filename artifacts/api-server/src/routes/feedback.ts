@@ -3,10 +3,17 @@ import rateLimit from "express-rate-limit";
 import { ReportFeedbackBody } from "@workspace/api-zod";
 import { createExoWorkItem } from "../lib/exoIntake";
 import { requireFeature } from "../lib/features";
+import { DailyBudget, envInt } from "../lib/spendGuard";
+import { requireSameOrigin } from "../middlewares/sameOrigin";
 
 const router: IRouter = Router();
 
 const MAX_MESSAGE = 4000;
+// Reports land in EXO's work queue, so a script must not be able to flood it.
+const feedbackBudget = new DailyBudget({
+  perClient: envInt("FEEDBACK_DAILY_PER_CLIENT", 10),
+  global: envInt("FEEDBACK_DAILY_GLOBAL", 300),
+});
 const feedbackLimiter = rateLimit({
   windowMs: 60_000,
   limit: 8,
@@ -19,6 +26,7 @@ const feedbackLimiter = rateLimit({
 router.post(
   "/feedback/issue",
   requireFeature("ask-cosmo"),
+  requireSameOrigin,
   feedbackLimiter,
   async (req, res) => {
     const parsed = ReportFeedbackBody.safeParse(req.body);
@@ -31,6 +39,10 @@ router.post(
     const message = parsed.data.message.trim().slice(0, MAX_MESSAGE);
     if (!message) {
       res.status(400).json({ error: "The message cannot be empty." });
+      return;
+    }
+    if (!feedbackBudget.take(req.ip ?? "unknown").ok) {
+      res.status(429).json({ error: "We've received a lot of reports today. Please try again tomorrow." });
       return;
     }
     const isBug = parsed.data.kind === "bug";

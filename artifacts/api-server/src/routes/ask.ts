@@ -3,6 +3,8 @@ import rateLimit from "express-rate-limit";
 import { ChatAskBody } from "@workspace/api-zod";
 import { streamAsk, type AskEvent } from "../lib/ask";
 import { requireFeature } from "../lib/features";
+import { DailyBudget, envInt } from "../lib/spendGuard";
+import { requireSameOrigin } from "../middlewares/sameOrigin";
 
 // The assistant hits a paid LLM on every call, so it gets its own tighter per-IP
 // budget on top of the global 120 req/min REST limiter (app.ts), plus hard caps
@@ -13,6 +15,22 @@ const ASK_MAX_PER_WINDOW = 12; // chat calls allowed per IP per window
 const MAX_QUESTION_CHARS = 500; // reject a longer latest question before the LLM call
 const MAX_MESSAGES = 24; // cap conversation length sent to the model
 const MAX_TOTAL_CHARS = 8000; // total chars across the conversation
+
+// Everything below is copied into the system prompt, so it is an injection and
+// cost surface too: an uncapped "authorName" could smuggle a general-purpose
+// prompt past the question-length check. Bound every string and array.
+const MAX_LABEL_CHARS = 200; // author name, institution, titles, domain names
+const MAX_DOMAINS = 40;
+const MAX_FIELDS = 30;
+const MAX_FIELD_TEXT = 120;
+
+// Daily ceilings (see spendGuard.ts). At ~$0.0015 per typical turn and a
+// ~$0.003 worst case, the default global breaker bounds Ask spend at about
+// $30/day even under a distributed flood. Tune with env, no deploy needed.
+const askBudget = new DailyBudget({
+  perClient: envInt("ASK_DAILY_PER_CLIENT", 30),
+  global: envInt("ASK_DAILY_GLOBAL", 10_000),
+});
 
 const askLimiter = rateLimit({
   windowMs: ASK_WINDOW_MS,
@@ -33,6 +51,7 @@ const router: IRouter = Router();
 router.post(
   "/ask/chat",
   requireFeature("ask-cosmo"),
+  requireSameOrigin,
   askLimiter,
   async (req, res) => {
     const parsed = ChatAskBody.safeParse(req.body);
@@ -40,7 +59,29 @@ router.post(
       res.status(400).json({ error: "A question is required." });
       return;
     }
-    const { messages } = parsed.data;
+    const { messages, summary, fields, domains } = parsed.data;
+    const labels = [
+      summary.authorName,
+      summary.institution ?? "",
+      summary.mostCitedTitle ?? "",
+      ...summary.topDomains,
+      ...(domains ?? []),
+    ];
+    if (
+      labels.some((l) => l.length > MAX_LABEL_CHARS) ||
+      summary.topDomains.length > MAX_DOMAINS ||
+      (domains?.length ?? 0) > MAX_DOMAINS ||
+      (fields?.length ?? 0) > MAX_FIELDS ||
+      (fields ?? []).some(
+        (f) =>
+          f.name.length > MAX_FIELD_TEXT ||
+          f.type.length > MAX_FIELD_TEXT ||
+          (f.description?.length ?? 0) > MAX_FIELD_TEXT,
+      )
+    ) {
+      res.status(400).json({ error: "Galaxy context is malformed." });
+      return;
+    }
     if (!messages.length || messages.length > MAX_MESSAGES) {
       res.status(400).json({ error: "Conversation is empty or too long." });
       return;
@@ -63,6 +104,23 @@ router.post(
       res
         .status(400)
         .json({ error: "This conversation is too long — start a new one." });
+      return;
+    }
+
+    // Reserve the daily budget only for a fully valid request, right before
+    // the paid call.
+    const budget = askBudget.take(req.ip ?? "unknown");
+    if (!budget.ok) {
+      if (budget.reason === "global") {
+        req.log.warn(askBudget.snapshot(), "ask: global daily budget exhausted");
+        res.status(503).json({
+          error: "Cosmo is resting for today. Try again tomorrow.",
+        });
+      } else {
+        res.status(429).json({
+          error: "You've asked a lot today. Cosmo will be back tomorrow.",
+        });
+      }
       return;
     }
 
