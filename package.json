@@ -1,5 +1,5 @@
 {
-  "name": "workspace",
+  "name": "cosmograph",
   "version": "0.0.0",
   "packageManager": "pnpm@11.9.0",
   "license": "MIT",
@@ -17,17 +17,5 @@
     "prettier": "^3.8.3",
     "typescript": "~5.9.3"
   },
-  "dependencies": {
-    "stripe": "^22.2.2",
-    "stripe-replit-sync": "^1.0.0"
-  },
-  "description": "**A scientist's life's work, rendered as a galaxy you can fly through.**",
-  "main": "index.js",
-  "directories": {
-    "doc": "docs",
-    "lib": "lib"
-  },
-  "keywords": [],
-  "author": "",
-  "type": "commonjs"
+  "description": "**A scientist's life's work, rendered as a galaxy you can fly through.**"
 }

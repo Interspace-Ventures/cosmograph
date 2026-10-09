@@ -1,3 +1,4 @@
+<!-- Architecture notes carried over from the original build. AGENTS.md is the workflow contract. -->
 # Cosmograph
 
 An immersive 3D website (cosmograph.space) that visualizes the lifetime scientific work of any researcher as an explorable galaxy — research domains as suns, papers as orbiting planets, co-authors as moons. Originally built as a Father's Day gift for Dr. Mahendra S. Rao, it is now a reusable, open-source template: point it at any scientist (a dad, a mom, a mentor, yourself) and regenerate the data snapshot. The app ships with **no hardcoded identity** — everything the UI shows comes from the generated snapshot.
@@ -8,7 +9,7 @@ An immersive 3D website (cosmograph.space) that visualizes the lifetime scientif
    - `pnpm --filter @workspace/cosmograph run fetch:galaxy -- --name "Ada Lovelace" > artifacts/cosmograph/src/data/galaxyData.json`
    - or `... -- --id A5111365293 > artifacts/cosmograph/src/data/galaxyData.json`
    - Tip: name search prints the top OpenAlex matches to stderr; if it picks the wrong person, re-run with the correct `--id`.
-2. That's it — restart the `galaxy` workflow. The title, stats, domains, papers, and co-authors all redraw from the new snapshot.
+2. That's it — restart the dev server. The title, stats, domains, papers, and co-authors all redraw from the new snapshot.
 
 ### When OpenAlex merged a *different* same-named researcher into the profile
 
@@ -46,10 +47,8 @@ Disambiguate by research cluster (institution + co-author), **not** by year alon
 
 - `api-server` hosts an ephemeral multiplayer presence layer: a WebSocket at `/api/presence` (`src/presence/server.ts`) streams each visitor's camera position so others see faint "wisps" and a live headcount ("N cosmonauts streaming now"). Nothing is persisted — anonymous, in-memory only.
 - It also serves `/api/github/stars` (`src/routes/github.ts`), a 5-min TTL in-memory cache of the repo star count, so upstream GitHub is hit at most once per TTL regardless of traffic.
-- **Abuse/DDoS guards** (tune in `src/presence/server.ts`): total + per-IP connection caps, handshake-rate limit, 256-byte `maxPayload`, per-socket token bucket, heartbeat reaping, coordinate clamping, and a 10 Hz shared-snapshot broadcast capped at 60 render peers. REST has a 120 req/min/IP limiter (`app.ts`); `trust proxy` is set to `1` for the single Replit proxy hop.
-- **Deployment:** `api-server` must run as an always-on **Reserved VM** deployment, not a static/scale-to-zero (autoscale) one. Two things now depend on a long-lived process: the in-memory presence WebSocket **and** the paid-unlock layer (`/api/stripe/webhook`, `/api/me/entitlement`, `/api/billing/checkout`). On autoscale the webhook + presence are unreachable and paid unlocks silently fail. The galaxy itself is still static and works without it.
-  - **The deployment type is set in the Publishing/Deployments pane, not in code.** `.replit` currently has `deploymentTarget = "autoscale"` and the agent cannot edit `.replit` — when publishing, switch the deployment type to **Reserved VM** in the Publishing pane. The api-server `artifact.toml` is already configured for it (production `run`, `build`, and `/api/healthz` startup probe).
-  - **Stripe moves from sandbox to live on deploy.** On boot `initStripe()` finds-or-creates the managed webhook against the first host in `REPLIT_DOMAINS` (the production domain in prod), so the live webhook binds automatically — no manual webhook URL setup. Make sure the production Stripe connection/keys are the live ones before/after the first publish.
+- **Abuse/DDoS guards** (tune in `src/presence/server.ts`): total + per-IP connection caps, handshake-rate limit, 256-byte `maxPayload`, per-socket token bucket, heartbeat reaping, coordinate clamping, and a 10 Hz shared-snapshot broadcast capped at 60 render peers. REST has a 120 req/min/IP limiter (`app.ts`); `trust proxy` is set to `1` for the single Railway proxy hop.
+- **Deployment:** Railway runs the API and the built galaxy as ONE always-on service (`railway.json`, `pnpm railway:build` / `railway:start`). Presence and the Stripe webhook need a long-lived process; never move this to scale-to-zero.
 
 ## Ask the galaxy (chat) (api-server)
 
@@ -98,21 +97,14 @@ initiating prompt in commits and use short-lived remote canary branches for revi
 - Click planets/suns for paper and domain details; a stats layer summarizes the whole corpus.
 - To regenerate the data snapshot for a different scientist, see "Make it for your own scientist" at the top of this file. The script takes `--name "Full Name"` or `--id <OpenAlexAuthorId>` (or `GALAXY_AUTHOR_NAME` / `GALAXY_AUTHOR_ID` env vars) and writes JSON to stdout.
 
-## User preferences
-
-_Populate as you build — explicit user instructions worth remembering across sessions._
 
 ## Gotchas
 
 - **Presence wisps live inside the tilt frame.** Peers send camera positions in galaxy-*local* space (the broadcaster un-rotates by `-galaxyTilt` about X before sending), and `PresenceWisps` re-applies `rotation-x={galaxyTilt}` so wisps line up with the orbiting planets for each viewer. Skip either half and wisps drift off the disk.
-- **`api-server` must be always-on (Reserved VM) for presence AND paid unlocks.** Don't deploy it as static/scale-to-zero (autoscale) — the presence WebSocket needs a persistent process, and the Stripe webhook + entitlement endpoints must stay reachable or purchases silently fail. The deployment type is chosen in the Publishing pane (the agent can't edit `.replit`), not in `artifact.toml`. The galaxy bundle stays static and degrades gracefully if the server is down.
+- **`api-server` must stay always-on** for presence and paid unlocks; the galaxy bundle degrades gracefully if it is down.
 - **One remaining `pnpm audit` LOW is intentional:** esbuild `0.27.3` (Windows-only dev-server file read, GHSA-g7r4-m6w7-qqqr). It's a build tool not shipped in production and bumping to 0.28.x risks a Vite↔esbuild range mismatch. Leave it pinned.
-- **Artifact `id` intentionally stays `artifacts/galaxy`.** The web app's folder/package were renamed `galaxy`→`cosmograph`, but the artifact `id` in `artifacts/cosmograph/.replit-artifact/artifact.toml` remains `artifacts/galaxy` because `verifyAndReplaceArtifactToml` rejects id changes (`INVALID_ARTIFACT_ID`). It's an internal, never-user-visible handle; everything else (dir, `@workspace/cosmograph`, build/publicDir, workflow) points at `cosmograph`. Don't "fix" the id mismatch unless the platform adds id migration.
 
 ## Credits
 
 - Spaceship 3D model (`artifacts/cosmograph/public/models/ship.glb`): "Spaceship" by **Quaternius** via Poly Pizza — https://poly.pizza/m/Jqfed124pQ — License **CC0 1.0** (public domain; attribution not required but included as good practice). Used for the presence "cosmonaut" ships.
 
-## Pointers
-
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details

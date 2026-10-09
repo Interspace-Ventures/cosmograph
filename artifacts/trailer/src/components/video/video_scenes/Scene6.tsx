@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
-import logoWhite from '@assets/cosmograph-mark-white_1782673393029.svg';
+import logoWhite from '@/assets/cosmograph-mark-white.svg';
 
 export function Scene6() {
   const [phase, setPhase] = useState(0);

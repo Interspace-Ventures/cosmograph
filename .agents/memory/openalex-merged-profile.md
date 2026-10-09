@@ -32,5 +32,5 @@ separate them; institution + co-author + min-year is the only signature that doe
 active the headline author block (works, citations, h-index, i10, countsByYear,
 institution) is **recomputed from kept works** because the OpenAlex author object
 still reflects the merged profile. The exact regeneration command for the shipped
-snapshot lives in `replit.md`. Never regenerate `galaxyData.json` without explicit
+snapshot lives in `docs/architecture.md`. Never regenerate `galaxyData.json` without explicit
 user consent.
