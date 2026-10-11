@@ -1,0 +1,733 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Cosmograph — cube galaxy v3</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+<style>
+  :root{--bg:#0e0c13;--panel:#1a1722;--ink:#f3f1f7;--dim:#a49eb5;--accent:#a388ee;--edge:#000}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif;overflow:hidden}
+  canvas{display:block}
+  #stage{position:fixed;inset:0}
+  .mono{font-family:"Space Mono",monospace;text-transform:uppercase;letter-spacing:.12em}
+  .panel{background:var(--panel);border:2px solid var(--edge);box-shadow:6px 6px 0 var(--edge)}
+  #top{position:fixed;left:16px;right:16px;top:16px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;pointer-events:none}
+  #brand{padding:10px 14px;pointer-events:auto}
+  #brand b{display:block;font-size:20px;font-weight:800}
+  #brand span{font-size:10px;color:var(--dim)}
+  #kpis{display:grid;grid-template-columns:repeat(3,minmax(90px,auto));pointer-events:auto}
+  #kpis div{padding:8px 12px;border-right:2px solid var(--edge)}
+  #kpis div:last-child{border-right:0;text-align:right}
+  #kpis small{display:block;font-size:9px;color:var(--dim)}
+  #kpis strong{font-size:18px;font-variant-numeric:tabular-nums}
+  #systems{position:fixed;left:16px;bottom:16px;width:290px;max-height:52vh;overflow:auto;scrollbar-width:thin;scrollbar-color:#000 var(--panel)}
+  #systems h3{margin:0;padding:10px 12px;font-size:10px;color:var(--dim);border-bottom:2px solid var(--edge);cursor:pointer}
+  #systems button{all:unset;display:flex;justify-content:space-between;gap:8px;width:100%;padding:8px 18px 8px 12px;font-size:12px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.06)}
+  #systems button:hover{background:rgba(163,136,238,.12)}
+  #systems button.on{background:var(--accent);color:#000}
+  #systems button i{font-style:normal;width:10px;height:10px;border:2px solid #000;flex:none;margin-top:3px}
+  #systems button em{font-style:normal;font-family:"Space Mono",monospace;font-size:10px;opacity:.7}
+  .tag{position:fixed;left:0;top:0;pointer-events:none;font:700 10px "Space Mono",monospace;text-transform:uppercase;letter-spacing:.1em;padding:3px 6px;background:var(--panel);border:2px solid #000;box-shadow:3px 3px 0 #000;white-space:nowrap;transition:opacity .2s}
+  .tag.on{background:var(--accent);color:#000}
+  #card{position:fixed;right:16px;bottom:16px;width:330px;padding:14px;display:none}
+  #card .mono{font-size:9px;color:var(--accent)}
+  #card h4{margin:6px 0 10px;font-size:15px;line-height:1.3}
+  #card .row{display:grid;grid-template-columns:1fr 1fr 1fr;border:2px solid var(--edge)}
+  #card .row div{padding:6px 8px;border-right:2px solid var(--edge)}
+  #card .row div:last-child{border-right:0;text-align:right}
+  #card .row small{display:block;font-size:9px;color:var(--dim)}
+  #legend{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);font-size:10px;color:var(--dim);padding:6px 10px;display:flex;gap:14px;align-items:center;white-space:nowrap}
+  #legend b{color:var(--ink);font-weight:700}
+  #jump{position:fixed;inset:0;pointer-events:none;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s}
+  #jump.on{opacity:1}
+  #jump .mono{font-size:13px;background:var(--panel);border:2px solid #000;box-shadow:6px 6px 0 #000;padding:8px 14px}
+  #toggles{position:fixed;right:16px;top:96px;display:flex;flex-direction:column;gap:8px}
+  #toggles button{all:unset;cursor:pointer;font-size:10px;font-family:"Space Mono",monospace;text-transform:uppercase;letter-spacing:.1em;padding:8px 10px;background:var(--panel);border:2px solid #000;box-shadow:4px 4px 0 #000}
+  #toggles button:active{transform:translate(4px,4px);box-shadow:none}
+  @media (max-width:720px){#systems{width:auto;right:16px;max-height:44px;overflow:hidden}#systems.open{max-height:46vh;overflow:auto}#kpis,#legend{display:none}#toggles{top:auto;bottom:76px}#card{left:16px;width:auto;bottom:76px}}
+
+  #hdr{position:fixed;left:0;right:0;top:0;display:flex;align-items:stretch;justify-content:space-between;border-bottom:2px solid #000;background:rgba(18,16,24,.82);backdrop-filter:blur(14px);z-index:20}
+  #hdr .l{display:flex;align-items:center;gap:12px;padding:10px 16px}
+  #hdr .l b{font-size:22px;font-weight:800;letter-spacing:-.02em}
+  #hdr .l .ver{font-size:9px;color:var(--dim);border:2px solid #000;padding:2px 6px;background:var(--panel)}
+  #hdr .r{display:flex}
+  #hdr .r button{all:unset;cursor:pointer;font-size:10px;padding:0 16px;border-left:2px solid #000;display:flex;align-items:center;gap:6px}
+  #hdr .r button:hover{background:rgba(163,136,238,.14)}
+  #promo{position:fixed;left:50%;top:62px;transform:translateX(-50%);z-index:19;font-size:10px;padding:7px 12px;display:flex;gap:10px;align-items:center;white-space:nowrap}
+  #promo button{all:unset;cursor:pointer;background:var(--accent);color:#000;padding:3px 8px;border:2px solid #000}
+  #hero{position:fixed;left:0;right:0;top:108px;text-align:center;pointer-events:none;z-index:5}
+  #hero .eyebrow{font-size:10px;color:var(--accent)}
+  #stats{display:inline-grid;grid-template-columns:repeat(6,auto);margin-top:10px;pointer-events:auto}
+  #stats div{padding:8px 14px;border-right:2px solid #000;text-align:left}
+  #stats div:last-child{border-right:0}
+  #stats strong{display:block;font-size:20px;font-variant-numeric:tabular-nums}
+  #stats small{font-size:9px;color:var(--dim)}
+  #stats .live strong{color:var(--accent)}
+  #dock{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);display:flex;z-index:20}
+  #dock button{all:unset;position:relative;cursor:pointer;font-size:10px;padding:12px 14px;border-right:2px solid #000;display:flex;flex-direction:column;align-items:center;gap:5px;min-width:62px}
+  #dock button:last-child{border-right:0}
+  #dock button .ico{font-size:15px;line-height:1}
+  #dock button:hover:not(.soon){background:rgba(163,136,238,.14)}
+  #dock button.on{background:var(--accent);color:#000}
+  #dock button.primary{background:var(--ink);color:#000}
+  #dock button.soon{color:#6c6680;cursor:help}
+  #dock button.soon::after{content:"SOON";position:absolute;top:4px;right:4px;font-size:6px;letter-spacing:.1em;background:#000;color:var(--accent);border:1px solid var(--accent);padding:1px 4px}
+  #foot{position:fixed;left:320px;right:200px;bottom:100px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;font-size:9px;color:#6c6680;pointer-events:none;z-index:4}
+  .drawer{position:fixed;top:62px;bottom:84px;right:16px;width:420px;overflow:auto;z-index:21;display:none;padding:0;scrollbar-width:thin;scrollbar-color:#000 var(--panel)}
+  .drawer.open{display:block}
+  .drawer .tabs{display:flex;border-bottom:2px solid #000;position:sticky;top:0;background:var(--panel)}
+  .drawer .tabs button{all:unset;cursor:pointer;flex:1;text-align:center;font-size:10px;padding:10px;border-right:2px solid #000}
+  .drawer .tabs button:last-child{border-right:0}
+  .drawer .tabs button.on{background:var(--accent);color:#000}
+  .drawer .x{all:unset;cursor:pointer;position:absolute;right:10px;top:8px;font-size:16px}
+  .drawer section{padding:16px 18px;border-bottom:2px solid #000}
+  .drawer h5{margin:0 0 8px;font-size:10px;color:var(--accent)}
+  .drawer h6{margin:0 0 10px;font-size:17px;line-height:1.25}
+  .drawer p,.drawer li{font-size:13px;line-height:1.55;color:#d9d4e6}
+  .drawer ul{padding-left:18px;margin:6px 0}
+  .drawer .kv{display:grid;grid-template-columns:1fr 1fr;border:2px solid #000;margin-top:8px}
+  .drawer .kv div{padding:8px 10px;border-right:2px solid #000;border-bottom:2px solid #000;font-size:12px}
+  .drawer .kv div:nth-child(2n){border-right:0}
+  .drawer .kv b{display:block;font-size:9px;color:var(--dim);font-family:"Space Mono",monospace;letter-spacing:.1em;text-transform:uppercase}
+  .rel{padding:12px 18px;border-bottom:1px solid rgba(255,255,255,.07)}
+  .rel .meta{font-size:9px;color:var(--dim)}
+  .rel .meta i{font-style:normal;color:var(--accent)}
+  .rel strong{display:block;font-size:13px;margin:4px 0}
+  .plans{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:6px}
+  .plan{border:2px solid #000;box-shadow:4px 4px 0 #000;padding:12px;background:#15121d}
+  .plan.hi{background:var(--accent);color:#000}
+  .plan.hi p,.plan.hi li{color:#000}
+  .plan .price{font-size:26px;font-weight:800}
+  .plan .price small{font-size:11px;font-weight:600}
+  .cta{all:unset;cursor:pointer;display:block;text-align:center;margin-top:10px;padding:9px;border:2px solid #000;background:#000;color:var(--ink);font-size:10px}
+  .plan.hi .cta{background:#000;color:var(--accent)}
+  #toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);z-index:30;font-size:11px;padding:8px 12px;display:none}
+  #brand,#kpis,#legend{display:none!important}
+  #toggles{top:auto;bottom:20px}
+  #systems{bottom:20px;max-height:calc(100vh - 380px);overflow-x:hidden}
+  #systems button{box-sizing:border-box}
+  #systems button em{padding-right:4px}
+  #card{bottom:76px}
+  @media (max-width:720px){#hdr .r button span{display:none}#promo{display:none}#stats{grid-template-columns:repeat(3,auto)}#stats div:nth-child(n+4){display:none}#dock button{min-width:0;padding:10px 8px}#dock button .lbl{font-size:8px}.drawer{left:8px;right:8px;width:auto}#foot{display:none}#hero{top:72px}#systems{bottom:84px}}
+  @media (max-width:720px){
+    #systems{left:8px;right:auto;width:200px;bottom:84px;max-height:38px;overflow:hidden}
+    #systems.open{max-height:46vh;overflow:auto}
+    #dock{left:8px;right:8px;transform:none;justify-content:space-between}
+    #dock button{flex:1;min-width:0;padding:9px 2px;gap:3px}
+    #dock button .lbl{font-size:7px;letter-spacing:.04em;white-space:nowrap}
+    #dock button.soon::after{top:2px;right:2px;font-size:5px;padding:0 2px}
+    #eyebrow{font-size:8px;padding:0 12px}
+    #toggles{bottom:84px}
+  }
+</style>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.170.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.170.0/examples/jsm/"}}</script>
+</head>
+<body>
+<div id="stage"></div>
+<div id="top" style="display:none"><div id="brand"></div><div id="kpis"></div></div>
+<header id="hdr">
+  <div class="l"><b>cosmograph</b><span class="ver mono" id="ver"></span></div>
+  <div class="r mono">
+    <button id="hShare">↗ <span>Share</span></button>
+    <button id="hSponsor">♥ <span>Sponsor</span></button>
+    <button id="hSource">⌘ <span>Source</span></button>
+  </div>
+</header>
+<div id="promo" class="panel mono">Launching soon · $9.99 / year or $29.99 lifetime <button id="promoBtn">See what's included</button></div>
+<div id="hero">
+  <div class="eyebrow mono" id="eyebrow"></div>
+  <div id="stats" class="panel mono"></div>
+</div>
+<nav id="dock" class="panel mono">
+  <button class="primary" data-act="signup"><span class="ico">✦</span><span class="lbl">Sign up</span></button>
+  <button data-act="tour"><span class="ico">▶</span><span class="lbl">Tour</span></button>
+  <button class="on" data-act="orbit"><span class="ico">◎</span><span class="lbl">Orbit</span></button>
+  <button class="soon" data-act="fly" data-soon="Fly mode: pilot your own ship through the galaxy."><span class="ico">➤</span><span class="lbl">Fly</span></button>
+  <button data-act="info"><span class="ico">i</span><span class="lbl">Info</span></button>
+  <button class="soon" data-act="ask" data-soon="Ask Cosmo: ask about the work and watch matching papers light up."><span class="ico">✳</span><span class="lbl">Ask</span></button>
+  <button class="soon" data-act="gift" data-soon="Make it a gift: their name, an envelope reveal, and a guided walk through their journey."><span class="ico">✉</span><span class="lbl">Gift</span></button>
+</nav>
+<div id="foot" class="mono"></div>
+<div id="toast" class="panel mono"></div>
+<aside id="info" class="drawer panel"><button class="x" data-close>×</button>
+  <div class="tabs mono"><button class="on" data-tab="about">About</button><button data-tab="guide">Guide</button><button data-tab="log">Changelog</button></div>
+  <div data-pane="about"></div><div data-pane="guide" hidden></div><div data-pane="log" hidden></div>
+</aside>
+<aside id="pricing" class="drawer panel"><button class="x" data-close>×</button><div id="pricingBody"></div></aside>
+<div id="toggles">
+  <button class="mono" id="tour" style="display:none">▶ Jump tour</button>
+  <button class="mono" id="iso">◇ Iso view</button>
+  <button class="mono" id="topv">⊙ Top view</button>
+</div>
+<div id="systems" class="panel"><h3 class="mono">Systems · tap to jump</h3><div id="list"></div></div>
+<div id="card" class="panel"></div>
+<div id="legend" class="mono panel"><span><b>Bigger cube</b> = more citations</span><span><b>Closer to sun</b> = more central to the field</span><span>Drag rotate · Right-drag pan · Scroll zoom</span></div>
+<div id="tags"></div>
+<div id="jump"><div class="mono" id="jumpLabel">Jumping</div></div>
+
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
+
+const DATA = {"author":"Mahendra S. Rao","stats":{"totalPapers":364,"totalCitations":28860,"uniqueCoAuthors":1191,"firstYear":1994,"lastYear":2024,"yearsActive":30,"domainCount":12,"estimatedWords":1442000,"avgCitations":79,"mostCited":{"title":"SOX2, a Persistent Marker for Multipotential Neural Stem Cells Derived from Embryonic Stem Cells, the Embryo or the Adult","citations":749,"year":2004}},"domains":[{"id":"sun-0","name":"Pluripotent Stem Cells","field":"Biochemistry, Genetics and Molecular Biology","papers":179,"cites":13761},{"id":"sun-1","name":"Developmental Neuroscience","field":"Neuroscience","papers":60,"cites":6593},{"id":"sun-2","name":"Molecular Biology","field":"Biochemistry, Genetics and Molecular Biology","papers":25,"cites":1958},{"id":"sun-3","name":"Cross-Disciplinary","field":"Other","papers":19,"cites":472},{"id":"sun-4","name":"Genetics","field":"Medicine","papers":18,"cites":2016},{"id":"sun-5","name":"Physiology","field":"Medicine","papers":16,"cites":619},{"id":"sun-6","name":"CRISPR and Genetic Engineering","field":"Biochemistry, Genetics and Molecular Biology","papers":13,"cites":683},{"id":"sun-7","name":"Cellular and Molecular Neuroscience","field":"Neuroscience","papers":12,"cites":625},{"id":"sun-8","name":"Neurology","field":"Medicine","papers":10,"cites":1068},{"id":"sun-9","name":"Cell Biology","field":"Biochemistry, Genetics and Molecular Biology","papers":4,"cites":715},{"id":"sun-10","name":"Surgery","field":"Medicine","papers":4,"cites":189},{"id":"sun-11","name":"Oncology","field":"Medicine","papers":4,"cites":161}],"changelog":[{"version":"3.38.0","codename":"Mission Clock","date":"2026-07-30","summary":"Cosmograph now reveals completed features on a deliberate weekly flight plan.","changes":["Added a friends-and-family release cadence so finished features can arrive in steady weekly waves, with browser and server safeguards plus emergency overrides.","Replaced the browser tab's generic red square with the canonical Cosmograph globe mark.","Standardized the private staging URL and added a server-enforced Clerk access boundary while keeping health checks public."]},{"version":"3.37.0","codename":"Opening Credits","date":"2026-07-05","summary":"Watch the launch trailer straight from the title screen.","changes":["Added a \"Watch the trailer\" button on the opening title screen, right below \"Ad Astra\" \u2014 a quick flight through the galaxy before you dive in yourself."]},{"version":"3.36.1","codename":"Steady Hand","date":"2026-07-05","summary":"The guided tour is calmer, clearer, and actually shows off Ask Cosmo.","changes":["The \"Two ways to travel\" stop now demonstrates both modes in one shot \u2014 starting in the overhead Orbit view, then dropping down into a first-person Fly glide so you can watch the switch happen.","Steadied the tour camera: instead of drifting in a full circle, it now gently sways to show depth while keeping each subject centered and in focus.","The \"Ask Cosmo\" stop now pulls up a live preview of the Ask panel \u2014 showing the question and Cosmo's answer \u2014 while the matching papers light up behind it.","Tidied the tour card: the page dots now sit below the text instead of crowding it."]},{"version":"3.36.0","codename":"Grand Tour","date":"2026-07-05","summary":"The guided tour now shows off flying, rotating angles, and Ask Cosmo.","changes":["The tour now dips into Fly mode \u2014 dropping into the plane for a first-person glide through the brightest field \u2014 so you can see both ways to travel, not just the planetarium Orbit view.","Each stop now slowly sweeps its camera angle, so the galaxy's real 3D depth reads instead of a flat straight-on shot.","New \"Ask Cosmo\" stop: a real plain-English question runs live and the matching papers light up while the rest fade \u2014 a taste of the query panel before you try it yourself."]},{"version":"3.35.0","codename":"Second Pass","date":"2026-07-04","summary":"Replay the opening flight any time, and the tour card clears the controls.","changes":["Added a \"Replay intro\" button in Info \u2192 About, so you can run the opening title sequence again \u2014 handy for showing someone the galaxy from the start.","The guided-tour card no longer tucks its bottom edge under the cockpit bar on desktop; it now floats cleanly above the controls."]},{"version":"3.34.0","codename":"Event Horizon","date":"2026-07-04","summary":"The galaxy stays smooth even for the most prolific scientists alive.","changes":["For an enormous body of work (think thousands of papers), the galaxy now renders the most-cited papers as planets and keeps the rest counted in every stat, domain, and answer \u2014 so the view stays buttery on any machine instead of drowning in planets.","Every realistic scientist is unchanged: if the corpus fits, every single paper still gets its own planet."]},{"version":"3.33.0","codename":"Station Keeping","date":"2026-07-03","summary":"The paper card slims down, and your ship now holds formation with a selected planet.","changes":["Co-authors in the paper card now fit on a single line \u2014 the rest collapse into a \"+N\" chip you can tap to see everyone.","The paper card no longer hides under the header on desktop.","Selecting a planet in Fly mode engages a tracking cam: the ship smoothly holds formation with the planet as it orbits, so you can read the card without chasing it.","Touch the controls (keys or mouse-look) and the ship hands the stick back to you without snapping the view; click the planet again to re-engage tracking."]},{"version":"3.32.0","codename":"Slipstream","date":"2026-07-02","summary":"A faster galaxy \u2014 the same view, drawn with a fraction of the work.","changes":["Merged every solar system's orbit rings into a single draw call each (they used to be one per paper \u2014 hundreds per frame).","Orbit rings no longer respond to the mouse, so moving the cursor doesn't hit-test hundreds of invisible lines anymore.","Planets, clouds, and moons use leaner sphere meshes \u2014 visually identical at galaxy scale, far fewer vertices per frame.","The galaxy now adapts its render resolution to your machine: if the frame rate dips, it quietly drops sharpness a notch and climbs back when things recover.","Asks dual-GPU laptops for the fast graphics card, and stopped paying for antialiasing twice."]},{"version":"3.31.0","codename":"Target Lock","date":"2026-07-02","summary":"Fly mode gets a real targeting HUD, search finds the right scientist, and you can hop back to the last galaxy.","changes":["Planets and suns are now clickable while flying \u2014 a pulsing corner-bracket reticle locks onto your target and tracks it through the canopy, with its name underneath.","Dragging to look around no longer counts as a click, so steering the ship won't select planets or drop your target lock.","Personalize search now matches on the scientist's name only \u2014 searching \"Albert Einstein\" no longer surfaces researchers who merely work at an institute named after him.","After exploring a new scientist, a \"Return to \u2026\" button in Personalize jumps you straight back to the previous galaxy \u2014 instantly, no re-download."]},{"version":"3.30.0","codename":"Sliding Hatch","date":"2026-07-02","summary":"Signing in stays in the galaxy, and the Tour sits with the other ways to fly.","changes":["Sign In / Sign Up now rise as a dismissible cockpit panel \u2014 like Info, Ask, and Personalize \u2014 instead of taking over the whole screen.","The auth form blends straight into the panel (no box-in-a-box), and the copy is on-theme: \"Become a cosmonaut\" / \"Welcome back, cosmonaut\".","Moved the Tour button next to the Orbit/Fly switch, grouping all the ways to explore the galaxy together."]},{"version":"3.29.0","codename":"Afterburner","date":"2026-07-01","summary":"Real rocket fire out the back \u2014 the engines now burn like a true spaceship.","changes":["Replaced the soft blue engine orb with a proper fiery exhaust: a white-hot core inside an orange plume.","The flame flickers like live combustion and stretches longer the harder you throttle.","Kept it tight so it feels like a spaceship without hogging the screen."]},{"version":"3.28.1","codename":"Welcome Back","date":"2026-06-30","summary":"The cockpit now remembers returning pilots and their usual login.","changes":["First-time visitors see Sign Up; if you've signed in before on this device, it greets you with Sign In instead.","If you last logged in with a service like Google or GitHub, the button now names it \u2014 one click back in."]},{"version":"3.28.0","codename":"Hangar Bay","date":"2026-06-30","summary":"Sign in to claim a profile and fly a ship that's truly yours.","changes":["Added Sign In / Sign Up in the cockpit, and a signed-in account panel showing your member status and ship.","New ship hangar: choose a hull type \u2014 the free Scout, or the premium Fighter, Hauler, and Interceptor \u2014 each with its own distinctive silhouette.","Members get three ship types included; anyone can unlock an extra type for a one-time $1. Colors stay free on any ship you own.","Other cosmonauts now see the exact ship type you're flying."]},{"version":"3.27.1","codename":"Tight Burn","date":"2026-06-30","summary":"Tuned the engine thrusters down to a tighter, more focused burn.","changes":["Made the rear thruster flare smaller and more concentrated so it reads like a real space engine nozzle instead of a soft halo."]},{"version":"3.27.0","codename":"True North","date":"2026-06-30","summary":"Fly controls now track the ship 1:1, and engines glow when you move.","changes":["Fixed Fly steering so the ship pitches and turns to match your controls \u2014 pressing up now tilts the nose up instead of rolling sideways.","Replaced the nose beacon with twin rear thrusters that glow brighter the faster you fly."]},{"version":"3.26.1","codename":"Clean Hull","date":"2026-06-30","summary":"Dropped the glowing aura around your ship in Fly mode.","changes":["Your ship in Fly mode no longer has a glowing aura around it \u2014 just the clean hull."]},{"version":"3.26.0","codename":"Snug Fit","date":"2026-06-30","summary":"The rich panels (Info, Ask Cosmo, Personalize) now match the width of the cockpit navbar exactly.","changes":["The Info, Ask Cosmo, and Personalize panels are now always exactly as wide as the cockpit bar below them."]},{"version":"3.25.1","codename":"Header Crew","date":"2026-06-30","summary":"The header buttons are now slimmer and reordered \u2014 Source, Sponsor, Share.","changes":["Source (the GitHub repo), Sponsor, and Share buttons in the header are now smaller and reordered."]},{"version":"3.25.0","codename":"Header Crew","date":"2026-06-30","summary":"The Sponsor, GitHub, and Share buttons moved up beside the Cosmograph title, leaving the cockpit for the controls you fly with.","changes":["Sponsor, GitHub, and Share now sit just to the right of the Cosmograph header instead of in the cockpit.","The cockpit dashboard is now focused purely on in-galaxy controls."]},{"version":"3.24.0","codename":"Chase the Stars","date":"2026-06-30","summary":"Fly mode is now a third-person chase \u2014 you can see and steer your own ship \u2014 the cockpit buttons gained labels, and the AI is now named Cosmo.","changes":["Fly mode switched from first-person to a third-person chase camera, so you can see your own ship as you weave through the galaxy (nicer ships ahead).","Your ship no longer appears in Orbit view \u2014 it's reserved for Fly.","Every cockpit button now shows its name beside the icon, so it's clear at a glance.","The cockpit now sits a little higher, lifted clear of the footer credits.","The \"Ask Cosmos\" assistant is now simply \"Cosmo\"."]},{"version":"3.23.0","codename":"Cockpit Dashboard","date":"2026-06-30","summary":"Every control now lives in one clean cockpit dashboard along the bottom of the screen, and the rich panels rise up from it \u2014 freeing the galaxy to fill the whole view.","changes":["The Mission Control side rail and the top-right Sponsor / GitHub / Share buttons are gone, replaced by a single bottom dashboard that holds every control.","Info, Ask Cosmos, and Personalize now rise as panels from the dashboard, centered above the bar on both desktop and mobile.","With the side rail gone, the galaxy now fills the entire screen.","Your account, ship save, and shuffle controls moved into the top of the Personalize panel."]},{"version":"3.22.0","codename":"Notification Deck","date":"2026-06-28","summary":"Tips and offers now arrive as one tidy notification banner that gently slides the view down instead of floating over the galaxy, and the Orbit/Fly switch moved to the bottom of the console.","changes":["Flight-control tips and the membership offer now share a single slim banner up top that eases the view down to make room \u2014 no more pop-ups floating over the stars.","When there's more than one thing to mention, the banner quietly cycles between them.","The Orbit / Fly view switch now lives at the bottom of the console, set apart from the other controls."]},{"version":"3.21.0","codename":"Signal Boost","date":"2026-06-28","summary":"Gentle, dismissable nudges: a slim top banner for the $7/year membership deal, and a one-time prompt to support the project once you've settled in.","changes":["A slim banner up top highlights the limited-time $7/year membership \u2014 dismiss it once and it stays gone.","The banner's \"See what's included\" opens the Personalize panel, which now lists every membership benefit.","After you've spent a little time exploring, a small unobtrusive card invites you to sponsor, star the repo, or spread the word \u2014 shown only once."]},{"version":"3.20.0","codename":"Clean Console","date":"2026-06-28","summary":"A tidier cockpit: fewer buttons, panels that open one at a time, and quick Share and GitHub controls pinned to the top-right corner.","changes":["The flight log moved inside the Info panel as a tab, so it's one less button on the console.","Orbit and Fly are now a single toggle instead of two separate buttons, and the old Re-Intro button is gone.","Detail panels now open one at a time at the same width \u2014 opening one closes the others so they never stack up.","Share and the GitHub link now sit as quick buttons in the top-right corner instead of being buried in the console.","On phones the bottom console now shows a short text label under each icon, so it's clear what every button does."]},{"version":"3.19.0","codename":"Thumb Reach","date":"2026-06-28","summary":"On phones the console now lives along the bottom of the screen, so the galaxy gets the full width and the controls sit right under your thumb.","changes":["On phones the Mission Control console moved from the right edge to the bottom of the screen \u2014 the galaxy now uses the full width.","Expanding the console on a phone slides a panel up from the bottom instead of in from the side.","Detail panels now span the full width above the bottom console so they're easier to read."]},{"version":"3.18.0","codename":"Pocket Cosmos","date":"2026-06-28","summary":"A big pass on the phone experience \u2014 clearer text, a console that stays out of the way, and detail panels that fit the screen.","changes":["Paper and domain text is now crisp and high-contrast instead of a soft glow that read as blurry on phones.","On phones the console now starts as a slim rail instead of the full panel, so it no longer covers the galaxy.","Detail panels no longer slide under the console and are sized to fit a phone screen.","Added a subtle backdrop behind the title and stats so they stay readable over bright stars."]},{"version":"3.17.0","codename":"Wayfinder","date":"2026-06-27","summary":"Sign in and you get your own invite link \u2014 bring fellow explorers into the galaxy and we'll keep count.","changes":["Every signed-in explorer now has a personal invite link, found in the Share panel \u2014 copy it and send it to anyone.","When someone signs up through your link for the first time, they're counted as your referral, permanently.","Not signed in? The Share panel now invites you to create a free account so you can get your own link too."]},{"version":"3.16.0","codename":"Hangar","date":"2026-06-26","summary":"Sign in to save your ship \u2014 your chosen craft now follows you across devices and every other cosmonaut sees it live.","changes":["Signed-in explorers can now save their ship: it's remembered on your account and follows you to every device.","Other cosmonauts now see your exact ship in real time, not a generic one \u2014 shuffle to a look you like, then Save.","New 'Your ship' panel in the account area with a live look preview, a Shuffle button, and a Save button.","The Show ship / Hide ship toggle moved onto the Orbit button itself, so ship controls live together."]},{"version":"3.15.0","codename":"Liveries","date":"2026-06-26","summary":"Every cosmonaut now flies a distinct ship, and your own chase craft turns near-invisible with a one-tap show/hide toggle.","changes":["Each cosmonaut's ship now has its own look \u2014 hull tint, engine glow, nose running-light, and size all vary per explorer \u2014 so the galaxy reads as a real crowd of distinct craft.","Your own ship in Orbit view is now barely-there glass, so it never blocks the galaxy or UI behind it.","New 'Show ship / Hide ship' toggle under Navigate lets you hide your own ship in Orbit view entirely; the choice is remembered next visit.","Your ship's look now stays the same across visits (saved in your browser), laying the groundwork for saving and customizing it once you sign in."]},{"version":"3.14.0","codename":"Dropship","date":"2026-06-26","summary":"Cosmonauts now fly a real low-poly spaceship \u2014 smaller and sharper \u2014 and signing in from an embedded preview is no longer a maze.","changes":["Every ship (yours and other cosmonauts') is now an actual low-poly spaceship model instead of a hand-built cone, and rides noticeably smaller in the galaxy.","Signing in from an embedded preview now offers a 'Continue in a new window' handoff, so the security check and Google/GitHub sign-in finish together in one place."]},{"version":"3.13.0","codename":"Squadron","date":"2026-06-26","summary":"Other explorers now appear as little ships flying the galaxy with you \u2014 and you pilot your own.","changes":["Fellow cosmonauts are now rendered as small low-poly ships that point the way they're flying, instead of faint glowing wisps.","New arrivals get a short grace period before others fade in, with a gentle 'More cosmonauts arriving' notice, so you can find your bearings first.","In orbit view your own ship now appears as a small glowing sprite among the galaxy \u2014 like the other cosmonauts \u2014 banking gently as you orbit."]},{"version":"3.12.0","codename":"Tilted Rings","date":"2026-06-25","summary":"Every planet now spins on its own tilted axis, and ringed worlds are no longer identical twins.","changes":["Each planet gets its own axial tilt, spin direction, speed, and starting angle, so same-type worlds no longer rotate in lockstep like clones.","Ringed planets now vary their ring width, tilt, roll, tint, and opacity, so no two ringed worlds look exactly alike."]},{"version":"3.11.0","codename":"Spectral Worlds","date":"2026-06-24","summary":"Planets now come in many more colours and kinds \u2014 molten, frozen, verdant, ocean, and exotic gas giants.","changes":["Greatly widened planet variety: alongside the real solar-system worlds, papers can now appear as molten lava worlds with glowing magma veins, frozen ice worlds, verdant Earth-likes, amber deserts, turquoise oceans, carbon rock worlds, and violet, rose, and emerald gas giants.","The galaxy reads with far richer colour instead of mostly red, off-white, and blue."]},{"version":"3.10.2","codename":"Open Hatch","date":"2026-06-24","summary":"The membership panel now explains why subscribing creates an account.","changes":["Added a short note next to Subscribe explaining that membership creates a free account so your unlocks stay tied to you across devices and billing stays self-serve.","Toned down the Sponsor and Personalize buttons in the console: instead of a full purple highlight, they now carry a subtle inline tag marking them as paid.","Simplified the galaxy loading screen \u2014 the cosmograph mark now fills up on its own, without a separate progress bar or percentage."]},{"version":"3.10.1","codename":"Steady Frame","date":"2026-06-23","summary":"The shareable screenshot now renders reliably and sits more compactly.","changes":["Fixed the shareable screenshot sometimes loading blank \u2014 the card now waits for the galaxy to actually render before capturing.","Trimmed the membership panel's height so it fits the screen more comfortably.","Each membership perk now has its own icon matching the feature, with an AI star for Ask Cosmos."]},{"version":"3.10.0","codename":"Bird's Eye","date":"2026-06-23","summary":"Shareable screenshots now capture the galaxy from a top-down view.","changes":["The shareable screenshot now shows your galaxy from a top-down vantage, framing the whole disk instead of the last camera angle."]},{"version":"3.9.0","codename":"Clear Skies","date":"2026-06-23","summary":"Console polish, clearer Subscribe + Sponsor actions, and steadier sharing.","changes":["Tightened the spacing under the Mission Control header so Platform sits up closer to the top.","Personalize now shows an Upgrade badge instead of a Premium one, with the helper line moved below the button.","The console's Sign In action is now a clear Subscribe button \u2014 subscribing signs you in along the way.","Renamed Donate to Sponsor, with a heart on the left and the GitHub mark on the right.","Shareable screenshots are more reliable \u2014 the card always renders, falling back to the branded stats card if the live view can't be captured.","The preview screenshot now lives inside the membership panel instead of behind it, with a single Copy-image-to-clipboard action.","Refreshed the membership panel \u2014 accent Subscribe button, clearer $7/year preview copy, and an updated feature list.","Clearer messaging when OpenAlex is rate-limiting researcher search."]},{"version":"3.8.0","codename":"Celestial Globe","date":"2026-06-23","summary":"A new logo \u2014 a celestial globe with an AI star at its core.","changes":["New brand mark: a lat/long graticule globe with a generated-star spark at the center, now in the header, the browser tab, and the sign-in screen."]},{"version":"3.7.0","codename":"Control Tower","date":"2026-06-23","summary":"Mission Control gets a cleaner layout \u2014 Platform sits up top.","changes":["Reorganized the console: a single Platform section now sits at the top with Info, Sign In, Changelog, Donate, Ask, and Personalize all in one place.","Renamed the old Customize section to Personalize \u2014 a highlighted premium action to choose a scientist for your own cosmograph."]},{"version":"3.6.0","codename":"Postcard","date":"2026-06-23","summary":"Custom galaxies open as a shareable postcard \u2014 membership drops to $7.","changes":["Searching a scientist now opens their cosmograph as a full-screen shareable screenshot with one tap to copy, download, or share it.","Membership is now $7/year \u2014 subscribe right from the screenshot to unlock the full interactive galaxy for anyone you search.","The home scientist stays free and fully interactive, no account needed."]},{"version":"3.5.0","codename":"Make It Yours","date":"2026-06-23","summary":"Customize gets its own premium tab in the console.","changes":["Pulled the scientist search out of the Info drawer into a dedicated Customize tab, flagged with a Premium badge so it's clear deep exploration of a custom scientist is a paid unlock.","Refreshed the Ask panel's starter prompts into clickable chips."]},{"version":"3.4.0","codename":"Mission Control","date":"2026-06-23","summary":"A new Platform bay in Mission Control.","changes":["Added a Platform section to Mission Control with Customize, Changelog, and Donate in one place.","Customize now has its own panel \u2014 search for any scientist and the galaxy rebuilds around their work (moved out of the Info drawer)."]},{"version":"3.3.0","codename":"Just Ask","date":"2026-06-23","summary":"One input, zero modes \u2014 Ask reads your intent.","changes":["Dropped the Ask/Bug/Feature toggle: just type. Asking about the work runs a search; saying something's broken or wished-for files it with the team automatically.","Tidied the console \u2014 Info and Sign in now sit right at the top, no Profile drawer to open."]},{"version":"3.2.0","codename":"One Console","date":"2026-06-23","summary":"Ask does it all \u2014 and feedback flies through the same chat.","changes":["Retired the separate Find box \u2014 Ask now handles jumping to papers and domains alongside questions.","Report a bug or request a feature right inside the Ask chat: switch modes, type, and it's filed straight to the team."]},{"version":"3.1.0","codename":"Orbital Pass","date":"2026-06-23","summary":"Membership goes yearly \u2014 and Ask Cosmos comes aboard.","changes":["Full access is now a $10/year membership: fly, tour, and deep-dive any scientist you search, with every new feature included.","Ask Cosmos headlines membership \u2014 ask questions about any researcher's work, answered from their galaxy.","Fellow explorers are now 'cosmonauts' \u2014 watch the live headcount streaming the stars with you.","Every voyage now ends with a personal welcome: \"Welcome to the [scientist] cosmos.\""]},{"version":"3.0.0","codename":"Cosmograph","date":"2026-06-22","summary":"A new name for the voyage \u2014 Galactic is now Cosmograph.","changes":["New identity: the app is now Cosmograph, charting any scientist's life in science at cosmograph.space.","The wordmark, share cards, footer, and live presence all fly the Cosmograph flag from bridge to bottom."]},{"version":"2.1.0","codename":"Voyager's Pass","date":"2026-06-22","summary":"Chart any sky for free; unlock the helm to fly it.","changes":["Accounts have landed: sign in to carry your unlock across every visit.","Every searched scientist opens as a free preview \u2014 full stats, summary, and a shareable card, no account needed.","A one-time $10 pass unlocks deep exploration \u2014 fly, guided tours, and rich paper detail \u2014 for any researcher you search, forever.","The home scientist stays wide open: no sign-in, no paywall, the whole galaxy free to roam.","Sponsor Cosmograph on GitHub right from the unlock panel to keep the lights on."]},{"version":"2.0.0","codename":"Open Universe","date":"2026-06-21","summary":"The galaxy opens to every scientist in the sky.","changes":["Explore anyone: search a researcher by name and the whole galaxy re-forms around their life's work, charted live from OpenAlex.","Share this Cosmograph: capture your current view as a stat-laden card and copy it straight to the clipboard \u2014 no downloads, no detours.","Bridge refit: Replay and Tour moved up beside Orbit and Fly, while Share and the GitHub beacon dropped into the command bar.","A new footer beacon spells out what Cosmograph is for every first-time arrival."]},{"version":"1.3.0","codename":"Bridge Console","date":"2026-06-20","summary":"Hauled the helm up to the bridge and opened the ship's log.","changes":["Orbit and Fly thrusters relocated to the top deck, docked right beside the Info port.","The Info beacon flies its name again \u2014 no more guessing at the lone glyph.","Cracked open this flight log so you can trace every jump the ship has made."]},{"version":"1.2.0","codename":"Star Charts","date":"2026-06-20","summary":"Drew up the navigation charts for every pilot aboard.","changes":["Added a navigation primer for Orbit and Fly modes inside the Info port.","Retired the manual tilt lever \u2014 a right-drag now banks the whole sky for you."]},{"version":"1.1.0","codename":"Deep Space Signals","date":"2026-06-20","summary":"Tuned the antenna and caught signals from fellow travelers.","changes":["Live presence: faint wisps now mark other cosmographers drifting through the same stars.","A headcount beacon shows how many explorers are streaming through the galaxy right now.","Pulled GitHub starlight into the footer so you can see the constellation grow."]},{"version":"1.0.0","codename":"First Light","date":"2026-06-15","summary":"The galaxy ignites.","changes":["Every research domain becomes a sun, every paper a planet, every co-author a moon.","Two ways to roam: a god's-eye Orbit and a first-person Fly-through.","A guided tour and a cinematic warp-in greet every new arrival."]}],"papers":[["sun-0","SOX2, a Persistent Marker for Multipotential Neural Stem Cells Derived from Embryonic Stem Cells, the Embryo or the Adult",2004,749,1.0,8],["sun-0","Tumorigenicity as a clinical hurdle for pluripotent stem cell therapies",2013,727,1,4],["sun-0","Differences between human and mouse embryonic stem cells",2004,715,0.999,10],["sun-0","Genomic alterations in cultured human embryonic stem cells",2005,622,1.0,23],["sun-0","Gene expression in human embryonic stem cell lines: unique molecular signature",2004,454,1.0,14],["sun-0","Dopaminergic Differentiation of Human Embryonic Stem Cells",2004,370,1,12],["sun-0","A Review of the Methods for Human iPSC Derivation",2013,365,1,1],["sun-0","Long\u2010term culture of human embryonic stem cells in feeder\u2010free conditions",2003,356,1.0,6],["sun-0","Regulatory networks define phenotypic classes of human stem cell lines",2008,350,0.999,11],["sun-0","Transcriptome characterization elucidates signaling networks that control human ES cell growth and differentiation",2004,328,1.0,13],["sun-0","Efficient Generation of Functional Dopaminergic Neurons from Human Induced Pluripotent Stem Cells Under Defined Conditions \u00a0",2010,317,1,6],["sun-0","Self-renewal of human embryonic stem cells requires insulin-like growth factor-1 receptor and ERBB2 receptor signaling",2007,316,1.0,18],["sun-0","Properties of four human embryonic stem cell lines maintained in a feeder\u2010free culture system",2003,288,1.0,7],["sun-0","Cell-extracellular matrix interactions regulate neural differentiation of human embryonic stem cells",2008,276,0.895,5],["sun-0","Toward the Development of a Global Induced Pluripotent Stem Cell Library",2013,241,0.998,9],["sun-0","Human Embryonic Stem Cells Have Enhanced Repair of Multiple Forms of DNA Damage",2008,221,0.999,9],["sun-0","cGMP-Manufactured Human Induced Pluripotent Stem Cells Are Available for Pre-clinical and Clinical Applications",2015,211,1.0,10],["sun-0","Transcriptome Profiling of Human and Murine ESCs Identifies Divergent Paths Required to Maintain the Stem Cell State",2005,210,1.0,17],["sun-0","Efficient and Rapid Derivation of Primitive Neural Stem Cells and Generation of Brain Subtype Neurons From Human Pluripotent Stem Cells",2013,208,0.999,12],["sun-0","Karyotypic Stability, Genotyping, Differentiation, Feeder-Free Maintenance, and Gene Expression Sampling in Three Human Embryonic Stem Cell ",2004,206,1,9],["sun-0","Properties of Pluripotent Human Embryonic Stem Cells BG01 and BG02",2004,154,1.0,11],["sun-0","Xeno-Free Defined Conditions for Culture of Human Embryonic Stem Cells, Neural Stem Cells and Dopaminergic Neurons Derived from Them",2009,145,0.968,5],["sun-0","Assessing Self-Renewal and Differentiation in Human Embryonic Stem Cell Lines",2005,138,1.0,8],["sun-0","Developing safe therapies from human pluripotent stem cells",2009,134,1.0,2],["sun-0","Comparative neurotoxicity screening in human iPSC-derived neural stem cells, neurons and astrocytes",2015,127,0.998,7],["sun-0","Assessing iPSC reprogramming methods for their suitability in translational medicine",2012,125,1.0,1],["sun-0","A cost-effective and efficient reprogramming platform for large-scale production of integration-free human induced pluripotent stem cells in",2015,110,1.0,7],["sun-0","Repurposing the Cord Blood Bank for Haplobanking of HLA-Homozygous iPSCs and Their Usefulness to Multiple Populations",2018,106,1.0,17],["sun-0","Accelerating stem cell trials for Alzheimer's disease",2015,99,0.999,10],["sun-0","Detailed Characterization of Human Induced Pluripotent Stem Cells Manufactured for Therapeutic Applications",2016,95,1.0,7],["sun-0","Strategies for Improving Animal Models for Regenerative Medicine",2013,89,0.999,7],["sun-0","Banking on iPSC- Is it Doable and is it Worthwhile",2014,87,1.0,2],["sun-0","An In Vitro Model of Human Dopaminergic Neurons Derived from Embryonic Stem Cells: MPP+ Toxicity and GDNF Neuroprotection",2006,79,0.999,6],["sun-0","Concise Review: Cord Blood Banking, Transplantation and Induced Pluripotent Stem Cell: Success and Opportunities",2011,77,1.0,2],["sun-0","Xenogeneic-free defined conditions for derivation and expansion of human embryonic stem cells with mesenchymal stem cells",2015,65,1.0,11],["sun-0","Harmonizing standards for producing clinical-grade therapies from pluripotent stem cells",2014,65,0.999,9],["sun-0","Rapid and Efficient Generation of Transgene-Free iPSC from a Small Volume of Cryopreserved Blood",2015,50,0.999,11],["sun-0","Conserved and divergent paths that regulate self-renewal in mouse and human embryonic stem cells",2004,167,1.0,0],["sun-0","Transdifferentiation\u2014fact or artifact",2002,115,1.0,1],["sun-0","Comparison of the gene expression profile of undifferentiated human embryonic stem cell lines and differentiating embryoid bodies",2005,110,0.944,9],["sun-0","Qualification of Embryonal Carcinoma 2102Ep As a Reference for Human Embryonic Stem Cell Research",2007,105,1.0,10],["sun-0","Genome wide profiling of human embryonic stem cells (hESCs), their derivatives and embryonal carcinoma cells to develop base profiles of U.S",2006,92,0.864,16],["sun-0","hESC-derived Olig2+ progenitors generate a subtype of astroglia with protective effects against ischaemic brain injury",2013,89,0.999,9],["sun-0","An Efficient Method for the Derivation of Mouse Embryonic Stem Cells",2005,89,1,7],["sun-0","Neural differentiation from human embryonic stem cells in a defined adherent culture condition",2007,88,1,5],["sun-0","Novel Live Alkaline Phosphatase Substrate for Identification of Pluripotent Stem Cells",2012,84,1.0,5],["sun-0","Characterization of a New NIH-Registered Variant Human Embryonic Stem Cell Line, BG01V: A Tool for Human Embryonic Stem Cell Research",2005,81,0.999,13],["sun-0","Comparison of the molecular profiles of human embryonic and induced pluripotent stem cells of isogenic origin",2013,80,1.0,6],["sun-0","Heparin Promotes Cardiac Differentiation of Human Pluripotent Stem Cells in Chemically Defined Albumin-Free Medium, Enabling Consistent Manu",2016,76,1.0,14],["sun-0","Functional Screening Assays with Neurons Generated from Pluripotent Stem Cell\u2013Derived Neural Stem Cells",2013,73,0.999,8],["sun-0","A Targeted Neuroglial Reporter Line Generated by Homologous Recombination in Human Embryonic Stem Cells",2009,72,1.0,11],["sun-0","NTera2: A Model System to Study Dopaminergic Differentiation of Human Embryonic Stem Cells",2005,72,1,11],["sun-0","Alternative Sources of Pluripotent Stem Cells: Scientific Solutions to an Ethical Dilemma",2008,69,0.998,1],["sun-0","Specimen Collection for Induced Pluripotent Stem Cell Research: Harmonizing the Approach to Informed Consent",2012,69,1.0,3],["sun-0","Generating iPSCs: Translating Cell Reprogramming Science into Scalable and Robust Biomanufacturing Strategies",2015,63,0.999,19],["sun-0","Regulatory Issues for Personalized Pluripotent Cells",2008,60,1.0,1],["sun-0","BG01V: A variant human embryonic stem cell line which exhibits rapid growth after passaging and reliable dopaminergic differentiation",2004,60,0.981,7],["sun-0","Self-renewal and differentiation capabilities are variable between human embryonic stem cell lines I3, I6 and BG01V",2009,52,0.986,7],["sun-0","Stage-Specific Role for Shh in Dopaminergic Differentiation of Human Embryonic Stem Cells Induced by Stromal Cells",2009,50,1,8],["sun-0","Evolutionarily Conserved Transcriptional Co-Expression Guiding Embryonic Stem Cell Differentiation",2008,48,0.985,5],["sun-0","Concise Review: Making and Using Clinically Compliant Pluripotent Stem Cell Lines",2015,48,1.0,1],["sun-0","Mechanisms Controlling Embryonic Stem Cell Self-Renewal and Differentiation",2006,47,0.999,4],["sun-0","Cell-Based Therapy for Neural Disorders \u2014 Anticipating Challenges",2011,47,0.999,1],["sun-0","Compounds with species and cell type specific toxicity identified in a 2000 compound drug screen of neural stem cells and rat mixed cortical",2014,47,1.0,7],["sun-0","The Role of Animal Models in Evaluating Reasonable Safety and Efficacy for Human Trials of Cell-Based Interventions for Neurologic Condition",2008,45,1.0,30],["sun-0","Stromal factors SDF1\u03b1, sFRP1, and VEGFD induce dopaminergic neuron differentiation of human pluripotent stem cells",2012,45,1,12],["sun-0","Chromatin Insulator Elements Block Transgene Silencing in Engineered Human Embryonic Stem Cell Lines at a Defined Chromosome 13 Locus",2011,44,1.0,16],["sun-0","Identification by Automated Screening of a Small Molecule that Selectively Eliminates Neural Stem Cells Derived from hESCs but Not Dopamine ",2009,43,0.838,7],["sun-0","Reprogramming antitumor immunity",2014,42,0.999,4],["sun-0","Cell therapy in critical limb ischemia: current developments and future progress",2012,42,0.996,6],["sun-0","Induced Pluripotent Stem Cell Models to Enable In Vitro Models for Screening in the Central Nervous System",2015,41,1.0,7],["sun-0","Gene Expression Profile of Neuronal Progenitor Cells Derived from hESCs: Activation of Chromosome 11p15.5 and Comparison to Human Dopaminerg",2008,41,0.447,9],["sun-0","International Coordination of Large-Scale Human Induced Pluripotent Stem Cell Initiatives: Wellcome Trust and ISSCR Workshops White Paper",2014,39,1.0,4],["sun-0","High-Throughput Phenotypic Screening of Human Astrocytes to Identify Compounds That Protect Against Oxidative Stress",2016,39,0.401,10],["sun-0","Human-Induced Pluripotent Stem Cells Manufactured Using a Current Good Manufacturing Practice-Compliant Process Differentiate Into Clinicall",2018,39,1.0,4],["sun-0","Regenerative cellular therapies for neurologic diseases",2015,38,1.0,3],["sun-0","Neural differentiation from human embryonic stem cells in a defined adherent culture condition",2007,37,1,5],["sun-0","Enabling Consistency in Pluripotent Stem Cell-Derived Products for Research and Development and Clinical Applications Through Material Stand",2015,36,1.0,25],["sun-0","Optimizing dopaminergic differentiation of pluripotent stem cells for the manufacture of dopaminergic neurons for transplantation",2013,35,0.951,5],["sun-0","Stem Sense: A Proposal for the Classification of Stem Cells",2004,34,0.995,0],["sun-0","Genome Wide Profiling of Dopaminergic Neurons Derived from Human Embryonic and Induced Pluripotent Stem Cells",2013,33,1,6],["sun-0","Self-renewal and cell lineage differentiation strategies in human embryonic stem cells and induced pluripotent stem cells",2014,33,0.957,4],["sun-0","The DISCUSS Project: Induced Pluripotent Stem Cell Lines From Previously Collected Research Biospecimens and Informed Consent: Points to Con",2013,31,1.0,4],["sun-0","Derivation, Characterization, and Neural Differentiation of Integration-Free Induced Pluripotent Stem Cell Lines from Parkinson\u2019s Disease Pa",2016,26,0.999,6],["sun-0","Public Private Partnerships: A Marriage of Necessity",2013,21,0.999,0],["sun-0","Illustrating the potency of current Good Manufacturing Practice\u2013compliant induced pluripotent stem cell lines as a source of multiple cell l",2018,15,0.999,9],["sun-0","Making NSC and Neurons from Patient-Derived Tissue Samples",2019,15,1.0,2],["sun-0","Developing two reference control samples for the Indian population",2018,14,0.999,3],["sun-0","Challenges and Considerations of Preclinical Development for iPSC-Based Myogenic Cell Therapy",2024,11,1.0,4],["sun-0","MPSS profiling of human embryonic stem cells",2004,139,0.871,8],["sun-0","Monitoring Early Differentiation Events in Human Embryonic Stem Cells by Massively Parallel Signature Sequencing and Expressed Sequence Tag ",2004,92,1.0,10],["sun-0","Establishing Standards for the Characterization of Human Embryonic Stem Cell Lines",2005,76,0.998,1],["sun-0","Monitoring Differentiation of Human Embryonic Stem Cells Using Real\u2010Time PCR",2005,72,1.0,7],["sun-0","Whole Genome Analysis of Human Neural Stem Cells Derived from Embryonic Stem Cells and Stem and Progenitor Cells Isolated from Fetal Tissue",2007,71,1.0,14],["sun-0","The microenvironment of the embryonic neural stem cell: Lessons from adult niches?",2007,58,1.0,3],["sun-0","A molecular scheme for improved characterization of human embryonic stem cell lines",2006,54,0.97,10],["sun-0","Stable Expression of the Alkaline Phosphatase Marker Gene by Neural Cells in Culture and after Transplantation into the CNS Using Cells Deri",2002,54,0.997,4],["sun-0","Non Cell-Autonomous Reprogramming of Adult Ocular Progenitors: Generation of Pluripotent Stem Cells without Exogenous Transcription Factors",2009,43,0.998,11],["sun-0","Alternative Sources of Pluripotent Stem Cells: Ethical and Scientific Issues Revisited",2010,37,1.0,1],["sun-0","A large-scale proteomic analysis of human embryonic stem cells",2007,35,0.78,9],["sun-0","Estimating human embryonic stem-cell numbers",2006,34,0.998,1],["sun-0","Motor Neuron Differentiation from Pluripotent Stem Cells and Other Intermediate Proliferative Precursors that can be Discriminated by Lineag",2014,27,1.0,2],["sun-0","Concise Review: Modeling Central Nervous System Diseases Using Induced Pluripotent Stem Cells",2014,23,1.0,5],["sun-0","Stem cell myths",2007,21,1.0,3],["sun-0","Survival and engraftment of dopaminergic neurons manufactured by a Good Manufacturing Practice-compatible process",2014,19,0.873,3],["sun-0","Can cord blood banks transform into induced pluripotent stem cell banks?",2015,17,1.0,1],["sun-0","Human cord blood applications in cell therapy: looking back and look ahead",2012,15,0.434,2],["sun-0","Stem cells for therapy",2013,11,0.999,0],["sun-0","Characterization and in vitro differentiation potential of a new human embryonic stem cell line, ReliCell\u00aehES1",2006,35,1,7],["sun-0","Comparisons between Transcriptional Regulation and RNA Expression in Human Embryonic Stem Cell Lines",2006,35,1.0,5],["sun-0","Transcriptome coexpression map of human embryonic stem cells",2006,26,0.984,7],["sun-0","Stem Cells for the Treatment of Neurological Disorders",2008,21,0.969,2],["sun-0","Derivation and Characterization of Neuronal Precursors and Dopaminergic Neurons From Human Embryonic Stem Cells In Vitro",2006,16,1.0,3],["sun-0","A Single EBV-Based Vector for Stable Episomal Maintenance and Expression of Gfp in Human Embryonic Stem Cells",2009,15,0.671,6],["sun-0","Development of antibodies to human embryonic stem cell antigens",2005,14,0.194,5],["sun-0","Efficient and Rapid Derivation of Primitive Neural Stem Cells and Generation of Brain Subtype Neurons From Human Pluripotent Stem Cells",2013,14,0.875,12],["sun-0","Steering a New Course for Stem Cell Research: NIH's Intramural Center for Regenerative Medicine",2011,13,1.0,1],["sun-0","Concise Review: Non\u2010cell Autonomous Reprogramming: A Nucleic Acid\u2010Free Approach to Induction of Pluripotency",2011,10,1.0,3],["sun-0","Introduction to Thematic Minireview Series: Development of Human Therapeutics Based on Induced Pluripotent Stem Cell (iPSC) Technology",2013,8,1.0,1],["sun-0","iPSC-Based Cell Therapy: An Important Step Forward",2013,7,1.0,0],["sun-0","Pluripotent Stem Cells in Translation: A Food and Drug Administration-National Institutes of Health Collaboration",2013,6,0.999,2],["sun-0","Stem Cells and CNS Development",2001,37,0.367,0],["sun-0","Cross-species transcriptional profiles establish a functional portrait of embryonic stem cells",2006,32,1.0,6],["sun-0","Development of a Focused Microarray to Assess Human Embryonic Stem Cell Differentiation",2005,30,1.0,11],["sun-0","Stem Cells: Shibboleths of Development, Part II: Toward a Functional Definition",2005,30,0.984,6],["sun-0","How Many Human Embryonic Stem Cell Lines Are Sufficient? A U.S. Perspective",2006,22,1.0,1],["sun-0","Stage-Dependent Olig2 Expression in Motor Neurons and Oligodendrocytes Differentiated from Embryonic Stem Cells",2007,18,1.0,3],["sun-0","Stem cells and regenerative medicine",2012,12,1.0,0],["sun-0","Neural Development and Stem Cells",2012,11,0.487,0],["sun-0","Memoirs of a Reincarnated T Cell",2013,11,1.0,2],["sun-0","Isolation of Lineage-Restricted Neural Precursors from Cultured ES Cells",2003,11,1,1],["sun-0","Are there morally acceptable alternatives to blastocyst derived ESC?",2006,10,0.999,0],["sun-0","Massively Parallel Signature Sequencing",2006,8,0.999,9],["sun-0","Development of a Multiplex PCR Assay for Characterization of Embryonic Stem Cells",2013,7,1.0,4],["sun-0","Musings on genome medicine: is there hope for ethical and safe stem cell therapeutics?",2009,7,1.0,1],["sun-0","Developing Induced Pluripotent Stem Cell-Based Therapy for the Masses",2015,7,0.999,1],["sun-0","The therapeutic potential of embryonic stem cells: A focus on stem cell stability.",2006,7,0.756,1],["sun-0","Gene Expression Analysis of RNA Purified from Embryonic Stem Cells and Embryoid Body\u2013Derived Cells Using a High\u2010Throughput Microarray Platfo",2007,6,0.997,3],["sun-0","Applications of Quantitative Polymerase Chain Reaction Protein Assays During Reprogramming",2011,6,1.0,12],["sun-0","The NIH and the Regenerative Medicine Field",2012,5,0.998,0],["sun-0","Tumorigenesis and Embryonic Stem Cell-Derived Therapy",2007,10,0.999,0],["sun-0","Toward cell replacement therapy: promises and caveats",2003,44,1.0,1],["sun-0","Designing, Testing, and Validating a Focused Stem Cell Microarray for Characterization of Neural Stem Cells and Progenitor Cells",2003,27,0.999,7],["sun-0","Multipotent and restricted precursors in the central nervous system",1999,27,0.97,0],["sun-0","Conservation and Variation of Gene Regulation in Embryonic Stem Cells Assessed by Comparative Genomics",2005,20,1.0,3],["sun-0","Human Embryonic Stem Cells",2003,20,0.922,1],["sun-0","A Panel of Tests to Standardize the Characterization of Human Embryonic Stem Cells",2007,11,1.0,4],["sun-0","Controlled genetic modification of stem cells for developing drug discovery tools and novel therapeutic applications.",2008,10,0.984,1],["sun-0","Human Embryonic vs Adult Stem Cells for Transplantation Therapies",2003,5,1.0,1],["sun-0","Stem and Precursor Cells for Transplant Therapy",2007,3,0.998,1],["sun-0","Human Embryonic Stem Cells, Dopaminergic Neurons, and Pathways for Developing a Parkinson's Disease Therapy",2007,3,1.0,8],["sun-0","Neural Transplantation and Stem Cells",2009,2,1.0,1],["sun-0","Generating Different Neural Cell Types from iPSCs for Screening and Cell Therapy for CNS Disorders",2015,2,1.0,1],["sun-0","Transdifferentiation in the Nervous System",2012,1,0.999,1],["sun-0","Derivation of Human-Induced Pluripotent Stem Cells in Chemically Defined Medium",2017,1,1.0,1],["sun-0","Human Embryonic vs Adult Stem Cells for Transplantation Therapies",2003,1,0.989,1],["sun-0","Banking of Pluripotent Stem Cells: Issues and Opportunities from the NIH Perspective",2014,1,1.0,2],["sun-0","Issues in Development Karyotypic Stability, Genotyping, Differentiation, Feeder-Free Maintenance, and Gene Expression Sampling in Three Huma",2004,3,1,9],["sun-0","Embryonic Stem Cells",2013,3,1.0,0],["sun-0","Stem Cells and Treatment of Neurodegenerative Disorders",2005,2,0.997,1],["sun-0","Therapeutic Uses of Embryonic Stem Cells",2003,1,1.0,2],["sun-0","Setting up a Facility for Human Embryonic Stem Cell Research",2007,1,0.999,3],["sun-0","Alzheimer: Stem Cell Therapies for Neurodegenerative Disease: How Should We Push Ahead?",2005,1,0.942,57],["sun-0","Stem Cells, Embryonic",2006,0,1.0,0],["sun-0","The Landscape of Cell Tissues and Organs",2014,0,1.0,0],["sun-0","Advances in Induced Pluripotent Stem Cell Technologies",2012,0,1.0,4],["sun-0","One Successful Series Begets Another",2006,0,0.191,0],["sun-0","Keeping things simple",2011,0,1.0,0],["sun-0","iPSC-Derived Products: Current Regulations",2015,0,0.994,1],["sun-0","Genomic Analyses of Neural Stem Cells",2014,0,0.997,2],["sun-0","Setting up a Research Scale Laboratory for Human Pluripotent Stem Cells",2012,0,0.999,2],["sun-0","Making multiple therapeutic cell products from a cGMP-compliant iPSC line",2017,0,0.999,5],["sun-0","Resource cGMP-ManufacturedHumanInducedPluripotentStemCellsAreAvailablefor Pre-clinical and Clinical Applications",2015,0,1.0,10],["sun-0","Special issue on stem cell and tissue engineering in development, disease, and repair",2018,0,1.0,2],["sun-0","Therapeutic Uses of Embryonic Stem Cells",2003,0,0.873,2],["sun-0","Transdifferentiation in the Nervous System",2006,0,0.461,1],["sun-0","Sources of Cells for CNS Therapy",2003,0,0.919,2],["sun-0","Neural Differentiation from Pluripotent Stem Cells",2013,0,0.999,1],["sun-0","Neural Stem Cells differentiation after Implantation into the Brain(THE SIXTH JAPAN-CHINA JOINT SEMINAR ON HISTOCHEMISTRY AND CYTOCHEMISTRY)",2002,0,0.676,2],["sun-1","Disruption of neurogenesis by amyloid \u03b2\u2010peptide, and perturbed neural progenitor cell homeostasis, in models of Alzheimer's disease",2002,466,0.999,5],["sun-1","Isolation of Lineage-Restricted Neuronal Precursors from Multipotent Neuroepithelial Stem Cells",1997,368,1,3],["sun-1","Control of oligodendrocyte differentiation by the<i>Nkx2.2</i>homeodomain transcription factor",2001,355,1.0,9],["sun-1","A tripotential glial precursor cell is present in the developing spinal cord",1998,312,1.0,2],["sun-1","Nitric oxide acts in a positive feedback loop with BDNF to regulate neural progenitor cell proliferation and differentiation in the mammalia",2003,311,1.0,4],["sun-1","Efficient Generation of Astrocytes from Human Pluripotent Stem Cells in Defined Conditions",2013,274,0.999,4],["sun-1","CD44 expression identifies astrocyte-restricted precursor cells",2004,226,1.0,9],["sun-1","Endogenous Nkx2.2+/Olig2+ oligodendrocyte precursor cells fail to remyelinate the demyelinated adult rat spinal cord in the absence of astro",2004,191,1,6],["sun-1","Inflammation stimulates myelination by transplanted oligodendrocyte precursor cells",2006,172,1,6],["sun-1","Sox2 expression defines a heterogeneous population of neurosphere\u2010forming cells in the adult murine brain",2005,168,1.0,6],["sun-1","Patterns of laminins and integrins in the embryonic ventricular zone of the CNS",2007,134,0.999,9],["sun-1","Neuroepithelial Stem Cells from the Embryonic Spinal Cord: Isolation, Characterization, and Clonal Analysis",1997,296,0.999,2],["sun-1","Multipotent and restricted precursors in the central nervous system",1999,267,0.999,0],["sun-1","Properties of a Fetal Multipotent Neural Stem Cell (NEP Cell)",2002,189,0.998,7],["sun-1","Spinal Cord Neuronal Precursors Generate Multiple Neuronal Phenotypes in Culture",1998,185,0.999,4],["sun-1","Neural stem cells and regulation of cell number",2002,174,1.0,1],["sun-1","Oligodendrocyte and astrocyte development in rodents: An in situ and immunohistological analysis during embryonic development",2002,164,1.0,6],["sun-1","The stem-cell menagerie",2003,161,1.0,1],["sun-1","Hes1 but not Hes5 regulates an astrocyte versus oligodendrocyte fate choice in glial restricted precursors",2003,137,1.0,3],["sun-1","Transplantation of glial\u2010restricted precursor cells into the adult spinal cord: Survival, glial\u2010specific differentiation, and preferential m",2003,131,1.0,4],["sun-1","Immortalization and controlledin vitro differentiation of murine multipotent neural crest stem cells",1997,109,0.999,1],["sun-1","Neural precursor cells can be delivered into the injured cervical spinal cord by intrathecal injection at the lumbar cord",2005,104,1.0,4],["sun-1","Differential fate of multipotent and lineage-restricted neural precursors following transplantation into the adult CNS",2004,101,1.0,5],["sun-1","Increased Dentate Neurogenesis After Grafting of Glial Restricted Progenitors or Neural Stem Cells in the Aging Hippocampus",2007,86,1,5],["sun-1","Evidence that nucleocytoplasmic Olig2 translocation mediates brain\u2010injury\u2010induced differentiation of glial precursors to astrocytes",2007,84,0.998,11],["sun-1","Schwann cell\u2010like differentiation by adult oligodendrocyte precursor cells following engraftment into the demyelinated spinal cord is BMP\u2010de",2006,79,1.0,8],["sun-1","Phenotypic analysis of astrocytes derived from glial restricted precursors and their impact on axon regeneration",2011,76,1.0,4],["sun-1","Truncated tyrosine kinase B brain\u2010derived neurotrophic factor receptor directs cortical neural stem cells to a glial cell fate by a novel si",2006,74,1,6],["sun-1","Neurogenin3 Participates in Gliogenesis in the Developing Vertebrate Spinal Cord",2003,66,1,9],["sun-1","Expression profiling of human glial precursors",2008,35,0.195,9],["sun-1","Immunocytochemical and Physiological Characterization of a Population of Cultured Human Neural Precursors",2000,93,1.0,3],["sun-1","Expression of EGF receptor and FGF receptor isoforms during neuroepithelial stem cell differentiation",1999,91,1.0,2],["sun-1","Glial Progenitors in the CNS and Possible Lineage Relationships Among Them",2004,64,0.999,1],["sun-1","Neural stem cells in aging and disease",2002,55,1.0,1],["sun-1","Aging and neuronal replacement",2004,52,1,1],["sun-1","Immortalized neural stem cells differ from nonimmortalized cortical neurospheres and cerebellar granule cell progenitors",2004,50,1.0,5],["sun-1","Neural Stem Cell Therapy in the Aging Brain: Pitfalls and Possibilities",2003,44,1.0,1],["sun-1","Stem and Precursor Cells in the Nervous System",2004,43,1.0,0],["sun-1","Neurogenesis in T\u03b1-1 tubulin transgenic mice during development and after injury",2005,40,1.0,7],["sun-1","Isolation, Characterization and Preclinical Development of Human Glial-Restricted Progenitor Cells for Treatment of Neurological Disorders",2010,37,0.982,6],["sun-1","Revisiting the astrocyte\u2013oligodendrocyte relationship in the adult CNS",2007,36,1.0,5],["sun-1","Distinguishing Features of Progenitor Cells in the Late Embryonic and Adult Hippocampus",2003,31,1.0,4],["sun-1","Human Embryonic Stem Cells",2007,20,0.999,1],["sun-1","Cell lineage in the developing neural tube",1998,59,1.0,1],["sun-1","Olig genes are expressed in a heterogeneous population of precursor cells in the developing spinal cord",2003,58,1.0,1],["sun-1","Isolation of a glial\u2010restricted tripotential cell line from embryonic spinal cord cultures",2002,46,1.0,4],["sun-1","Cell lineage in the developing neural tube",1998,41,1.0,1],["sun-1","Isolation of Neural Stem and Precursor Cells from Rodent Tissue",2008,19,0.997,3],["sun-1","Region-specific differentiation of neural tube-derived neuronal restricted progenitor cells after heterotopic transplantation",2000,73,1,5],["sun-1","Precursor cells for transplantation",2000,33,0.999,1],["sun-1","Oligodendrocytes, GRPs and MNOPs",2003,20,0.999,1],["sun-1","Isolation of Stem and Precursor Cells from Fetal Tissue",2003,17,0.999,2],["sun-1","Identifying and tracking neural stem cells",2003,29,0.999,3],["sun-1","Human neural precursor cells \u2013 an in vitro characterization",2002,16,1.0,5],["sun-1","Expression of EGF receptor and FGF receptor isoforms during neuroepithelial stem cell differentiation",1999,12,0.998,2],["sun-1","Neural Cell Specification during Development",2004,2,1.0,0],["sun-1","Characterization and Distribution of a New Cell Surface Marker of Neuronal Precursors",2000,11,1.0,5],["sun-1","Aging and neural stem cells",2002,4,1.0,1],["sun-1","Stem Cells and Aging",2005,2,1.0,1],["sun-1","Isolation of Stem Cells from Multiple Sites in the CNS",2003,0,1.0,1],["sun-2","In search of \u201cstemness\u201d",2004,166,0.999,2],["sun-2","New insights and updated guidelines for epigenome-wide association studies",2014,33,1,15],["sun-2","Human embryonic stem cells have a unique epigenetic signature",2006,271,1.0,26],["sun-2","Role of DNA Methylation and Epigenetics in Stem Cells",2009,1,1.0,1],["sun-2","Large-Scale Analysis of Neural Stem Cells and Progenitor Cells",2006,7,0.999,1],["sun-2","Designing, Testing, and Validating a Microarray for Stem Cell Characterization",2006,3,0.999,4],["sun-2","Large\u2010Scale Genomic Analysis of Stem Cell Populations",2007,0,0.558,1],["sun-2","Genomic-QC: large-scale genomic data mining to assess the quality of HiPSC lines",2019,0,0.909,2],["sun-2","Transcriptome Dynamics of Developing Photoreceptors in Three-Dimensional Retina Cultures Recapitulates Temporal Sequence of Human Cone and R",2015,164,1,7],["sun-2","Developing Cellular Therapies for Retinal Degenerative Diseases",2014,74,1.0,8],["sun-2","Treatment Paradigms for Retinal and Macular Diseases Using 3-D Retina Cultures Derived From Human Reporter Pluripotent Stem Cell Lines",2016,39,0.999,13],["sun-2","The cellular function of MASH1 in autonomic neurogenesis",1995,243,0.999,3],["sun-2","Regulation of eye development by frizzled signaling in <i>Xenopus</i>",2001,100,0.999,5],["sun-2","Characterization of avian frizzled genes in cranial placode development",2000,66,0.996,3],["sun-2","Membrane properties of rat embryonic multipotent neural stem cells",2003,177,0.999,6],["sun-2","Gap junctional communication is required to maintain mouse cortical neural progenitor cells in a proliferative state",2004,120,1,6],["sun-2","RISC in PD: the impact of microRNAs in Parkinson's disease cellular and molecular pathogenesis",2013,84,0.997,3],["sun-2","Contrasting molecular composition and channel properties of AMPA receptors on chick auditory and brainstem motor neurons",2000,65,0.999,5],["sun-2","Brg1 is required for murine neural stem cell maintenance and gliogenesis",2005,149,1.0,9],["sun-2","SDF1\u03b1/CXCR4 signaling stimulates \u03b2-catenin transcriptional activity in rat neural progenitors",2006,52,0.997,4],["sun-2","Massively Parallel Signature Sequencing Profiling of Fetal Human Neural Precursor Cells",2006,21,0.998,9],["sun-2","Coordinate Regulation of Choline Acetyltransferase, Tyrosine Hydroxylase, and Neuropeptide mRNAs by Ciliary Neurotrophic Factor and Leukemia",1994,68,0.916,6],["sun-2","Retroviral manipulation of the expression of bone morphogenetic protein receptor Ia by SVZa progenitor cells leads to changes in their p19<s",2001,36,0.999,4],["sun-2","Phytochemical analysis of Pithecellobium dulce (Roxb.) Benth. unripe aril via LCMS/MS and evaluation of its antiproliferative activity again",2023,3,0.359,4],["sun-2","Frizzled-4 expression during chick kidney development",2000,16,1,5],["sun-3","Contributors",2007,0,0.5,92],["sun-3","Contributors",2014,0,0.5,82],["sun-3","Contributors",2014,0,0.5,99],["sun-3","Transplantation of human embryonic stem cells onto a partially wounded human cornea <i>in vitro</i>",2012,47,0.292,7],["sun-3","Nucleic Acid and Non-Nucleic Acid-Based Reprogramming of Adult Limbal Progenitors to Pluripotency",2012,10,0.996,8],["sun-3","Comparison of the Gene Expression Profiles of Human Fetal Cortical Astrocytes with Pluripotent Stem Cell Derived Neural Stem Cells Identifie",2014,46,0.999,7],["sun-3","Microarray analysis of selected genes in neural stem and progenitor cells",2002,93,0.998,6],["sun-3","iPSC Crowdsourcing: A Model for Obtaining Large Panels of Stem Cell Lines for Screening",2013,24,0.997,0],["sun-3","Drug Discovery and Gene Discovery",2001,1,0.995,1],["sun-3","Drug Discovery and Gene Discovery",2003,0,0.838,1],["sun-3","Anthony Atala (ed): Progenitor and Stem Cell Technologies and Therapies",2013,0,0.389,0],["sun-3","\u03b21 Integrin Maintains Integrity of the Embryonic Neocortical Stem Cell Niche",2009,182,1.0,14],["sun-3","Discovery biology of neuropsychiatric syndromes (DBNS): a center for integrating clinical medicine and basic science",2018,41,0.156,32],["sun-3","Adverse childhood experiences in families with multiple members diagnosed to have psychiatric illnesses",2020,16,0.781,52],["sun-3","Comparative evaluation of bioactive phytochemicals and cytotoxic activity of unripe and ripe aril extracts of Pithecellobium dulce (Roxb.) B",2023,3,0.259,3],["sun-3","Embryonic Stem Cell Research and U.S. Policy",2006,7,0.584,0],["sun-3","Mired in the Quagmire of Uncertainty: The \"Catch-22\" of Embryonic Stem Cell Research",2006,2,0.826,0],["sun-3","Synchronously performed prostatic fine needle aspiration and core biopsies--an appraisal.",1997,0,0.99,2],["sun-3","The Brenner way",2003,0,0.065,0],["sun-4","Human Umbilical Cord Matrix Stem Cells: Preliminary Characterization and Effect of Transplantation in a Rodent Model of Parkinson's Disease",2005,718,1.0,9],["sun-4","PDGF, TGF-\u03b2, and FGF signaling is important for differentiation and growth of mesenchymal stem cells (MSCs): transcriptional profiling can i",2008,575,1.0,10],["sun-4","A novel serum-free medium for the expansion of human mesenchymal stem cells",2010,253,0.986,4],["sun-4","Soliciting Strategies for Developing Cell-Based Reference Materials to Advance Mesenchymal Stromal Cell Research and Clinical Translation",2014,128,1,9],["sun-4","Mesenchymal Stem Cell Assays and Applications",2011,82,1,2],["sun-4","Global Characterization and Genomic Stability of Human MultiStem, A Multipotent Adult Progenitor Cell.",2009,69,0.998,8],["sun-4","Research using Mesenchymal Stem/Stromal Cells: quality metric towards developing a reference material",2015,39,1,4],["sun-4","Exome sequencing in families with severe mental illness identifies novel and rare variants in genes implicated in Mendelian neuropsychiatric",2018,39,0.849,8],["sun-4","The Future State of Newborn Stem Cell Banking",2019,29,0.999,2],["sun-4","Cross-diagnostic evaluation of minor physical anomalies in psychiatric disorders",2021,13,0.121,38],["sun-4","Whole exome sequencing in dense families suggests genetic pleiotropy amongst Mendelian and complex neuropsychiatric syndromes",2022,5,0.999,42],["sun-4","INDEX-db: The Indian Exome Reference Database (Phase I)",2019,15,1.0,36],["sun-4","Mesenchymal Stem Cell Assays and Applications",2011,14,0.987,2],["sun-4","Manufacturing Cells for Clinical Use",2016,9,0.999,3],["sun-4","Stem Cell and Precursor Cell Therapy",2002,20,1.0,1],["sun-4","Exome sequencing in families with severe mental illness identifies novel and rare variants in genes implicated in Mendelian neuropsychiatric",2018,5,0.996,8],["sun-4","INDEX-db: The Indian Exome Reference database (Phase-I)",2018,3,1.0,6],["sun-4","SU8EXOME SEQUENCING IN FAMILIES WITH SEVERE MENTAL ILLNESSES",2019,0,0.948,8],["sun-5","Setting Global Standards for Stem Cell Research and Clinical Translation: The\u00a02016 ISSCR Guidelines",2016,223,1.0,24],["sun-5","Isolation and Production of Cells Suitable for Human Therapy: Challenges Ahead",2008,133,0.999,5],["sun-5","Cellular lifespan and senescence signaling in embryonic stem cells",2004,103,0.999,2],["sun-5","Rescue of an In Vitro Neuron Phenotype Identified in Niemann-Pick Disease, Type C1 Induced Pluripotent Stem Cell-Derived Neurons by Modulati",2015,42,0.999,7],["sun-5","Funding Translational Work in Cell-Based Therapy",2011,27,1.0,0],["sun-5","Evaluation of Cholesterol Reduction Activity of Methyl-\u03b2-cyclodextrin Using Differentiated Human Neurons and Astrocytes",2012,22,1.0,5],["sun-5","Overcoming Challenges to Initiating Cell Therapy Clinical Trials in Rapidly Developing Countries: India as a Model",2013,21,1.0,3],["sun-5","Cell Therapy Worldwide: An Incipient Revolution",2015,21,1.0,2],["sun-5","Report of the international conference on regulatory endeavors towards the sound development of human cell therapy products",2015,8,1.0,23],["sun-5","LULL(ed) into complacency: a perspective on licenses and stem cell translational science",2013,5,0.997,0],["sun-5","Stem Sense: A Proposal for the Classification of Stem Cells",2004,9,0.828,0],["sun-5","National Institutes of Health Center for Regenerative Medicine: Putting Science into Practice",2013,2,0.999,0],["sun-5","National Institutes of Health: A Catalyst in Advancing Regenerative Medicine Science Into Practice",2015,2,0.999,0],["sun-5","Erratum to \u201cReport of the international conference on regulatory endeavors towards the sound development of human cell therapy products\u201d [Bi",2015,1,0.929,23],["sun-5","Telomerase in brain development and neurodegenerative disorders",2001,0,1.0,3],["sun-5","Need for DISCUSS(ion)",2014,0,0.999,0],["sun-6","Transcription Activator-Like Effector Nuclease (TALEN)-Mediated CLYBL Targeting Enables Enhanced Transgene Expression and One-Step Generatio",2015,138,1,7],["sun-6","Whole-genome mutational burden analysis of three pluripotency induction methods",2016,132,1,11],["sun-6","Stable Enhanced Green Fluorescent Protein Expression After Differentiation and Transplantation of Reporter Human Induced Pluripotent Stem Ce",2014,100,1,7],["sun-6","Creation of Engineered Human Embryonic Stem Cell Lines Using phiC31 Integrase",2007,110,1.0,10],["sun-6","A platform for rapid generation of single and multiplexed reporters in human iPSC lines",2015,52,0.998,5],["sun-6","Genetic Modification in Human Pluripotent Stem Cells by Homologous Recombination and CRISPR/Cas9 System",2014,37,1,4],["sun-6","Human Induced Pluripotent Stem Cell <i>NEUROG2</i> Dual Knockin Reporter Lines Generated by the CRISPR/Cas9 System",2015,25,1,6],["sun-6","Generation of Platform Human Embryonic Stem Cell Lines That Allow Efficient Targeting at a Predetermined Genomic Location",2009,35,1.0,9],["sun-6","Generation of GFP Reporter Human Induced Pluripotent Stem Cells Using AAVS1 Safe Harbor Transcription Activator\u2010Like Effector Nuclease",2014,21,0.999,2],["sun-6","Gene Targeting in Human Pluripotent Stem Cells",2011,17,1.0,1],["sun-6","Transfection, Selection, and Colony-picking of Human Induced Pluripotent Stem Cells TALEN-targeted with a GFP Gene into the AAVS1 Safe Harbo",2015,4,0.686,3],["sun-6","Transfection, Selection, and Colony-picking of Human Induced Pluripotent Stem Cells TALEN-targeted with a GFP Gene into the AAVS1 Safe Harbo",2015,12,1,3],["sun-6","Selectable Markers for Gene Therapy",2015,0,1.0,6],["sun-7","Pleiotrophin Enhances Clonal Growth and Long-Term Expansion of Human Embryonic Stem Cells",2007,73,0.996,10],["sun-7","Glutamate transporter expression and function in human glial progenitors",2003,85,1.0,6],["sun-7","Enhanced differentiation of human neural crest stem cells towards the Schwann cell lineage by aligned electrospun fiber matrix",2013,83,1.0,7],["sun-7","Using Human Pluripotent Stem Cell\u2013Derived Dopaminergic Neurons to Evaluate Candidate Parkinson\u2019s Disease Therapeutic Agents in MPP+ and Rote",2013,64,0.999,3],["sun-7","Glial restricted precursors protect against chronic glutamate neurotoxicity of motor neurons in vitro",2005,46,1.0,9],["sun-7","Identification and characterization of neuronal precursors and their progeny from human fetal tissue",2001,74,0.998,6],["sun-7","Fate of Immortalized Human Neuronal Progenitor Cells Transplanted in Rat Spinal Cord",2005,38,0.282,5],["sun-7","Regulation of vasoactive intestinal peptide expression in sympathetic neurons in culture and after axotomy: The role of cholinergic differen",1994,113,0.999,3],["sun-7","Flip and flop isoforms of chick brain AMPA receptor subunits",1996,31,0.998,2],["sun-7","A Focused Microarray to Assess Dopaminergic and Glial Cell Differentiation from Fetal Tissue or Embryonic Stem Cells",2005,17,0.999,7],["sun-7","Sources of Cells for CNS Therapy",2003,1,1.0,2],["sun-7","Comparison of the properties of cholinergic differentiation factors and examination of their possible role in vivo",2011,0,0.991,0],["sun-8","Focal transplantation\u2013based astrocyte replacement is neuroprotective in a model of motor neuron disease",2008,440,1.0,6],["sun-8","iPSC-Derived Dopamine Neurons Reveal Differences between Monozygotic Twins Discordant for Parkinson\u2019s Disease",2014,225,0.996,20],["sun-8","Mitochondrial Alterations by PARKIN in Dopaminergic Neurons Using PARK2 Patient-Specific and PARK2 Knockout Isogenic iPSC Lines",2015,132,1.0,6],["sun-8","Human Glial-Restricted Progenitor Transplantation into Cervical Spinal Cord of the SOD1G93A Mouse Model of ALS",2011,119,1.0,8],["sun-8","Adult glial precursor proliferation in mutant SOD1<sup>G93A</sup> mice",2007,85,1.0,8],["sun-8","Disease Progression After Bone Marrow Transplantation in a Model of Multiple Sclerosis Is Associated With Chronic Microglial and Glial Proge",2007,36,0.999,13],["sun-8","Impaired SDF1/CXCR4 signaling in glial progenitors derived from SOD1<sup>G93A</sup> mice",2007,21,1.0,5],["sun-8","Autoimmune Modulation of Astrocyte-Mediated Homeostasis",2006,10,0.999,2],["sun-8","Stem cells and neurodegenerative disorders",2002,0,0.999,3],["sun-8","Erratum to \u201cneurogenin3 participates in gliogenesis in the developing vertebrate spinal cord\u201d",2003,0,0.786,10],["sun-9","Hyaluronan accumulates in demyelinated lesions and inhibits oligodendrocyte progenitor maturation",2005,603,1,13],["sun-9","CD44 overexpression by oligodendrocytes: A novel mouse model of inflammation\u2010independent demyelination and dysmyelination",2004,68,1.0,8],["sun-9","Heparin Is a Unique Marker of Progenitors in the Glial Cell Lineage",1999,40,1.0,4],["sun-9","Characterization of Progenitor-Cell-Specific Genes Identified by Subtractive Suppression Hybridization",2004,4,1.0,3],["sun-10","Human Neural Crest Stem Cells Derived from Human ESCs and Induced Pluripotent Stem Cells: Induction, Maintenance, and Differentiation into F",2012,178,0.99,7],["sun-10","A rare case of bilateral basal cell adenomas in the parotid glands",2008,7,1,5],["sun-10","Human cord blood stem cell applications in cell therapy.",2009,2,0.879,2],["sun-10","Erratum to \u201cgrafted lineage-restricted precursors differentiate exclusively into neurons in the adult spinal cord\u201d",2003,2,0.967,4],["sun-11","Preclinical Biosafety Evaluation of Cell-based Therapies",2014,31,0.999,3],["sun-11","New directions in cellular therapy of cancer: a summary of the summit on cellular therapy for cancer",2012,52,1,17],["sun-11","Functional SDF1\u03b1/CXCR4 signaling in the developing spinal cord",2005,45,1.0,4],["sun-11","Seeing is Believing: Are Cancer Stem Cells the Loch Ness Monster of Tumor Biology?",2010,33,0.999,3]]};
+const $ = (id) => document.getElementById(id);
+const fmt = (n) => n.toLocaleString("en-US");
+const rand = (seed) => { let s = (seed % 2147483646) + 1; return () => (s = (s * 16807) % 2147483647) / 2147483647; };
+
+// Field palette: no purples (purple = selection + HUD only).
+const PALETTE = ["#6fc3ff","#ffc94d","#5fe0a8","#ff6f5e","#ff4d6d","#b6e35a","#ff7fd0","#3fd9d9","#ff9a2e","#ffb3a0","#c9f2ff","#8f9cff"];
+// Each field gets its own surface texture, applied to voxel colours only (shape stays a perfect cube).
+const PATTERNS = ["continents","bands","caps","craters","stripes","speckle","equator","checker","continents","bands","craters","caps"];
+
+// $("who").textContent = `${DATA.author} · ${DATA.stats.firstYear}–${DATA.stats.lastYear}`;
+const _unusedK = [["Papers", DATA.stats.totalPapers], ["Citations", DATA.stats.totalCitations], ["Systems", DATA.domains.length]]
+  .map(([k, v]) => `<div><small>${k}</small><strong>${fmt(v)}</strong></div>`).join("");
+
+// ------------------------------------------------------------------ renderer + camera
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.setClearColor(0x0e0c13);
+renderer.autoClear = false;
+$("stage").appendChild(renderer.domElement);
+const aspect = () => innerWidth / innerHeight;
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x0e0c13, 2600, 11000);   // far systems recede
+// A narrow FOV keeps cubes reading as true cubes while still giving real depth.
+const camera = new THREE.PerspectiveCamera(30, aspect(), 1, 140000);
+// Bloom, as on the original site: only the brightest pixels (suns) spill light.
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.9, 0.6, 0.9);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = 0.08;
+controls.minPolarAngle = 0.02; controls.maxPolarAngle = Math.PI - 0.02;   // go fully vertical either way
+controls.minDistance = 60; controls.maxDistance = 14000;
+controls.screenSpacePanning = true;
+controls.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
+controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
+const ISO_DIR = new THREE.Vector3(Math.SQRT1_2, Math.tan(Math.atan(1 / Math.SQRT2)), Math.SQRT1_2).normalize();
+camera.position.copy(ISO_DIR).multiplyScalar(3000);
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+const key = new THREE.DirectionalLight(0xffffff, 0.45); key.position.set(-0.5, 1, 0.3); scene.add(key);
+const bands = new Uint8Array([80, 165, 255]);
+const gradient = new THREE.DataTexture(bands, 3, 1, THREE.RedFormat);
+gradient.minFilter = gradient.magFilter = THREE.NearestFilter; gradient.needsUpdate = true;
+
+// ------------------------------------------------------------------ stars
+// A deep 3D shell (plus nearer dust), so the sky never runs out when you zoom out.
+function starLayer(n, rMin, rMax, size, opacity, seed) {
+  const r = rand(seed), pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
+  const tints = [[1, 1, 1], [0.8, 0.85, 1], [1, 0.92, 0.8], [0.85, 0.8, 1]];
+  for (let i = 0; i < n; i++) {
+    const u = r() * 2 - 1, th = r() * Math.PI * 2, s = Math.sqrt(1 - u * u), R = rMin + Math.pow(r(), 0.6) * (rMax - rMin);
+    pos.set([Math.cos(th) * s * R, u * R, Math.sin(th) * s * R], i * 3);
+    const t = tints[Math.floor(r() * tints.length)], b = 0.55 + r() * 0.45;
+    col.set([t[0] * b, t[1] * b, t[2] * b], i * 3);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute("color", new THREE.BufferAttribute(col, 3));
+  const pts = new THREE.Points(geo, new THREE.PointsMaterial({ size, sizeAttenuation: false, vertexColors: true, transparent: true, opacity, depthWrite: false, fog: false }));
+  pts.frustumCulled = false; scene.add(pts); return pts;
+}
+// The original site's painted galaxy panorama as a skybox (Milky Way band, nebula colour, depth),
+// then thousands of real points in front of it at several depths and sizes.
+new THREE.TextureLoader().load("../../../artifacts/cosmograph/public/textures/galaxy_starfield.png", (tex) => {
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(60000, 60, 40), new THREE.MeshBasicMaterial({ map: tex, side: THREE.BackSide, depthWrite: false, fog: false }));
+  sky.scale.x = -1; sky.renderOrder = -10; scene.add(sky);
+});
+starLayer(9000, 20000, 50000, 2.2, 0.95, 11);
+starLayer(5000, 6000, 20000, 1.6, 0.75, 23);
+starLayer(1500, 3000, 9000, 2.8, 0.6, 29);
+const dust = starLayer(900, 200, 2600, 1.1, 0.35, 37);
+
+// ------------------------------------------------------------------ cube bodies
+const glowTex = (() => {
+  const c = document.createElement("canvas"); c.width = c.height = 128;
+  const x = c.getContext("2d"), gr = x.createRadialGradient(64, 64, 0, 64, 64, 64); // same stops as the original site
+  gr.addColorStop(0, "rgba(255,255,255,1)"); gr.addColorStop(0.18, "rgba(255,255,255,0.7)"); gr.addColorStop(0.4, "rgba(255,244,214,0.28)"); gr.addColorStop(0.75, "rgba(255,238,200,0.06)"); gr.addColorStop(1, "rgba(255,238,200,0)");
+  x.fillStyle = gr; x.fillRect(0, 0, 128, 128);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+})();
+const box = new THREE.BoxGeometry(1, 1, 1);
+const outlineMat = new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.BackSide });
+const VOXEL = 4.2;
+const LMAX = Math.log1p(Math.max(...DATA.papers.map((p) => p[3])));
+// Continuous: every integer side length 1..9, from a log scale of citations.
+const cubeN = (c) => 1 + Math.round(8 * Math.pow(Math.log1p(c) / LMAX, 1.6));
+const shellCache = new Map();
+function shell(n) {
+  if (shellCache.has(n)) return shellCache.get(n);
+  const h = (n - 1) / 2, out = [];
+  for (let x = -h; x <= h; x++) for (let y = -h; y <= h; y++) for (let z = -h; z <= h; z++)
+    if (Math.abs(x) === h || Math.abs(y) === h || Math.abs(z) === h) out.push([x, y, z]);
+  shellCache.set(n, out); return out;
+}
+const tone = (c, k) => c.clone().lerp(new THREE.Color(k > 0 ? 0xffffff : 0x0b0a10), Math.abs(k));
+// Surface patterns: returns 0 base, 1 dark, 2 light, 3 accent.
+function voxelTone(pattern, ix, iy, iz, n, seed, r) {
+  if (n === 1) return 0;
+  switch (pattern) {
+    case "bands": return Math.floor(iy * 4 / n) % 2 ? 1 : (iy === n - 1 ? 2 : 0);
+    case "caps": return iy === 0 || iy === n - 1 ? 2 : (r() < 0.12 ? 1 : 0);
+    case "craters": return r() < 0.14 ? 1 : (r() < 0.06 ? 2 : 0);
+    case "stripes": return (ix + iz + seed) % 3 === 0 ? 1 : 0;
+    case "speckle": return r() < 0.28 ? 2 : 0;
+    case "equator": return iy === Math.floor(n / 2) ? 3 : (iy > n / 2 ? 2 : 0);
+    case "checker": return (ix + iy + iz) % 2 ? 1 : 0;
+    default: { // continents
+      const s = Math.sin(ix * 1.3 + seed) + Math.cos(iz * 1.1 + seed * 2) + Math.sin(iy * 0.9 + seed * 3);
+      return s > 0.8 ? 1 : s < -1.3 ? 2 : 0;
+    }
+  }
+}
+
+// ------------------------------------------------------------------ systems
+const byDomain = new Map(DATA.domains.map((dm) => [dm.id, []]));
+DATA.papers.forEach((p, i) => byDomain.get(p[0])?.push(i));
+const maxYear = DATA.stats.lastYear, minYear = DATA.stats.firstYear;
+const systems = [], pickables = [];
+
+DATA.domains.forEach((dm, si) => {
+  const color = new THREE.Color(PALETTE[si % PALETTE.length]);
+  const pattern = PATTERNS[si % PATTERNS.length];
+  const g = new THREE.Group(); scene.add(g);
+  const r = rand(si * 7919 + 13);
+
+  // Sun: a bright, unlit cube (it emits), slowly tumbling on a tilted axis.
+  const sunS = 44 + Math.log2(1 + dm.papers) * 9;   // suns clearly outrank the biggest planet (9 voxels = 38)
+  const sun = new THREE.Group(); g.add(sun);
+  // White-hot, like the original: each face is the field colour pushed toward warm white, with per-sun variety.
+  const hot = color.clone().lerp(new THREE.Color("#fff6e6"), 0.45);
+  const vary = (r() - 0.5) * 0.25;
+  const sunCore = new THREE.Mesh(box, [0.35, 0.15, 0.55, 0.0, 0.45, 0.25].map((k) => new THREE.MeshBasicMaterial({ color: tone(hot, Math.min(0.6, k + vary)), toneMapped: false })) /* faces keep their cube edges; the halo does the glowing */);
+  sunCore.scale.setScalar(sunS); sun.add(sunCore);
+  const sunHull = new THREE.Mesh(box, outlineMat); sunHull.scale.setScalar(sunS + 4); sun.add(sunHull);
+  sunCore.userData = { kind: "sun", si }; pickables.push(sunCore);
+  // Corona, as on the original site: two additive shells (cube-shaped here) plus a big radial glow.
+  [[1.22, 0.14, hot], [1.6, 0.05, color]].forEach(([m, op, c]) => {
+    const shellM = new THREE.Mesh(box, new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: op, side: THREE.BackSide, blending: THREE.AdditiveBlending, depthWrite: false }));
+    shellM.scale.setScalar(sunS * m); sun.add(shellM);
+  });
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: hot, transparent: true, opacity: 0.6, depthWrite: false, blending: THREE.AdditiveBlending }));
+  glow.scale.setScalar(sunS * 5); glow.renderOrder = -1; g.add(glow);
+  const breathe = { mats: sunCore.material, base: sunCore.material.map((m) => m.color.clone()), ph: r() * 6 };
+  const sunAxis = new THREE.Vector3(r() - 0.5, 1, r() - 0.5).normalize();
+  sun.quaternion.setFromEuler(new THREE.Euler(r() * 6, r() * 6, r() * 6));
+  const sunQ0 = sun.quaternion.clone();
+  // The sun lights its own planets (warm, near-white tint of its colour).
+  const light = new THREE.PointLight(color, 2.0, sunS * 60, 0);   // decay 0, as on the original
+  g.add(light);
+
+  // Planets: papers sorted by how central they are to the field; inner lanes first.
+  const idx = (byDomain.get(dm.id) ?? []).slice().sort((a, b) => DATA.papers[b][4] - DATA.papers[a][4]);
+  const planets = idx.map((pi) => {
+    const p = DATA.papers[pi], n = cubeN(p[3]);
+    return { pi, n, size: n * VOXEL, voxels: shell(n) };
+  });
+  // Lane packing. A lane takes cubes while their tumbling diagonals (+gap) fit
+  // its circumference. Lanes are separated by the sum of half-diagonals, and
+  // points on different lanes sit on spheres of different radius, so no two
+  // cubes can ever touch (|r1 - r2| bounds their distance from below).
+  const lanes = [];
+  let cur = null;
+  let inner = sunS * 0.87 + 14;
+  for (const pl of planets) {
+    const need = pl.size * 1.8 + 6;
+    if (!cur || cur.used + need > 2 * Math.PI * (inner + Math.max(cur.maxS, pl.size) * 0.87) * 0.55) {
+      if (cur) inner = cur.R + cur.maxS * 0.87 + 10;
+      cur = { list: [], used: 0, maxS: 0, R: 0 }; lanes.push(cur);
+    }
+    cur.list.push(pl); cur.used += need; cur.maxS = Math.max(cur.maxS, pl.size);
+    cur.R = inner + cur.maxS * 0.87;
+  }
+  const ringPts = [];
+  lanes.forEach((ln, li) => {
+    // Every lane has its own tilt and node: a real system, not one flat disc.
+    ln.q = new THREE.Quaternion().setFromEuler(new THREE.Euler((r() - 0.5) * 1.1, r() * Math.PI * 2, (r() - 0.5) * 0.6, "YXZ"));
+    ln.omega = 0.3 * Math.pow(70 / ln.R, 1.5) * (r() < 0.12 ? -1 : 1);   // Kepler: inner faster; a few retrograde
+    const total = ln.list.reduce((s, pl) => s + pl.size * 1.8 + 6, 0);
+    const slack = (2 * Math.PI * ln.R - total) / ln.list.length;
+    let arc = r() * ln.R;
+    ln.list.forEach((pl) => {
+      arc += (pl.size * 1.8 + 6 + slack) / 2; pl.theta0 = arc / ln.R; arc += (pl.size * 1.8 + 6 + slack) / 2;
+      pl.lane = ln;
+      // Spin: everyone different. Most tumble on their own axis; ~30% do Rampart's quarter-turn roll.
+      pl.mode = r() < 0.3 ? "roll" : "tumble";
+      pl.axis = new THREE.Vector3(r() - 0.5, r() - 0.5, r() - 0.5).normalize();
+      pl.rate = (0.1 + r() * 0.45) * (r() < 0.5 ? -1 : 1) / Math.sqrt(pl.n);
+      pl.period = 1.4 + r() * 2.6;
+      pl.q0 = new THREE.Quaternion().setFromEuler(new THREE.Euler(r() * 6, r() * 6, r() * 6));
+    });
+    const v = new THREE.Vector3(), w = new THREE.Vector3();
+    for (let s = 0; s < 128; s++) {
+      const a0 = s / 128 * Math.PI * 2, a1 = (s + 1) / 128 * Math.PI * 2;
+      v.set(Math.cos(a0) * ln.R, 0, Math.sin(a0) * ln.R).applyQuaternion(ln.q);
+      w.set(Math.cos(a1) * ln.R, 0, Math.sin(a1) * ln.R).applyQuaternion(ln.q);
+      ringPts.push(v.x, v.y, v.z, w.x, w.y, w.z);
+    }
+  });
+  const extent = lanes.length ? lanes[lanes.length - 1].R + lanes[lanes.length - 1].maxS * 0.87 : sunS;
+  const ringGeo = new THREE.BufferGeometry(); ringGeo.setAttribute("position", new THREE.Float32BufferAttribute(ringPts, 3));
+  const ringMat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.22, depthWrite: false });
+  g.add(new THREE.LineSegments(ringGeo, ringMat));
+
+  // Voxels: one instanced mesh per system; one outline hull per planet.
+  const nVox = planets.reduce((s, pl) => s + pl.voxels.length, 0);
+  const voxMesh = new THREE.InstancedMesh(box, new THREE.MeshToonMaterial({ color: 0xffffff, gradientMap: gradient }), nVox);
+  const hull = new THREE.InstancedMesh(box, outlineMat, planets.length);
+  voxMesh.frustumCulled = hull.frustumCulled = false;
+  voxMesh.boundingSphere = new THREE.Sphere(new THREE.Vector3(), extent + 20);
+  hull.boundingSphere = voxMesh.boundingSphere;
+  const voxOwner = new Int32Array(nVox);
+  let vi = 0;
+  planets.forEach((pl, k) => {
+    const p = DATA.papers[pl.pi], pr = rand(pl.pi * 31 + 5), seed = pl.pi % 7;
+    const age = (p[2] - minYear) / Math.max(1, maxYear - minYear);
+    const base = color.clone().offsetHSL(0, 0.08, -0.04).lerp(new THREE.Color(0xffffff), 0.18 - age * 0.18);   // older papers slightly paler
+    const tones = [base, tone(base, -0.42), tone(base, 0.35), base.clone().offsetHSL(0.08, 0.1, -0.12)].map((c) => c.multiplyScalar(0.86));   // below the bloom threshold: only suns glow
+    const h = (pl.n - 1) / 2;
+    pl.vStart = vi;
+    for (const [x, y, z] of pl.voxels) {
+      voxMesh.setColorAt(vi, tones[voxelTone(pattern, x + h, y + h, z + h, pl.n, seed, pr)]);
+      voxOwner[vi++] = k;
+    }
+  });
+  voxMesh.instanceColor.needsUpdate = true;
+  voxMesh.userData = { kind: "planet", si, voxOwner };
+  pickables.push(voxMesh);
+  g.add(hull, voxMesh);
+
+  // Selection: a purple outline shell around the sun (reads as a highlight, not a gizmo).
+  // Two nested purple wireframe cubes that hug the sun: a highlight, not a panel.
+  const brackets = new THREE.Group(); brackets.visible = false; sun.add(brackets);
+  { const e = new THREE.Mesh(box, new THREE.MeshBasicMaterial({ color: 0xa388ee, side: THREE.BackSide }));
+    e.scale.setScalar(sunS + 10); brackets.add(e); }   // a thick purple outline, same rotation as the sun
+  systems.push({ si, g, sun, sunQ0, sunAxis, sunS, breathe, planets, voxMesh, hull, extent, ringMat, brackets, color });
+});
+
+// ------------------------------------------------------------------ galaxy layout (3D, free-flowing)
+// Biggest system at the core; others placed beside a system in the same field
+// when possible (distance = relatedness), in a thick disk, never overlapping.
+{
+  const GAP = 300, placed = [], r = rand(4242);
+  const order = systems.slice().sort((a, b) => b.extent - a.extent);
+  for (const s of order) {
+    if (!placed.length) { s.g.position.set(0, 0, 0); placed.push(s); continue; }
+    const kin = placed.filter((q) => DATA.domains[q.si].field === DATA.domains[s.si].field);
+    const anchors = kin.length ? kin : placed;
+    let best = null, bestScore = Infinity;
+    for (let tries = 0; tries < 400; tries++) {
+      const a = anchors[Math.floor(r() * anchors.length)];
+      const dir = new THREE.Vector3(r() - 0.5, (r() - 0.5) * 3, r() - 0.5).normalize();   // a volume, not a disc
+      const pos = a.g.position.clone().addScaledVector(dir, a.extent + s.extent + GAP + r() * 60);
+      if (placed.some((q) => q.g.position.distanceTo(pos) < q.extent + s.extent + GAP)) continue;
+      const targetY = ((s.si * 0.618) % 1 - 0.5) * 1400;   // spread systems over ~1400 units of height
+      const score = pos.length() + Math.abs(pos.y - targetY) * 1.5 + (kin.length ? 0 : 200);
+      if (score < bestScore) { bestScore = score; best = pos; }
+    }
+    s.g.position.copy(best ?? new THREE.Vector3(placed.length * 900, 0, 0)); placed.push(s);
+  }
+}
+const galaxyCenter = new THREE.Vector3(), galaxyRadius = (() => {
+  systems.forEach((s) => galaxyCenter.add(s.g.position)); galaxyCenter.divideScalar(systems.length);
+  return Math.max(...systems.map((s) => s.g.position.distanceTo(galaxyCenter) + s.extent));
+})();
+dust.position.copy(galaxyCenter);
+
+// ------------------------------------------------------------------ animation
+const easedRoll = (p) => p <= 0.15 ? 0 : p >= 0.85 ? 1 : ((x) => x * x * (3 - 2 * x))((p - 0.15) / 0.7);
+const _p = new THREE.Vector3(), _q = new THREE.Quaternion(), _qs = new THREE.Quaternion(), _m = new THREE.Matrix4(), _w = new THREE.Matrix4(), _l = new THREE.Matrix4(), _one = new THREE.Vector3(1, 1, 1), _s = new THREE.Vector3();
+let selected = null;
+const selBox = new THREE.LineSegments(new THREE.EdgesGeometry(box), new THREE.LineBasicMaterial({ color: 0xa388ee, depthTest: false }));
+selBox.renderOrder = 11; selBox.visible = false; scene.add(selBox);
+
+function animate(t) {
+  for (const S of systems) {
+    _qs.setFromAxisAngle(S.sunAxis, t * 0.08); S.sun.quaternion.multiplyQuaternions(_qs, S.sunQ0);
+    { const k = 1 + Math.sin(t * 1.3 + S.breathe.ph) * 0.06; S.breathe.mats.forEach((m, i) => m.color.copy(S.breathe.base[i]).multiplyScalar(k)); }
+    S.planets.forEach((pl, k) => {
+      const th = pl.theta0 + t * pl.lane.omega;
+      _p.set(Math.cos(th) * pl.lane.R, 0, Math.sin(th) * pl.lane.R).applyQuaternion(pl.lane.q);
+      if (pl.mode === "roll") {   // Rampart: dwell, tip 90°, dwell
+        const steps = (t + pl.theta0 * 3) / pl.period, step = Math.floor(steps);
+        _qs.setFromAxisAngle(pl.axis, (step + easedRoll(steps - step)) * Math.PI / 2 * Math.sign(pl.rate));
+      } else _qs.setFromAxisAngle(pl.axis, t * pl.rate);
+      _q.multiplyQuaternions(_qs, pl.q0);
+      _m.compose(_p, _q, _one);
+      _w.copy(_m).scale(_s.setScalar(pl.size + 2.6)); S.hull.setMatrixAt(k, _w);
+      for (let i = 0; i < pl.voxels.length; i++) {
+        const [x, y, z] = pl.voxels[i];
+        _l.makeScale(VOXEL * 0.92, VOXEL * 0.92, VOXEL * 0.92).setPosition(x * VOXEL, y * VOXEL, z * VOXEL);
+        _w.multiplyMatrices(_m, _l); S.voxMesh.setMatrixAt(pl.vStart + i, _w);
+      }
+      if (selected && selected.si === S.si && selected.k === k) {
+        selBox.position.copy(_p).add(S.g.position); selBox.quaternion.copy(_q); selBox.scale.setScalar(pl.size * 1.3 + 6);
+      }
+    });
+    S.voxMesh.instanceMatrix.needsUpdate = S.hull.instanceMatrix.needsUpdate = true;
+  }
+}
+
+// ------------------------------------------------------------------ camera framing
+const railPx = () => innerWidth > 720 ? 310 : 0;
+const camAnim = { active: false };
+function fitDistance(radius) {
+  const v = THREE.MathUtils.degToRad(camera.fov), hfov = 2 * Math.atan(Math.tan(v / 2) * aspect());
+  const fw = (innerWidth - railPx() - 40) / innerWidth, fh = (innerHeight - (innerWidth > 720 ? 300 : 260)) / innerHeight;
+  return Math.min(controls.maxDistance, Math.max(radius / Math.tan(v / 2 * fh), radius / Math.tan(hfov / 2 * fw)) * 0.85);
+}
+// Move the camera to look at `center` from `dir` (unit, from target to camera), framed to `radius`.
+function flyTo(center, radius, dir, ms = 0) {
+  const dist = fitDistance(radius);
+  const to = { target: center.clone(), pos: center.clone().addScaledVector(dir, dist) };
+  // Shift left by half the rail so the subject centres in the free area.
+  const tmp = camera.clone(); tmp.position.copy(to.pos); tmp.lookAt(to.target); tmp.updateMatrixWorld();
+  const worldPerPx = 2 * dist * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) / innerHeight;
+  const right = new THREE.Vector3().setFromMatrixColumn(tmp.matrixWorld, 0).multiplyScalar(-railPx() / 2 * worldPerPx);
+  to.target.add(right); to.pos.add(right);
+  if (!ms) { controls.target.copy(to.target); camera.position.copy(to.pos); controls.update(); return; }
+  Object.assign(camAnim, { active: true, t0: performance.now(), ms, fromT: controls.target.clone(), fromP: camera.position.clone(), to });
+}
+function stepCam(now) {
+  if (!camAnim.active) return;
+  const k = Math.min(1, (now - camAnim.t0) / camAnim.ms), e = 1 - Math.pow(1 - k, 3);
+  controls.target.lerpVectors(camAnim.fromT, camAnim.to.target, e);
+  // Arc the position around the target (slerp the direction) instead of cutting through.
+  const d0 = camAnim.fromP.clone().sub(camAnim.fromT), d1 = camAnim.to.pos.clone().sub(camAnim.to.target);
+  const len = THREE.MathUtils.lerp(d0.length(), d1.length(), e);
+  const q = new THREE.Quaternion().setFromUnitVectors(d0.clone().normalize(), d1.clone().normalize());
+  const dir = d0.clone().normalize().applyQuaternion(new THREE.Quaternion().slerp(q, e));
+  camera.position.copy(controls.target).addScaledVector(dir, len);
+  if (k >= 1) camAnim.active = false;
+}
+const viewDir = () => camera.position.clone().sub(controls.target).normalize();
+const focus = () => (activeSi === null ? { c: galaxyCenter, r: galaxyRadius } : { c: systems[activeSi].g.position, r: systems[activeSi].extent });
+$("iso").onclick = () => { const f = focus(); flyTo(f.c, f.r, ISO_DIR, 800); };
+$("topv").onclick = () => { const f = focus(); flyTo(f.c, f.r, new THREE.Vector3(0.001, 1, 0.001).normalize(), 800); };
+
+// ------------------------------------------------------------------ lightspeed jump
+const jumpScene = new THREE.Scene(), jumpCam = new THREE.PerspectiveCamera(70, aspect(), 0.1, 2000);
+const NS = 900, streakPos = new Float32Array(NS * 6), streaks = [];
+for (let i = 0; i < NS; i++) { const a = Math.random() * Math.PI * 2, rr = 34 + Math.random() * 150; streaks.push({ x: Math.cos(a) * rr, y: Math.sin(a) * rr, z: -Math.random() * 1500, v: 0.6 + Math.random() * 0.8 }); }
+const streakGeo = new THREE.BufferGeometry(); streakGeo.setAttribute("position", new THREE.BufferAttribute(streakPos, 3));
+const streakCol = new Float32Array(NS * 6); for (let i = 0; i < NS; i++) streakCol.set([1, 1, 1, 0.05, 0.04, 0.12], i * 6);
+streakGeo.setAttribute("color", new THREE.BufferAttribute(streakCol, 3));
+const streakMat = new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0 });
+const veil = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000), new THREE.MeshBasicMaterial({ color: 0x0e0c13, transparent: true, opacity: 0, depthTest: false, depthWrite: false }));
+veil.position.z = -1600; jumpScene.add(veil);
+const streakLines = new THREE.LineSegments(streakGeo, streakMat); streakLines.renderOrder = 2; jumpScene.add(streakLines);
+let jump = null;
+function startJump(si) {
+  if (jump) return;
+  $("jumpLabel").textContent = "Jumping → " + DATA.domains[si].name;
+  jump = { t0: performance.now(), si, cut: false };
+  $("jump").classList.add("on"); setActive(si);
+  setTimeout(() => $("jump").classList.remove("on"), 1700);
+}
+function jumpFrame(now) {
+  const t = (now - jump.t0) / 1000;
+  const warp = t < 0.9 ? Math.pow(t / 0.9, 2.2) : t < 1.1 ? 1 : Math.max(0, 1 - (t - 1.1) / 0.5);
+  for (let i = 0; i < NS; i++) {
+    const s = streaks[i]; s.z += (6 + warp * 90) * s.v; if (s.z > 0) s.z -= 1500;
+    const near = (1500 + s.z) / 1500, len = near < 0.45 ? 0 : 2 + warp * (20 + near * near * 700) * s.v;
+    streakPos.set([s.x, s.y, s.z, s.x, s.y, s.z - len], i * 6);
+  }
+  streakGeo.attributes.position.needsUpdate = true;
+  streakMat.opacity = Math.min(1, warp * 1.4);
+  veil.material.opacity = Math.min(0.92, warp * 1.3);
+  if (!jump.cut && t > 1.0) {
+    jump.cut = true;
+    const S = systems[jump.si];
+    // Arrive from a slightly raised, varied angle so each system feels like a new place.
+    const dir = new THREE.Vector3(Math.cos(jump.si * 2.1), 0.55, Math.sin(jump.si * 2.1)).normalize();
+    flyTo(S.g.position, S.extent, dir);
+  }
+  const flash = t > 0.95 && t < 1.15 ? 1 - Math.abs(t - 1.05) / 0.1 : 0;
+  renderer.setClearColor(new THREE.Color(0x0e0c13).lerp(new THREE.Color(0xe9e2ff), flash * 0.85));
+  if (t > 1.6) { jump = null; renderer.setClearColor(0x0e0c13); }
+  return warp;
+}
+
+// ------------------------------------------------------------------ UI
+$("list").innerHTML = DATA.domains.map((dm, i) => `<button data-si="${i}"><span style="display:flex;gap:8px"><i style="background:${PALETTE[i % PALETTE.length]}"></i>${dm.name}</span><em>${dm.papers}</em></button>`).join("");
+$("list").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) { stopTour(); startJump(+b.dataset.si); $("systems").classList.remove("open"); } });
+document.querySelector("#systems h3").addEventListener("click", () => $("systems").classList.toggle("open"));
+let activeSi = null;
+function setActive(si) {
+  activeSi = si;
+  document.querySelectorAll("#list button").forEach((b) => b.classList.toggle("on", si !== null && +b.dataset.si === si));
+  systems.forEach((S, i) => { S.brackets.visible = i === si; S.ringMat.opacity = i === si ? 0.45 : 0.22; });
+  tagEls.forEach((t, i) => t.classList.toggle("on", i === si));
+}
+const tagEls = DATA.domains.map((dm) => { const el = document.createElement("div"); el.className = "tag"; el.textContent = dm.name; $("tags").appendChild(el); return el; });
+const tv = new THREE.Vector3(), camUp = new THREE.Vector3();
+function placeTags() {
+  camUp.setFromMatrixColumn(camera.matrixWorld, 1);
+  const boxes = systems.map((S, i) => {
+    tv.copy(S.g.position).addScaledVector(camUp, -(S.sunS * 0.9 + 10)).project(camera);
+    const x = (tv.x + 1) / 2 * innerWidth, y = (1 - tv.y) / 2 * innerHeight, w = tagEls[i].offsetWidth;
+    tagEls[i].style.transform = `translate(${x - w / 2}px, ${y}px)`;
+    const off = tv.z > 1 || x < railPx() + 30 || x > innerWidth - 30 || y < 200 || y > innerHeight - 100;
+    return { i, x, y, w, off, depth: tv.z };
+  });
+  const placed = [];
+  boxes.slice().sort((a, b) => (b.i === activeSi) - (a.i === activeSi) || a.depth - b.depth).forEach((b) => {
+    const hit = placed.some((q) => Math.abs(q.x - b.x) < (q.w + b.w) / 2 + 6 && Math.abs(q.y - b.y) < 24);
+    const phoneHide = innerWidth < 720 && b.i !== activeSi;
+    const show = !jump && !b.off && !hit && !phoneHide; if (show) placed.push(b);
+    const camD = camera.position.distanceTo(systems[b.i].g.position), fade = THREE.MathUtils.clamp(1 - (camD - scene.fog.near) / (scene.fog.far - scene.fog.near), 0.6, 1);
+    tagEls[b.i].style.opacity = show ? fade : 0;
+  });
+}
+function showPaper(si, k) {
+  const pl = systems[si].planets[k], p = DATA.papers[pl.pi];
+  selected = { si, k }; selBox.visible = true;
+  $("card").style.display = "block";
+  $("card").innerHTML = `<div class="mono">${DATA.domains[si].name} · ${p[2]}</div><h4>${p[1]}</h4>
+    <div class="row mono"><div><small>Citations</small>${fmt(p[3])}</div><div><small>Co-authors</small>${p[5]}</div><div><small>Cube</small>${pl.n}×${pl.n}×${pl.n}</div></div>`;
+}
+function showSystem(si) {
+  const dm = DATA.domains[si]; selected = null; selBox.visible = false; setActive(si);
+  $("card").style.display = "block";
+  $("card").innerHTML = `<div class="mono">System · ${dm.field}</div><h4>${dm.name}</h4>
+    <div class="row mono"><div><small>Papers</small>${dm.papers}</div><div><small>Citations</small>${fmt(dm.cites)}</div><div><small>Surface</small>${PATTERNS[si % PATTERNS.length]}</div></div>`;
+}
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+let down = null;
+renderer.domElement.addEventListener("pointerdown", (e) => { down = [e.clientX, e.clientY]; });
+renderer.domElement.addEventListener("pointerup", (e) => {
+  if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 5) return;
+  ndc.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  const hit = ray.intersectObjects(pickables, false)[0];
+  if (!hit) return;
+  stopTour();
+  if (hit.object.userData.kind === "planet") showPaper(hit.object.userData.si, hit.object.userData.voxOwner[hit.instanceId]);
+  else showSystem(hit.object.userData.si);
+});
+let tourTimer = null;
+function stopTour() { clearInterval(tourTimer); tourTimer = null; $("tour").textContent = "▶ Jump tour"; }
+$("tour").onclick = () => {
+  if (tourTimer) return stopTour();
+  let i = 0; startJump(i);
+  tourTimer = setInterval(() => { i = (i + 1) % DATA.domains.length; startJump(i); }, 4200);
+  $("tour").textContent = "■ Stop tour";
+};
+addEventListener("resize", () => {
+  renderer.setSize(innerWidth, innerHeight); composer.setSize(innerWidth, innerHeight);
+  camera.aspect = jumpCam.aspect = aspect(); camera.updateProjectionMatrix(); jumpCam.updateProjectionMatrix();
+});
+
+
+// ------------------------------------------------------------------ app chrome (restored from cosmograph.space)
+const CL = DATA.changelog, VER = "v" + CL[0].version;
+$("ver").textContent = VER;
+$("eyebrow").textContent = `A lifetime of discovery, at galactic scale · ${DATA.author}`;
+const ST = DATA.stats;
+const words = ST.estimatedWords >= 1e6 ? (ST.estimatedWords / 1e6).toFixed(1) + "M+" : fmt(ST.estimatedWords);
+$("stats").innerHTML = [[fmt(ST.totalPapers), "Papers"], [fmt(ST.totalCitations), "Citations"], [fmt(ST.uniqueCoAuthors), "Co-authors"], [ST.yearsActive, "Years"], [words, "Words"], ["2", "Cosmonauts streaming now", "live"]]
+  .map(([v, k, c]) => `<div class="${c || ""}"><strong>${v}</strong><small>${k}</small></div>`).join("");
+$("foot").textContent = `© 2026 ${VER} · Cosmograph is an Interspace Venture. Built at the speed of thought with AI. Interface built with Structured Liquidity.`;
+const toast = (msg) => { const t = $("toast"); t.textContent = msg; t.style.display = "block"; clearTimeout(toast.h); toast.h = setTimeout(() => (t.style.display = "none"), 2600); };
+$("hShare").onclick = () => toast("Share cards: capture this galaxy as an image. Launching soon.");
+$("hSponsor").onclick = () => window.open("https://github.com/sponsors/heyinterspace", "_blank");
+$("hSource").onclick = () => window.open("https://github.com/Interspace-Ventures/cosmograph", "_blank");
+
+// Info drawer: About / Guide / Changelog (copy from the live site).
+document.querySelector('[data-pane="about"]').innerHTML = `
+  <section><h5 class="mono">About this venture</h5><h6>Research on galactic scale</h6>
+  <p>Cosmograph turns a researcher's lifetime of research into a universe you can fly through. Every sun is a field they helped shape, and every cube a paper they published. Right now you're exploring the work of ${DATA.author}.</p>
+  <p>It began as a Father's Day gift: a way to make one researcher's life's work feel as vast as it truly is. A career of research usually disappears into citation counts and PDFs; this is an attempt to let you feel the scale of it, and to say thank you to the people who spend their lives expanding what we know.</p>
+  <p>Point it at any researcher (a parent, a mentor, or yourself) and the whole galaxy rebuilds from their public record on OpenAlex.</p>
+  <div class="kv"><div><b>Papers</b>${fmt(ST.totalPapers)}</div><div><b>Fields</b>${DATA.domains.length}</div><div><b>Data</b>OpenAlex</div><div><b>Built with</b>Three.js · Structured Liquidity</div></div></section>`;
+document.querySelector('[data-pane="guide"]').innerHTML = `
+  <section><h5 class="mono">The guide to Cosmograph</h5><h6>A lifetime of work, mapped to the stars</h6>
+  <p><b>Suns are research fields.</b> Each sun is a field in this body of work. The bigger the sun, the more papers in that field.</p>
+  <p><b>Cubes are papers.</b> Every cube orbiting a sun is one published paper. The bigger the cube, the more it has been cited: from a single block up to 9×9×9.</p>
+  <p><b>Orbits show relevance.</b> The closer a cube orbits its sun, the more central the paper is to that field.</p>
+  <p><b>Surfaces show the field.</b> Each field has its own surface pattern: bands, caps, craters, continents.</p>
+  <p><b>Nearby suns are related.</b> Fields in the same broad area of science cluster together.</p></section>
+  <section><h5 class="mono">Getting around</h5><h6>Two ways to explore</h6>
+  <p><b>Orbit</b> · Float around the galaxy and study it from any angle.</p>
+  <ul><li>Drag · rotate and tilt, all the way to vertical</li><li>Right-drag · pan</li><li>Scroll or pinch · zoom</li><li>Click a sun or cube for details</li></ul>
+  <p><b>Fly</b> <span class="mono" style="font-size:9px;color:var(--accent)">· launching soon</span> · Drop into the galaxy and pilot your own ship through it.</p></section>`;
+document.querySelector('[data-pane="log"]').innerHTML = `<section><h5 class="mono">Flight log</h5><h6>${CL.length} releases since ${new Date(CL.at(-1).date).toLocaleDateString("en-US", { month: "short", year: "numeric" })}</h6></section>` +
+  CL.map((r) => `<div class="rel"><div class="meta mono">${"v" + r.version} · <i>${r.codename}</i> · ${new Date(r.date + "T12:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</div><strong>${r.summary}</strong></div>`).join("");
+document.querySelectorAll("#info .tabs button").forEach((b) => b.onclick = () => {
+  document.querySelectorAll("#info .tabs button").forEach((x) => x.classList.toggle("on", x === b));
+  document.querySelectorAll("#info [data-pane]").forEach((p) => (p.hidden = p.dataset.pane !== b.dataset.tab));
+});
+
+// Pricing drawer (new model).
+$("pricingBody").innerHTML = `
+  <section><h5 class="mono">Membership · launching soon</h5><h6>Exploring is free. Make it theirs.</h6>
+  <p>Anyone can explore any researcher's galaxy. Membership turns one into a gift: their name on it, a cosmograph.space link of their own, and a guided walk through their journey.</p>
+  <div class="plans">
+    <div class="plan"><div class="mono" style="font-size:9px">Annual</div><div class="price">$9.99<small> / year</small></div><ul><li>Everything in membership</li><li>Every release while active</li></ul><button class="cta mono" data-soon="Checkout opens at launch.">Join the waitlist</button></div>
+    <div class="plan hi"><div class="mono" style="font-size:9px">Lifetime · best value</div><div class="price">$29.99<small> once</small></div><ul><li>Everything, forever</li><li>Every future release</li></ul><button class="cta mono" data-soon="Checkout opens at launch.">Join the waitlist</button></div>
+  </div></section>
+  <section><h5 class="mono">Everything membership includes</h5><ul>
+    <li>A personal link: <span class="mono" style="font-size:11px">cosmograph.space/<b>rao</b></span></li>
+    <li>Their name on the galaxy, with a sealed-envelope reveal when they open it</li>
+    <li>A guided walkthrough of their journey, field by field</li>
+    <li>Fix the data: merge, hide, or correct papers</li>
+    <li>Share cards without the watermark</li>
+    <li>Fly mode and every ship type</li>
+    <li>Ask Cosmo, with a generous monthly allowance</li>
+    <li>More scientists: a whole lab or family</li>
+    <li>Every new walkthrough, effect and feature as it ships</li></ul></section>
+  <section><h5 class="mono">Free, always</h5><ul><li>Explore any researcher's galaxy</li><li>Orbit, zoom, tour, and click into every paper</li><li>About, guide and changelog</li></ul></section>`;
+
+const openDrawer = (id) => { document.querySelectorAll(".drawer").forEach((d) => d.classList.toggle("open", d.id === id && !d.classList.contains("open"))); };
+document.querySelectorAll("[data-close]").forEach((b) => b.onclick = () => b.closest(".drawer").classList.remove("open"));
+$("promoBtn").onclick = () => openDrawer("pricing");
+document.addEventListener("click", (e) => { const sb = e.target.closest("[data-soon]"); if (sb) { e.stopPropagation(); toast(sb.dataset.soon + "  · Launching soon"); } }, true);
+$("dock").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b || b.classList.contains("soon")) return;
+  const act = b.dataset.act;
+  if (act === "signup") openDrawer("pricing");
+  if (act === "info") openDrawer("info");
+  if (act === "tour") { $("tour").click(); b.classList.toggle("on", !!tourTimer); }
+  if (act === "orbit") { flyTo(galaxyCenter, galaxyRadius, new THREE.Vector3(0.62, 0.62, 0.48).normalize(), 900); setActive(null); }
+});
+addEventListener("keydown", (e) => { if (e.key === "Escape") document.querySelectorAll(".drawer").forEach((d) => d.classList.remove("open")); });
+
+// ------------------------------------------------------------------ loop
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const clock = new THREE.Clock();
+function frame(now) {
+  const t = reduce ? 0 : clock.getElapsedTime();
+  stepCam(now);
+  controls.update();
+  { // Aerial perspective: things behind the focus point fade toward the background.
+    const dd = camera.position.distanceTo(controls.target), R = activeSi === null ? galaxyRadius : Math.max(galaxyRadius * 0.5, systems[activeSi].extent * 3);
+    scene.fog.near = Math.max(1, dd - R * 0.45); scene.fog.far = dd + R * 0.75; }
+  animate(t);
+  camera.updateMatrixWorld();
+  placeTags();
+  renderer.clear();
+  const warp = jump ? jumpFrame(now) : 0;
+  { const dd = camera.position.distanceTo(controls.target); bloom.strength = THREE.MathUtils.clamp(dd / 2500, 0.25, 0.9); }
+  if (warp < 0.98) composer.render();
+  if (jump) { renderer.clearDepth(); renderer.render(jumpScene, jumpCam); }
+  requestAnimationFrame(frame);
+}
+// Open on the whole galaxy, from a raised three-quarter angle.
+flyTo(galaxyCenter, galaxyRadius, new THREE.Vector3(0.62, 0.62, 0.48).normalize());
+requestAnimationFrame(frame);
+window.__fog = () => ({ near: Math.round(scene.fog.near), far: Math.round(scene.fog.far), d: systems.map((S) => Math.round(camera.position.distanceTo(S.g.position))) }); window.__ys = systems.map((S) => Math.round(S.g.position.y)); window.__debug = { systems: systems.map((S) => ({ name: DATA.domains[S.si].name, extent: Math.round(S.extent), lanes: new Set(S.planets.map((p) => p.lane)).size, sizes: [...new Set(S.planets.map((p) => p.n))].sort((a, b) => a - b).join(",") })), galaxyRadius: Math.round(galaxyRadius) };
+</script>
+</body>
+</html>

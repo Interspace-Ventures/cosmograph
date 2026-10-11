@@ -5,7 +5,8 @@ import { z } from "zod/v4";
 // Application user record, keyed by the Clerk user id. This is the only
 // app-owned table for accounts + entitlement; everything Stripe-owned
 // (customers, prices, checkout sessions, payments) lives in the `stripe`
-// schema that stripe-replit-sync manages — we never duplicate it here.
+// (Stripe remains the source of truth for payments; we keep only the ids
+// and membership state we need.)
 //
 // `hasPaid` is the cached "active member" flag — true while the yearly
 // membership subscription is live, set after a checkout session is verified
@@ -18,6 +19,20 @@ export const usersTable = pgTable("users", {
   email: text("email"),
   stripeCustomerId: text("stripe_customer_id"),
   hasPaid: boolean("has_paid").notNull().default(false),
+  // Membership detail behind `hasPaid` (which stays the single "is a member
+  // right now" flag every feature checks). Written only from verified Stripe
+  // webhooks / server-side session verification, never from the browser.
+  //   memberPlan:    "annual" | "lifetime" | null
+  //   memberStatus:  "active" | "past_due" | "canceled" | "refunded" | "disputed" | null
+  //   memberUntil:   current paid-through date for annual; null for lifetime
+  //   memberSince:   first time the account became a member
+  memberPlan: text("member_plan"),
+  memberStatus: text("member_status"),
+  memberUntil: timestamp("member_until"),
+  memberSince: timestamp("member_since"),
+  cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  lifetimePaymentIntentId: text("lifetime_payment_intent_id"),
   // The account's saved cosmonaut-ship seed. The ship look is derived
   // deterministically from this short seed (see shipLook.ts); persisting it lets
   // a member's chosen ship follow them across devices and be broadcast to other

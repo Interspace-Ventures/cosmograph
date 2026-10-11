@@ -1,65 +1,85 @@
 import type Stripe from "stripe";
 import type { Logger } from "pino";
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import {
   db,
   usersTable,
   researcherUnlocksTable,
+  stripeEventsTable,
   type User,
 } from "@workspace/db";
 import { clerkClient } from "@clerk/express";
 import { getUncachableStripeClient } from "./stripeClient";
+import { DailyBudget, envInt } from "./spendGuard";
 
-// Account-level membership: a $7/year subscription ("Full Access") makes the
-// account a member (hasPaid). Membership includes a fixed number of researcher
-// unlocks (INCLUDED_UNLOCK_SLOTS); each additional researcher is billed as a
-// recurring +$1/year add-on, charged immediately with proration. We model
-// membership as a boolean on the user (hasPaid = active member), flipped on
-// checkout/renewal and cleared when the subscription ends; which researchers a
-// member has unlocked lives in the researcher_unlocks table.
-const MEMBERSHIP_PRODUCT_NAME = "Cosmograph — Full Access";
-const MEMBERSHIP_DESCRIPTION =
-  "Yearly membership: explore researchers' galaxies in full — guided tour, spaceship fly-through, rich paper detail, and Ask the galaxy — including 3 researchers, plus every new feature as it ships.";
-const MEMBERSHIP_AMOUNT = 700; // $7.00 / year in cents
-const MEMBERSHIP_CURRENCY = "usd";
-const MEMBERSHIP_INTERVAL = "year" as const;
+// Cosmograph membership (launch model):
+//   annual    $9.99 / year, auto-renews, cancel anytime in the Stripe portal
+//   lifetime  $29.99 once
+// Exploring any galaxy is free; membership unlocks publishing/gifting features.
+//
+// Trust model:
+//   * Prices are created ONCE by scripts/stripe-setup.mjs (lookup keys below)
+//     and only ever READ at runtime, and refused unless the amount/interval
+//     match. The server never creates or edits prices, so a bug or a crafted
+//     request can't sell membership for $0.
+//   * Membership is granted only from (a) a signature-verified Stripe webhook or
+//     (b) the success-redirect confirm, which re-fetches the session from Stripe
+//     and checks it belongs to the caller. The browser never asserts payment.
+//   * Every webhook event id is recorded; replays and duplicates are no-ops.
+//   * Lapse, full refund, and chargeback all revoke `hasPaid`. Published
+//     galaxies stay live (enforced by the publishing feature); extras stop.
 
-// Add-on: each researcher beyond the included slots costs +$1/year, modeled as
-// a second recurring subscription item whose quantity tracks the number of
-// extra unlocks. Adding quantity mid-cycle is invoiced immediately with
-// proration (see chargeAddonQuantity).
-const ADDON_PRODUCT_NAME = "Cosmograph — Additional Researcher";
-const ADDON_DESCRIPTION =
-  "One additional researcher's galaxy unlocked on your membership, billed yearly.";
-const ADDON_AMOUNT = 100; // $1.00 / year in cents
+export type MemberPlan = "annual" | "lifetime";
 
-// How many researchers the base membership unlocks before the add-on kicks in.
+export const PRICE_LOOKUP_KEYS: Record<MemberPlan, string> = {
+  annual: "cosmograph_member_annual_v1",
+  lifetime: "cosmograph_member_lifetime_v1",
+};
+
+/** Expected amounts (cents). A price that doesn't match is refused. */
+export const PLAN_AMOUNTS: Record<MemberPlan, number> = {
+  annual: 999,
+  lifetime: 2999,
+};
+
+// Kept for API compatibility with the existing client copy. Membership no
+// longer meters researchers; MAX_MEMBER_UNLOCKS is only an abuse bound.
 export const INCLUDED_UNLOCK_SLOTS = 3;
+const MAX_MEMBER_UNLOCKS = 100;
 
-// Thrown when the requested author id is not a canonical OpenAlex id — the
-// route maps this to 400.
+const checkoutBudget = new DailyBudget({
+  perClient: envInt("CHECKOUT_DAILY_PER_USER", 20),
+  global: envInt("CHECKOUT_DAILY_GLOBAL", 5000),
+});
+
 export class InvalidAuthorError extends Error {
   constructor() {
     super("A valid researcher id is required.");
     this.name = "InvalidAuthorError";
   }
 }
-
-// Thrown by unlockResearcher when the account is not an active member (must
-// subscribe first) — the route maps this to 402.
 export class NotAMemberError extends Error {
   constructor() {
-    super("An active membership is required to unlock researchers.");
+    super("An active membership is required.");
     this.name = "NotAMemberError";
   }
 }
-
-// Thrown when the prorated add-on charge could not be collected (e.g. the card
-// on file was declined). The unlock is NOT recorded in this case.
 export class AddonChargeFailedError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "AddonChargeFailedError";
+  }
+}
+export class CheckoutLimitError extends Error {
+  constructor() {
+    super("Too many checkout attempts today. Please try again tomorrow.");
+    this.name = "CheckoutLimitError";
+  }
+}
+export class BillingUnavailableError extends Error {
+  constructor(message = "Checkout is unavailable right now.") {
+    super(message);
+    this.name = "BillingUnavailableError";
   }
 }
 
@@ -68,12 +88,18 @@ export interface EntitlementResult {
   email: string | null;
   includedSlots: number;
   unlocked: string[];
+  plan: MemberPlan | null;
+  status: string | null;
+  memberUntil: string | null;
+  cancelAtPeriodEnd: boolean;
 }
 
 export interface CheckoutResult {
   alreadyEntitled: boolean;
   url?: string | null;
 }
+
+// ---------------------------------------------------------------- users
 
 export async function fetchClerkEmail(userId: string): Promise<string | null> {
   try {
@@ -106,15 +132,11 @@ export async function getOrCreateUser(
     }
     return existing;
   }
-  const [created] = await db
-    .insert(usersTable)
-    .values({ id: userId, email })
-    .returning();
-  return created;
+  await db.insert(usersTable).values({ id: userId, email }).onConflictDoNothing();
+  const [row] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
+  return row;
 }
 
-// All researcher ids this account has unlocked, oldest first (so the first
-// INCLUDED_UNLOCK_SLOTS are the base-included ones).
 async function listUnlockedAuthors(userId: string): Promise<string[]> {
   const rows = await db
     .select({ authorId: researcherUnlocksTable.authorId })
@@ -124,27 +146,25 @@ async function listUnlockedAuthors(userId: string): Promise<string[]> {
   return rows.map((r) => r.authorId);
 }
 
-// Pure read used by GET /me/entitlement. Never touches Stripe, so it keeps
-// working (returning the cached membership flag + unlocked list) even if Stripe
-// is unreachable.
-export async function getEntitlement(
-  userId: string,
-): Promise<EntitlementResult> {
-  const [user] = await db
-    .select()
-    .from(usersTable)
-    .where(eq(usersTable.id, userId));
-  const unlocked = await listUnlockedAuthors(userId);
+function toEntitlement(user: User | undefined, unlocked: string[]): EntitlementResult {
   return {
     entitled: user?.hasPaid ?? false,
     email: user?.email ?? null,
     includedSlots: INCLUDED_UNLOCK_SLOTS,
     unlocked,
+    plan: (user?.memberPlan as MemberPlan | null) ?? null,
+    status: user?.memberStatus ?? null,
+    memberUntil: user?.memberUntil ? user.memberUntil.toISOString() : null,
+    cancelAtPeriodEnd: user?.cancelAtPeriodEnd ?? false,
   };
 }
 
-// Idempotently record that a user has unlocked a researcher. The composite PK
-// makes a repeat unlock a no-op.
+/** Pure read; never touches Stripe. */
+export async function getEntitlement(userId: string): Promise<EntitlementResult> {
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
+  return toEntitlement(user, await listUnlockedAuthors(userId));
+}
+
 async function recordUnlock(userId: string, authorId: string): Promise<void> {
   await db
     .insert(researcherUnlocksTable)
@@ -152,226 +172,13 @@ async function recordUnlock(userId: string, authorId: string): Promise<void> {
     .onConflictDoNothing();
 }
 
-export async function ensureCustomer(
-  stripe: Stripe,
-  user: User,
-): Promise<string> {
-  if (user.stripeCustomerId) return user.stripeCustomerId;
-  const email = user.email ?? (await fetchClerkEmail(user.id)) ?? undefined;
-  const customer = await stripe.customers.create({
-    email,
-    metadata: { userId: user.id },
-  });
-  await db
-    .update(usersTable)
-    .set({ stripeCustomerId: customer.id, email: email ?? user.email })
-    .where(eq(usersTable.id, user.id));
-  return customer.id;
-}
-
-// Finds the yearly membership price, creating the product + recurring price on
-// first use so the flow works as soon as Stripe is connected (no separate
-// seeding step required). Idempotent: subsequent calls reuse the existing
-// product/price, and the product name/description are kept on-brand even if it
-// was first created under the old one-time naming.
-async function getOrCreateMembershipPrice(
-  stripe: Stripe,
-): Promise<Stripe.Price> {
-  const found = await stripe.products.search({
-    query: "metadata['galactic_unlock']:'true' AND active:'true'",
-  });
-  let product = found.data[0];
-  if (!product) {
-    product = await stripe.products.create({
-      name: MEMBERSHIP_PRODUCT_NAME,
-      description: MEMBERSHIP_DESCRIPTION,
-      metadata: { galactic_unlock: "true" },
-    });
-  } else if (
-    product.name !== MEMBERSHIP_PRODUCT_NAME ||
-    product.description !== MEMBERSHIP_DESCRIPTION
-  ) {
-    product = await stripe.products.update(product.id, {
-      name: MEMBERSHIP_PRODUCT_NAME,
-      description: MEMBERSHIP_DESCRIPTION,
-    });
-  }
-  const prices = await stripe.prices.list({
-    product: product.id,
-    active: true,
-    limit: 100,
-  });
-  const existing = prices.data.find(
-    (p) =>
-      p.recurring?.interval === MEMBERSHIP_INTERVAL &&
-      p.unit_amount === MEMBERSHIP_AMOUNT &&
-      p.currency === MEMBERSHIP_CURRENCY,
-  );
-  if (existing) return existing;
-  return stripe.prices.create({
-    product: product.id,
-    unit_amount: MEMBERSHIP_AMOUNT,
-    currency: MEMBERSHIP_CURRENCY,
-    recurring: { interval: MEMBERSHIP_INTERVAL },
-  });
-}
-
-// The recurring +$1/year add-on price, created on first use (own product so it
-// reads clearly on the invoice). Mirrors getOrCreateMembershipPrice: look up by
-// product metadata, find-or-create the yearly price, keep name/desc on-brand.
-async function getOrCreateAddonPrice(stripe: Stripe): Promise<Stripe.Price> {
-  const found = await stripe.products.search({
-    query: "metadata['cosmograph_addon']:'true' AND active:'true'",
-  });
-  let product = found.data[0];
-  if (!product) {
-    product = await stripe.products.create({
-      name: ADDON_PRODUCT_NAME,
-      description: ADDON_DESCRIPTION,
-      metadata: { cosmograph_addon: "true" },
-    });
-  } else if (
-    product.name !== ADDON_PRODUCT_NAME ||
-    product.description !== ADDON_DESCRIPTION
-  ) {
-    product = await stripe.products.update(product.id, {
-      name: ADDON_PRODUCT_NAME,
-      description: ADDON_DESCRIPTION,
-    });
-  }
-  const prices = await stripe.prices.list({
-    product: product.id,
-    active: true,
-    limit: 100,
-  });
-  const existing = prices.data.find(
-    (p) =>
-      p.recurring?.interval === MEMBERSHIP_INTERVAL &&
-      p.unit_amount === ADDON_AMOUNT &&
-      p.currency === MEMBERSHIP_CURRENCY,
-  );
-  if (existing) return existing;
-  return stripe.prices.create({
-    product: product.id,
-    unit_amount: ADDON_AMOUNT,
-    currency: MEMBERSHIP_CURRENCY,
-    recurring: { interval: MEMBERSHIP_INTERVAL },
-  });
-}
-
-// The account's active membership subscription, identified by carrying the base
-// membership price. Returns null if the account has no live membership.
-async function findMembershipSubscription(
-  stripe: Stripe,
-  customerId: string,
-  basePriceId: string,
-): Promise<Stripe.Subscription | null> {
-  const subs = await stripe.subscriptions.list({
-    customer: customerId,
-    status: "active",
-    limit: 100,
-  });
-  const withBase = subs.data.find((s) =>
-    s.items.data.some((i) => i.price.id === basePriceId),
-  );
-  // Only ever touch the subscription that actually carries the base membership
-  // price. Never fall back to an arbitrary subscription — for a customer with
-  // more than one active subscription that would risk mutating the wrong one.
-  return withBase ?? null;
-}
-
-// Set the add-on item quantity to `quantity` on the membership subscription and
-// invoice the proration immediately (proration_behavior:"always_invoice"), so
-// the user is charged the prorated remainder of the year now and the full
-// add-on total renews with the membership. Throws if Stripe rejects the change
-// or the immediate payment fails — callers must not record the unlock then.
-async function chargeAddonQuantity(
-  stripe: Stripe,
-  customerId: string,
-  quantity: number,
-  log: Logger,
-): Promise<void> {
-  const basePrice = await getOrCreateMembershipPrice(stripe);
-  const sub = await findMembershipSubscription(stripe, customerId, basePrice.id);
-  if (!sub) throw new Error("no active membership subscription to add to");
-  const addonPrice = await getOrCreateAddonPrice(stripe);
-  const addonItem = sub.items.data.find((i) => i.price.id === addonPrice.id);
-  await stripe.subscriptions.update(sub.id, {
-    items: [
-      addonItem
-        ? { id: addonItem.id, quantity }
-        : { price: addonPrice.id, quantity },
-    ],
-    proration_behavior: "always_invoice",
-    // Fail closed: if the prorated invoice can't be collected synchronously
-    // (declined card, requires action, etc.) Stripe raises instead of leaving
-    // the subscription updated with an unpaid invoice. The caller treats the
-    // throw as AddonChargeFailedError and never records the unlock.
-    payment_behavior: "error_if_incomplete",
-  });
-  log.info(
-    { customerId, subscriptionId: sub.id, quantity },
-    "charged prorated researcher add-on",
-  );
-}
-
-// Sanitize an OpenAlex author id before embedding it in the redirect URLs:
-// keep only the canonical `A` + digits form so a tampered value can't inject
-// extra query params or otherwise rewrite the success/cancel URL.
-function sanitizeAuthorId(author: string | null | undefined): string | null {
+export function sanitizeAuthorId(author: string | null | undefined): string | null {
   if (!author) return null;
   const trimmed = author.trim();
-  return /^A\d+$/.test(trimmed) ? trimmed : null;
+  return /^A\d{1,15}$/.test(trimmed) ? trimmed : null;
 }
 
-export async function createCheckout(
-  userId: string,
-  origin: string,
-  log: Logger,
-  author?: string | null,
-): Promise<CheckoutResult> {
-  const email = await fetchClerkEmail(userId);
-  const user = await getOrCreateUser(userId, email);
-  if (user.hasPaid) return { alreadyEntitled: true };
-
-  const stripe = await getUncachableStripeClient();
-  const customerId = await ensureCustomer(stripe, user);
-  const price = await getOrCreateMembershipPrice(stripe);
-
-  // Carry the explored scientist through the Stripe round-trip so the user lands
-  // back on the galaxy they paid to unlock, not the default home scientist.
-  const authorId = sanitizeAuthorId(author);
-  const authorParam = authorId ? `author=${authorId}&` : "";
-
-  // Carry the author in metadata too so the first researcher is auto-unlocked
-  // (within the included slots) when the membership is granted — both on the
-  // success-redirect confirm and via the webhook for buyers who never return.
-  const meta: Record<string, string> = { userId, kind: "membership" };
-  if (authorId) meta.author = authorId;
-
-  const session = await stripe.checkout.sessions.create({
-    mode: "subscription",
-    customer: customerId,
-    line_items: [{ price: price.id, quantity: 1 }],
-    success_url: `${origin}/?${authorParam}unlocked=1&session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${origin}/?${authorParam}unlock_cancelled=1`,
-    metadata: meta,
-    subscription_data: { metadata: meta },
-  });
-
-  log.info(
-    { userId, sessionId: session.id },
-    "created membership checkout session",
-  );
-  return { alreadyEntitled: false, url: session.url };
-}
-
-// Member-only: unlock a researcher for the account. The first
-// INCLUDED_UNLOCK_SLOTS are free (included in the base membership); each one
-// beyond that bumps the recurring add-on quantity and is charged immediately
-// with proration BEFORE the unlock is recorded — so a declined card never
-// grants a free slot. Idempotent: re-unlocking an already-unlocked researcher
-// is a no-op and never charges.
+/** Members pin researchers to their account; no per-researcher charge. */
 export async function unlockResearcher(
   userId: string,
   author: string,
@@ -379,189 +186,414 @@ export async function unlockResearcher(
 ): Promise<EntitlementResult> {
   const authorId = sanitizeAuthorId(author);
   if (!authorId) throw new InvalidAuthorError();
-
-  // Serialize all unlock accounting for this account: a per-user advisory lock
-  // held for the surrounding transaction means two concurrent unlocks for
-  // different researchers can't both read the same slot count and bump the
-  // add-on quantity to the same value (which would record two unlocks while
-  // only charging for one). Same-user unlocks are rare, so holding the lock
-  // across the Stripe call is acceptable; it only blocks the same account.
-  return db.transaction(async (tx) => {
-    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${userId}))`);
-
-    const [user] = await tx
-      .select()
-      .from(usersTable)
-      .where(eq(usersTable.id, userId));
-    if (!user?.hasPaid) throw new NotAMemberError();
-
-    const rows = await tx
-      .select({ authorId: researcherUnlocksTable.authorId })
-      .from(researcherUnlocksTable)
-      .where(eq(researcherUnlocksTable.userId, userId))
-      .orderBy(researcherUnlocksTable.createdAt);
-    const unlocked = rows.map((r) => r.authorId);
-
-    const baseResult: EntitlementResult = {
-      entitled: true,
-      email: user.email ?? null,
-      includedSlots: INCLUDED_UNLOCK_SLOTS,
-      unlocked,
-    };
-    if (unlocked.includes(authorId)) return baseResult;
-
-    const newCount = unlocked.length + 1;
-    if (newCount > INCLUDED_UNLOCK_SLOTS) {
-      const addonQuantity = newCount - INCLUDED_UNLOCK_SLOTS;
-      if (!user.stripeCustomerId) {
-        throw new AddonChargeFailedError("No payment method on file.");
-      }
-      const stripe = await getUncachableStripeClient();
-      try {
-        await chargeAddonQuantity(
-          stripe,
-          user.stripeCustomerId,
-          addonQuantity,
-          log,
-        );
-      } catch (err) {
-        // Re-throw as AddonChargeFailedError so the transaction rolls back and
-        // the unlock is never recorded when the prorated charge fails.
-        log.warn({ err, userId, authorId }, "researcher add-on charge failed");
-        throw new AddonChargeFailedError(
-          "We couldn't charge the add-on for this researcher.",
-        );
-      }
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
+  if (!user?.hasPaid) throw new NotAMemberError();
+  const unlocked = await listUnlockedAuthors(userId);
+  if (!unlocked.includes(authorId)) {
+    if (unlocked.length >= MAX_MEMBER_UNLOCKS) {
+      throw new AddonChargeFailedError("You've reached the researcher limit for one account.");
     }
-
-    await tx
-      .insert(researcherUnlocksTable)
-      .values({ userId, authorId })
-      .onConflictDoNothing();
-    log.info({ userId, authorId }, "researcher unlocked");
-
-    return { ...baseResult, unlocked: [...unlocked, authorId] };
-  });
+    await recordUnlock(userId, authorId);
+    log.info({ userId, authorId }, "researcher pinned");
+    unlocked.push(authorId);
+  }
+  return toEntitlement(user, unlocked);
 }
 
-async function markPaid(userId: string): Promise<void> {
-  await db
-    .insert(usersTable)
-    .values({ id: userId, hasPaid: true })
-    .onConflictDoUpdate({
-      target: usersTable.id,
-      set: { hasPaid: true },
-    });
-}
+// ---------------------------------------------------------------- stripe helpers
 
-async function markUnpaid(userId: string): Promise<void> {
+export async function ensureCustomer(stripe: Stripe, user: User): Promise<string> {
+  if (user.stripeCustomerId) return user.stripeCustomerId;
+  const email = user.email ?? (await fetchClerkEmail(user.id)) ?? undefined;
+  const customer = await stripe.customers.create(
+    { email, metadata: { userId: user.id } },
+    { idempotencyKey: `cosmograph-customer-${user.id}` },
+  );
   await db
     .update(usersTable)
-    .set({ hasPaid: false })
-    .where(eq(usersTable.id, userId));
+    .set({ stripeCustomerId: customer.id, email: email ?? user.email })
+    .where(eq(usersTable.id, user.id));
+  return customer.id;
 }
 
-async function userIdForStripeCustomer(
-  customerId: string,
+const priceCache = new Map<MemberPlan, { id: string; at: number }>();
+
+/** Validate a Stripe price against the plan it is supposed to be. */
+export function priceMatchesPlan(price: Stripe.Price, plan: MemberPlan): boolean {
+  const recurringOk =
+    plan === "annual"
+      ? price.recurring?.interval === "year" && price.recurring.interval_count === 1
+      : !price.recurring;
+  return (
+    price.active &&
+    price.unit_amount === PLAN_AMOUNTS[plan] &&
+    price.currency === "usd" &&
+    recurringOk
+  );
+}
+
+/** Read-only price lookup by lookup key; refuses a price with the wrong terms. */
+export async function resolvePrice(stripe: Stripe, plan: MemberPlan): Promise<string> {
+  const cached = priceCache.get(plan);
+  if (cached && Date.now() - cached.at < 10 * 60_000) return cached.id;
+  const price = (
+    await stripe.prices.list({ lookup_keys: [PRICE_LOOKUP_KEYS[plan]], active: true, limit: 1 })
+  ).data[0];
+  if (!price) throw new BillingUnavailableError("Membership pricing is not configured.");
+  if (!priceMatchesPlan(price, plan)) {
+    throw new BillingUnavailableError("Membership pricing is misconfigured.");
+  }
+  priceCache.set(plan, { id: price.id, at: Date.now() });
+  return price.id;
+}
+
+// ---------------------------------------------------------------- checkout
+
+export const RENEWAL_NOTICE =
+  "Renews automatically every year at $9.99 until you cancel. Cancel anytime from your account. We'll email you before each renewal.";
+
+export async function createCheckout(
+  userId: string,
+  plan: MemberPlan,
+  origin: string,
+  log: Logger,
+  author?: string | null,
+): Promise<CheckoutResult> {
+  const email = await fetchClerkEmail(userId);
+  const user = await getOrCreateUser(userId, email);
+  // Members can only move up (annual -> lifetime); nothing else to buy.
+  if (user.hasPaid && (user.memberPlan === "lifetime" || plan === "annual")) {
+    return { alreadyEntitled: true };
+  }
+  if (!checkoutBudget.take(userId).ok) throw new CheckoutLimitError();
+
+  const stripe = await getUncachableStripeClient();
+  const price = await resolvePrice(stripe, plan);
+  const customerId = await ensureCustomer(stripe, user);
+
+  const authorId = sanitizeAuthorId(author);
+  const authorParam = authorId ? `author=${authorId}&` : "";
+  const meta: Record<string, string> = { userId, kind: "membership", plan };
+  if (authorId) meta.author = authorId;
+
+  const base: Stripe.Checkout.SessionCreateParams = {
+    customer: customerId,
+    client_reference_id: userId,
+    line_items: [{ price, quantity: 1 }],
+    success_url: `${origin}/?${authorParam}unlocked=1&session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${origin}/?${authorParam}unlock_cancelled=1`,
+    metadata: meta,
+    allow_promotion_codes: false,
+    // Short-lived sessions: a leaked or stale link can't be reused later.
+    expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
+  };
+  if (process.env.STRIPE_AUTOMATIC_TAX === "true") {
+    base.automatic_tax = { enabled: true };
+    base.customer_update = { address: "auto", name: "auto" };
+  }
+
+  const session = await stripe.checkout.sessions.create(
+    plan === "annual"
+      ? {
+          ...base,
+          mode: "subscription",
+          subscription_data: { metadata: meta },
+          custom_text: { submit: { message: RENEWAL_NOTICE } },
+        }
+      : {
+          ...base,
+          mode: "payment",
+          payment_intent_data: { metadata: meta },
+          invoice_creation: { enabled: true, invoice_data: { metadata: meta } },
+          custom_text: {
+            submit: { message: "One payment. Membership for as long as Cosmograph exists." },
+          },
+        },
+  );
+  log.info({ userId, plan, sessionId: session.id }, "created membership checkout session");
+  return { alreadyEntitled: false, url: session.url };
+}
+
+/** Stripe customer portal: cancel, update card, download invoices. */
+export async function createPortalSession(userId: string, origin: string): Promise<string> {
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
+  if (!user?.stripeCustomerId) throw new NotAMemberError();
+  const stripe = await getUncachableStripeClient();
+  const session = await stripe.billingPortal.sessions.create({
+    customer: user.stripeCustomerId,
+    return_url: `${origin}/`,
+  });
+  return session.url;
+}
+
+// ---------------------------------------------------------------- granting
+
+function periodEnd(sub: Stripe.Subscription): Date | null {
+  // Newer API versions moved current_period_end onto subscription items.
+  const fromItem = (sub.items?.data?.[0] as unknown as { current_period_end?: number } | undefined)
+    ?.current_period_end;
+  const legacy = (sub as unknown as { current_period_end?: number }).current_period_end;
+  const ts = fromItem ?? legacy;
+  return ts ? new Date(ts * 1000) : null;
+}
+
+async function userIdFor(
+  meta: Stripe.Metadata | null | undefined,
+  customer: unknown,
 ): Promise<string | null> {
-  const [user] = await db
-    .select()
-    .from(usersTable)
-    .where(eq(usersTable.stripeCustomerId, customerId));
-  return user?.id ?? null;
+  const customerId =
+    typeof customer === "string" ? customer : (customer as { id?: string } | null)?.id;
+  if (customerId) {
+    // Prefer our own customer mapping over metadata: metadata on objects we
+    // didn't create could name any account.
+    const [user] = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.stripeCustomerId, customerId));
+    if (user) return user.id;
+  }
+  return meta?.userId ?? null;
 }
 
-// Authoritative confirmation on the success redirect: verify the session
-// directly against Stripe (not the synced cache) and grant the unlock only if
-// it is paid and owned by this account.
+async function grantLifetime(
+  userId: string,
+  paymentIntentId: string | null,
+  log: Logger,
+): Promise<void> {
+  const now = new Date();
+  const [prev] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
+  await db
+    .insert(usersTable)
+    .values({
+      id: userId,
+      hasPaid: true,
+      memberPlan: "lifetime",
+      memberStatus: "active",
+      memberUntil: null,
+      memberSince: now,
+      cancelAtPeriodEnd: false,
+      lifetimePaymentIntentId: paymentIntentId,
+    })
+    .onConflictDoUpdate({
+      target: usersTable.id,
+      set: {
+        hasPaid: true,
+        memberPlan: "lifetime",
+        memberStatus: "active",
+        memberUntil: null,
+        cancelAtPeriodEnd: false,
+        lifetimePaymentIntentId: paymentIntentId,
+        memberSince: prev?.memberSince ?? now,
+      },
+    });
+  // Upgrading from annual: stop the renewal so they're never charged again.
+  if (prev?.stripeSubscriptionId) {
+    try {
+      const stripe = await getUncachableStripeClient();
+      await stripe.subscriptions.update(prev.stripeSubscriptionId, {
+        cancel_at_period_end: true,
+      });
+    } catch (err) {
+      log.warn({ err, userId }, "could not stop annual renewal after lifetime upgrade");
+    }
+  }
+  log.info({ userId }, "lifetime membership granted");
+}
+
+/** Apply a subscription's current state to its member. */
+async function syncSubscription(sub: Stripe.Subscription, log: Logger): Promise<void> {
+  const userId = await userIdFor(sub.metadata, sub.customer);
+  if (!userId) {
+    log.warn({ subscription: sub.id }, "subscription without a known user");
+    return;
+  }
+  const [prev] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
+  // A lifetime member's old annual subscription ending changes nothing.
+  if (prev?.memberPlan === "lifetime" && prev.hasPaid) return;
+  // A refunded/disputed account stays revoked even if Stripe later reports the
+  // subscription (we cancel it ourselves when revoking).
+  if (prev && (prev.memberStatus === "refunded" || prev.memberStatus === "disputed") && sub.status !== "active") return;
+
+  // Grace on past_due (Stripe retries the card); revoke on terminal states.
+  const active =
+    sub.status === "active" || sub.status === "trialing" || sub.status === "past_due";
+  const status = !active ? "canceled" : sub.status === "past_due" ? "past_due" : "active";
+  const now = new Date();
+  await db
+    .insert(usersTable)
+    .values({
+      id: userId,
+      hasPaid: active,
+      memberPlan: "annual",
+      memberStatus: status,
+      memberUntil: periodEnd(sub),
+      cancelAtPeriodEnd: sub.cancel_at_period_end ?? false,
+      stripeSubscriptionId: sub.id,
+      memberSince: active ? now : null,
+    })
+    .onConflictDoUpdate({
+      target: usersTable.id,
+      set: {
+        hasPaid: active,
+        memberPlan: "annual",
+        memberStatus: status,
+        memberUntil: periodEnd(sub),
+        cancelAtPeriodEnd: sub.cancel_at_period_end ?? false,
+        stripeSubscriptionId: sub.id,
+        memberSince: prev?.memberSince ?? (active ? now : null),
+      },
+    });
+  log.info({ userId, status: sub.status }, "annual membership synced");
+}
+
+async function revoke(userId: string, status: "refunded" | "disputed", log: Logger): Promise<void> {
+  await db
+    .update(usersTable)
+    .set({ hasPaid: false, memberStatus: status, cancelAtPeriodEnd: false })
+    .where(eq(usersTable.id, userId));
+  log.warn({ userId, status }, "membership revoked");
+}
+
+/** Grant from a paid Checkout Session (webhook or confirm). Idempotent. */
+async function grantFromSession(
+  stripe: Stripe,
+  session: Stripe.Checkout.Session,
+  log: Logger,
+): Promise<string | null> {
+  const meta = session.metadata ?? {};
+  if (meta.kind !== "membership") return null;
+  const userId = meta.userId;
+  if (!userId || session.client_reference_id !== userId) {
+    log.warn({ session: session.id }, "membership session without matching user");
+    return null;
+  }
+  if (session.payment_status !== "paid") return null;
+  const plan: MemberPlan = meta.plan === "lifetime" ? "lifetime" : "annual";
+  if (plan === "lifetime") {
+    if (session.mode !== "payment" || (session.amount_subtotal ?? 0) < PLAN_AMOUNTS.lifetime) {
+      log.error({ session: session.id }, "lifetime session amount/mode mismatch; not granting");
+      return null;
+    }
+    const pi =
+      typeof session.payment_intent === "string"
+        ? session.payment_intent
+        : session.payment_intent?.id ?? null;
+    await grantLifetime(userId, pi, log);
+  } else {
+    if (session.mode !== "subscription" || !session.subscription) return null;
+    const subId =
+      typeof session.subscription === "string" ? session.subscription : session.subscription.id;
+    await syncSubscription(await stripe.subscriptions.retrieve(subId), log);
+  }
+  const author = sanitizeAuthorId(meta.author);
+  if (author) await recordUnlock(userId, author);
+  return userId;
+}
+
+/** Success-redirect confirm: re-fetch from Stripe, require it's the caller's. */
 export async function confirmCheckout(
   userId: string,
   sessionId: string,
   log: Logger,
 ): Promise<EntitlementResult> {
+  if (!/^cs_(test|live)_[A-Za-z0-9]{10,200}$/.test(sessionId)) return getEntitlement(userId);
   const stripe = await getUncachableStripeClient();
   const session = await stripe.checkout.sessions.retrieve(sessionId);
-  if (
-    session.payment_status === "paid" &&
-    session.metadata?.userId === userId
-  ) {
-    await markPaid(userId);
-    // Auto-unlock the researcher carried through checkout as the member's first
-    // (included) slot, so they land on the galaxy they paid to access.
-    const author = sanitizeAuthorId(session.metadata?.author);
-    if (author) await recordUnlock(userId, author);
-    log.info({ userId, sessionId }, "membership confirmed and granted");
+  if (session.metadata?.userId === userId && session.client_reference_id === userId) {
+    await grantFromSession(stripe, session, log);
   }
   return getEntitlement(userId);
 }
 
-// Best-effort membership sync straight from the webhook, covering buyers who
-// never return to the success URL and members whose subscription later lapses.
-// The signature is already verified by StripeSync.processWebhook before this
-// runs, so the parsed payload is trusted.
-export async function markUnlockedFromWebhook(
-  payload: Buffer,
+// ---------------------------------------------------------------- webhook
+
+export const HANDLED_EVENTS = [
+  "checkout.session.completed",
+  "checkout.session.async_payment_succeeded",
+  "customer.subscription.created",
+  "customer.subscription.updated",
+  "customer.subscription.deleted",
+  "charge.refunded",
+  "charge.dispute.created",
+] as const;
+
+/**
+ * Apply one signature-verified event exactly once. Returns false when the event
+ * was already processed. On failure the event record is removed and the error
+ * rethrown, so Stripe retries it.
+ */
+export async function handleStripeEvent(
+  event: Stripe.Event,
   log: Logger,
-): Promise<void> {
+  onOtherCheckout?: (session: Stripe.Checkout.Session) => Promise<void>,
+): Promise<boolean> {
+  const inserted = await db
+    .insert(stripeEventsTable)
+    .values({ id: event.id, type: event.type })
+    .onConflictDoNothing()
+    .returning({ id: stripeEventsTable.id });
+  if (inserted.length === 0) {
+    log.info({ eventId: event.id }, "duplicate stripe event ignored");
+    return false;
+  }
   try {
-    const event = JSON.parse(payload.toString("utf8")) as {
-      type?: string;
-      data?: { object?: Record<string, unknown> };
-    };
-    const obj = event.data?.object ?? {};
-
-    if (
-      event.type === "checkout.session.completed" ||
-      event.type === "checkout.session.async_payment_succeeded"
-    ) {
-      const metadata = obj.metadata as
-        | { userId?: string; author?: string; kind?: string }
-        | undefined;
-      const userId = metadata?.userId;
-      // Skin (one-time ship-type) sessions are handled by the ship lib's own
-      // webhook grant — never treat them as a membership here, or a $1 cosmetic
-      // purchase would flip the account to full member.
-      if (metadata?.kind === "skin") return;
-      // Only grant once funds have actually settled. A session can reach
-      // status="complete" before payment_status flips to "paid" for some
-      // payment methods, so we key strictly on payment_status here (the
-      // delayed-settlement case arrives via async_payment_succeeded).
-      const paid = obj.payment_status === "paid";
-      if (userId && paid) {
-        await markPaid(userId);
-        const author = sanitizeAuthorId(metadata?.author);
-        if (author) await recordUnlock(userId, author);
-        log.info({ userId }, "membership granted via webhook");
+    const stripe = await getUncachableStripeClient();
+    switch (event.type) {
+      case "checkout.session.completed":
+      case "checkout.session.async_payment_succeeded": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        if (session.metadata?.kind === "membership") await grantFromSession(stripe, session, log);
+        else if (onOtherCheckout) await onOtherCheckout(session);
+        break;
       }
-      return;
-    }
-
-    // Revoke access when the yearly subscription ends or fully lapses. Stay
-    // lenient on transient states (e.g. past_due retries); only clear the flag
-    // on terminal statuses or outright deletion.
-    if (
-      event.type === "customer.subscription.deleted" ||
-      event.type === "customer.subscription.updated"
-    ) {
-      const status = obj.status as string | undefined;
-      const ended =
-        event.type === "customer.subscription.deleted" ||
-        status === "canceled" ||
-        status === "unpaid" ||
-        status === "incomplete_expired";
-      if (!ended) return;
-      const metadata = obj.metadata as { userId?: string } | undefined;
-      const customer =
-        typeof obj.customer === "string" ? obj.customer : undefined;
-      const userId =
-        metadata?.userId ??
-        (customer ? await userIdForStripeCustomer(customer) : null);
-      if (userId) {
-        await markUnpaid(userId);
-        log.info({ userId, status }, "membership revoked via webhook");
+      case "customer.subscription.created":
+      case "customer.subscription.updated":
+      case "customer.subscription.deleted": {
+        // Events can arrive out of order; the live object is the truth.
+        const sub = event.data.object as Stripe.Subscription;
+        const live = await stripe.subscriptions.retrieve(sub.id).catch(() => sub);
+        await syncSubscription(live, log);
+        break;
       }
+      case "charge.refunded": {
+        const charge = event.data.object as Stripe.Charge;
+        if (!charge.refunded) break; // partial refund: membership stays
+        const userId = await userIdFor(charge.metadata, charge.customer);
+        if (!userId) break;
+        const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
+        const pi =
+          typeof charge.payment_intent === "string"
+            ? charge.payment_intent
+            : charge.payment_intent?.id;
+        if (user?.memberPlan === "lifetime" && pi && pi === user.lifetimePaymentIntentId) {
+          await revoke(userId, "refunded", log);
+        } else if (user?.memberPlan === "annual" && user.stripeSubscriptionId) {
+          await stripe.subscriptions.cancel(user.stripeSubscriptionId).catch(() => undefined);
+          await revoke(userId, "refunded", log);
+        }
+        break;
+      }
+      case "charge.dispute.created": {
+        const dispute = event.data.object as Stripe.Dispute;
+        const charge =
+          typeof dispute.charge === "string"
+            ? await stripe.charges.retrieve(dispute.charge)
+            : dispute.charge;
+        const userId = await userIdFor(charge.metadata, charge.customer);
+        if (!userId) break;
+        const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
+        if (user?.stripeSubscriptionId) {
+          await stripe.subscriptions.cancel(user.stripeSubscriptionId).catch(() => undefined);
+        }
+        await revoke(userId, "disputed", log);
+        break;
+      }
+      default:
+        break;
     }
+    return true;
   } catch (err) {
-    log.warn({ err }, "failed to process membership change from webhook");
+    await db.delete(stripeEventsTable).where(eq(stripeEventsTable.id, event.id));
+    throw err;
   }
 }

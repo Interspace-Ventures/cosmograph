@@ -3,6 +3,8 @@ name: Galaxy visual language reconciliation
 description: How the "Structured Liquidity" one-accent rule coexists with the photoreal 3D scene in the Galaxy app
 ---
 
+> **Superseded for the next build (Oct 2026):** the owner retired the photoreal look for an isometric cube galaxy. See `docs/launch-plan.md` and `docs/spikes/cube-galaxy/`. The notes below describe the CURRENT shipped photoreal scene and still apply until the cube engine replaces it.
+
 ## Structured Liquidity vs the 3D scene
 The Galaxy app uses the **Structured Liquidity** design language (sharp 90° corners, 2px black borders, flat 7px offset shadows, single accent `#a388ee`, fonts Archivo/Outfit/Space Mono) — but it applies **only to the 2D UI chrome** (overlay panels, the bottom CommandBar, search, intro).
 

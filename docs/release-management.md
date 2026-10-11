@@ -3,6 +3,14 @@
 Cosmograph ships its already-built product surface in deliberate waves instead
 of exposing every feature at the first friends-and-family release.
 
+## Public launch scope (decided Oct 2026)
+
+For the public launch, guided tour, share cards, Ask Cosmo, and referral links
+ship as part of the launch itself (set their `public` dates together with the
+launch). Weekly public drops after launch: live presence, ships (now included
+in membership), fly mode, extra scientists, and surface/effect packs. See
+[`launch-plan.md`](launch-plan.md). The F&F dates below have all passed.
+
 ## Current F&F cadence
 
 | Date (UTC) | Feature                 | Flag            |

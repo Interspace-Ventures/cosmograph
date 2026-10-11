@@ -8,11 +8,11 @@ It started as a Father's Day gift for stem-cell scientist **Dr. Mahendra S. Rao*
 
 > The shipped snapshot (Dr. Rao) spans **364 papers**, **28,860 citations**, **1,191 co-authors**, and **12 research domains** across **30 years** (1994–2024) — roughly 1.4 million words of published science, drawn as one navigable galaxy.
 
-🔭 **Live demo:** [https://cosmograph.space](https://cosmograph.space) (or [https://galactic.dad](https://galactic.dad))
+🔭 **Live demo:** [https://cosmograph.space](https://cosmograph.space) (the old galactic.dad domain no longer resolves)
 
 🎬 **Watch the launch trailer:** [cosmograph.space/trailer](https://cosmograph.space/trailer/) — a 30-second flight through the galaxy before you dive in yourself. (There's also a **Watch the trailer** button on the site's title screen, right below **Ad Astra**.)
 
-<video src="https://raw.githubusercontent.com/heyinterspace/cosmograph/main/docs/trailer.mp4" controls muted loop playsinline width="100%">
+<video src="https://raw.githubusercontent.com/Interspace-Ventures/cosmograph/staging/docs/trailer.mp4" controls muted loop playsinline width="100%">
   Your browser does not support the video tag — <a href="https://cosmograph.space/trailer/">watch the trailer here</a>.
 </video>
 
@@ -20,9 +20,25 @@ It started as a Father's Day gift for stem-cell scientist **Dr. Mahendra S. Rao*
 
 ---
 
+## Status (October 2026)
+
+Cosmograph is being prepared for a public launch. The owner-approved plan
+(free exploring, $9.99/yr or $29.99 lifetime gift membership, cube-galaxy art
+direction, move to Exo Key + Convex + Construct) is in
+[`docs/launch-plan.md`](docs/launch-plan.md). What is live today is the
+photoreal build described below; the replacement visual direction is the
+[cube galaxy spike](docs/spikes/cube-galaxy/README.md).
+
+- Development happens on `staging`; open PRs against `staging`. `main` is the
+  stale GitHub default branch and is not deployed from.
+- Billing is being rebuilt (`agent/launch-billing`): two fixed Stripe prices,
+  signature-verified webhooks applied once each, refund/chargeback revocation.
+  Production currently has no Stripe or OpenAI keys, so paid features and Ask
+  Cosmo are off there.
+
 ## Highlights
 
-- 🌌 **A real galaxy, not a chart.** Photoreal suns, orbiting planets, and moons rendered with React Three Fiber, drei, and postprocessing — each domain gets its own stellar color and every orbit reads like a planetary system.
+- 🌌 **A real galaxy, not a chart.** (Current build; being replaced by the cube galaxy.) Photoreal suns, orbiting planets, and moons rendered with React Three Fiber, drei, and postprocessing — each domain gets its own stellar color and every orbit reads like a planetary system.
 - 🚀 **Two ways to explore.** A first-person spaceship fly-through with momentum, and a god/planetarium orbit view with an adjustable axis.
 - 🔭 **Everything is clickable.** Open any planet for paper details, any sun for a domain breakdown, and a stats layer that summarizes the entire body of work.
 - 🛰️ **Live presence (optional).** Faint "wisps" mark other visitors exploring the same galaxy, with a live "_N cosmonauts streaming now_" headcount — anonymous and in-memory, nothing is persisted.
@@ -67,6 +83,9 @@ Useful repo-wide commands:
 pnpm run typecheck     # full typecheck across all packages
 pnpm run build         # typecheck + build everything
 pnpm run release:check # feature schedule and override behavior
+pnpm --filter @workspace/api-server test            # api-server unit tests
+bash scripts/security-probe.sh                      # live attack checks against a local api-server on :5099
+pnpm --filter @workspace/api-server run stripe:setup # one-time, idempotent Stripe products/prices/portal setup
 ```
 
 ## Feature release cadence
@@ -121,6 +140,12 @@ lib/
   api-zod/           # Generated Zod schemas
   db/                # PostgreSQL schema + Drizzle ORM
   release-flags/     # Shared browser/server release registry and evaluator
+docs/
+  launch-plan.md     # Owner-approved launch decisions (pricing, scope, art direction, platform)
+  architecture.md    # Runtime architecture notes
+  release-management.md, staging.md
+  spikes/cube-galaxy/ # Standalone prototype of the new cube art direction
+.agents/memory/      # Short design notes for agents (index: MEMORY.md)
 ```
 
 ## Tech stack
@@ -128,6 +153,9 @@ lib/
 - **Frontend:** React, Vite, React Three Fiber + drei + postprocessing, Framer Motion, Tailwind
 - **Backend:** Express 5 (Node.js 24, TypeScript 5.9)
 - **Data:** PostgreSQL + Drizzle ORM; OpenAlex for publication data
+- **Auth and payments:** Clerk (moving to Exo Key); Stripe Checkout + customer portal
+- **AI:** OpenAI via `@workspace/integrations-openai-ai-server` (moving to the Exo router)
+- **Hosting:** one always-on Railway service runs the API and the built web app
 - **Contracts & validation:** OpenAPI → Orval codegen, Zod (`zod/v4`)
 - **Build:** Vite (web), esbuild (server)
 
