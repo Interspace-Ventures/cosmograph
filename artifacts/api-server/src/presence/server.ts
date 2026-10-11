@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { WebSocketServer, WebSocket } from "ws";
 import { logger } from "../lib/logger";
 import { stripAppBasePath } from "../lib/appPath";
+import { isAllowedOrigin } from "../lib/publicOrigin";
 
 // Lightweight, ephemeral multiplayer presence: clients stream their camera
 // position; the server fans out a shared snapshot on a fixed tick so everyone
@@ -127,6 +128,9 @@ export function attachPresence(server: HttpServer): void {
       rejectUpgrade(socket, 404, "Not Found");
       return;
     }
+    // Only Cosmograph pages may open a presence socket (blocks other sites and
+    // header-less bots from flooding the shared galaxy with fake ships).
+    if (!isAllowedOrigin(req.headers.origin)) return rejectUpgrade(socket, 403, "Forbidden");
     const ip = clientIp(req);
     if (clients.size >= MAX_CLIENTS) return rejectUpgrade(socket, 503, "Busy");
     if ((perIp.get(ip) ?? 0) >= MAX_PER_IP) return rejectUpgrade(socket, 429, "Too Many");

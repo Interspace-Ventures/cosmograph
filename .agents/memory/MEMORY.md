@@ -1,4 +1,5 @@
-- [Galaxy visual language](galaxy-visual-language.md) — Structured Liquidity applies to 2D UI only; 3D scene stays photoreal with per-domain stellar colors; orbits must read as real planetary systems, not belts.
+- [Launch plan](../../docs/launch-plan.md) — READ FIRST: free exploring, $9.99/yr or $29.99 lifetime gift membership, day-1 vs weekly-drop scope, cube art direction, Exo/Convex/Construct moves, cost/abuse rules.
+- [Galaxy visual language](galaxy-visual-language.md) — current photoreal scene rules (SL on 2D UI, stellar colors); superseded by the cube galaxy for the next build.
 - [R3F headless WebGL](r3f-headless-webgl.md) — screenshot sandbox has no GPU so WebGL context fails; this is expected, verify via typecheck + browser logs, not screenshots.
 - [Share-card capture timing](share-card-capture-timing.md) — off-screen galaxy snapshot must fire on Suspense readiness + 2 RAFs, never a fixed timer, or the card is intermittently blank.
 - [Cockpit dashboard HUD](cockpit-dashboard.md) — all controls live in ONE bottom bar (z-30); rail + top-right buttons gone; galaxy canvas is full-bleed inset-0 (no resize push); drawers rise z-50, banner z-40 full-width; AccountIndicator moved to CustomizeDrawer top.
@@ -10,9 +11,9 @@
 - [Intro flight camera](intro-flight-camera.md) — scroll intro drives the ONE live R3F camera via a ref (introProgressRef), not state, so per-frame progress doesn't re-render global consumers.
 - [Brand — Cosmograph](brand-cosmograph.md) — app is Cosmograph/cosmograph.space (was Galactic); keep concept word "galaxy", presence term "cosmonauts", repo + internal slug `galaxy` unchanged.
 - [Version bumping](version-bumping.md) — UI version = CHANGELOG[0].version (hand-written), not git-derived; prepend a changelog entry AND sync package.json when shipping features.
-- [Stripe membership entitlement](stripe-entitlement-design.md) — $7/year subscription: users.has_paid = active member, granted on payment_status=paid (confirm + webhook), revoked on subscription end; DB-only read has no live re-check; donations are GitHub Sponsors.
+- [Stripe membership entitlement](stripe-entitlement-design.md) — $9.99/yr or $29.99 lifetime; fixed lookup-key prices read-only at runtime; signature-verified webhooks applied once (stripe_events); refund/chargeback revoke; has_paid is the member flag.
 - [Clerk auth-page logo](clerk-logo-img-fonts.md) — logoImageUrl renders as <img>, can't load webfonts; use a square self-contained mark, not a wide webfont-wordmark lockup.
-- [Stripe + stripe-replit-sync setup](stripe-replit-sync-setup.md) — connector secret is `settings.secret` (not `secret_key`); externalize `stripe-replit-sync` from esbuild or runMigrations silently skips table creation (empty `stripe` schema).
+- [stripe-replit-sync (retired)](stripe-replit-sync-setup.md) — removed; do not reintroduce. Schema changes go out via `db push` before deploy.
 - [Active scientist in URL](active-scientist-url.md) — explored author encoded as `?author=A123`; carry it through Stripe Checkout (sanitized into success/cancel_url) so redirects don't dump users on the default scientist.
 - [Poly Pizza GLB download](poly-pizza-glb.md) — page id ≠ file id; `static.poly.pizza/<page-id>.glb` is AccessDenied; scrape the page for the real UUID CDN url, verify `glTF` magic bytes.
 - [Iframe auth handoff](iframe-auth-handoff.md) — Clerk OAuth+bot-challenge split is an iframe-preview artifact; in-frame auth pages show a "open in new window" handoff, real widget renders top-level/prod.
@@ -21,4 +22,4 @@
 - [Presence load testing](presence-load-testing.md) — verified solid to 100 concurrent (peers[] caps at 60, 10Hz holds); to bench, vary X-Forwarded-For last entry against direct :8080 (proxy overwrites XFF, per-IP cap=4 blocks same-IP floods).
 - [Planet render scaling](planet-render-scaling.md) — orbit motion is ONE central O(n) useFrame (not per-planet); draw calls scale 1:1 with paper count (each planet a unique mesh/material); frustum cull + adaptive DPR are the only safety nets, no planet cap.
 - [Galaxy perf budget](galaxy-perf-budget.md) — orbit rings are ONE merged non-raycast lineSegments per sun; sphere segs capped; adaptive DPR. Don't reintroduce per-planet line objects.
-- [Ship types monetization](ship-types-monetization.md) — premium ship TYPES are $1 one-time (or free member slot); BOTH free-claim and paid-confirm must auto-equip (confirm writes users.ship_type server-side) or buyers aren't switched.
+- [Ship types](ship-types-monetization.md) — premium ship types are included with membership (no $1 sales); grants must set users.ship_type server-side.

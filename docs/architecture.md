@@ -41,7 +41,7 @@ Disambiguate by research cluster (institution + co-author), **not** by year alon
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - Required env: `DATABASE_URL` — Postgres connection string
-- Optional env: `GITHUB_REPO` — `owner/repo` for the footer star count (default `heyinterspace/cosmograph`)
+- Optional env: `GITHUB_REPO` — `owner/repo` for the footer star count (default `heyinterspace/cosmograph`, which now redirects to `Interspace-Ventures/cosmograph`)
 
 ## Realtime presence (api-server)
 
@@ -108,3 +108,18 @@ initiating prompt in commits and use short-lived remote canary branches for revi
 
 - Spaceship 3D model (`artifacts/cosmograph/public/models/ship.glb`): "Spaceship" by **Quaternius** via Poly Pizza — https://poly.pizza/m/Jqfed124pQ — License **CC0 1.0** (public domain; attribution not required but included as good practice). Used for the presence "cosmonaut" ships.
 
+
+## Request security (api-server)
+
+- Origins: `src/lib/publicOrigin.ts` is the single allowlist (`PUBLIC_APP_ORIGINS`, default cosmograph.space, app.cosmograph.space, staging.exo.now; plus `RAILWAY_PUBLIC_DOMAIN` and dev `ALLOWED_ORIGINS`). It drives credentialed CORS, the Origin check on every non-GET `/api` call, the presence socket handshake, and Stripe return URLs. Never build URLs from `Host`/`X-Forwarded-Host`.
+- Headers: `src/middlewares/securityHeaders.ts` enforces `frame-ancestors` (extend with `FRAME_ANCESTORS`), `object-src 'none'`, `base-uri`, `form-action`; the full script/connect CSP is Report-Only until reviewed.
+- Body caps 32kb JSON / 8kb form; unknown `/api/*` is a JSON 404.
+- Spend guards: `src/lib/spendGuard.ts` (per-client daily allowance + global breaker) on Ask Cosmo, feedback, and checkout creation.
+- `scripts/security-probe.sh` runs 16 live attack checks against a local server on :5099.
+
+## Membership billing (api-server)
+
+- `src/lib/billing.ts`: $9.99/yr (`annual`) and $29.99 (`lifetime`) via Stripe Checkout; Stripe customer portal for cancel/card/invoices (`POST /api/billing/portal`). Details and invariants: `.agents/memory/stripe-entitlement-design.md`.
+- Webhook `POST /api/stripe/webhook` (raw body, before `express.json`, outside the Origin gate) verifies signatures with the Stripe SDK and applies each event once via the `stripe_events` table.
+- One-time setup: `pnpm --filter @workspace/api-server run stripe:setup` (`--webhook <url>` also registers the endpoint and prints its signing secret once).
+- End-to-end check (test mode only): `scripts/billing-e2e.ts`.

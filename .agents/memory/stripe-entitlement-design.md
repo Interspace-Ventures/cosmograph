@@ -1,51 +1,41 @@
 ---
-name: Stripe membership entitlement (Cosmograph full access)
-description: How the $10/year membership entitlement is granted/revoked without fighting stripe-replit-sync.
+name: Stripe membership entitlement (launch model)
+description: $9.99/yr or $29.99 lifetime membership; how it is granted, revoked, and kept tamper-proof.
 ---
 
-# $7/year membership entitlement
+# Membership entitlement (rebuilt Oct 2026, branch agent/launch-billing)
 
-The app gates exploring *searched* (non-default) researchers behind a **$7/year recurring
-Stripe subscription** ("Cosmograph — Full Access"), tied to a Clerk user. The default
-researcher is always free. Donations are **GitHub Sponsors** (link-out), NOT Stripe.
+Supersedes the $7/yr + $1/yr add-on + $1 ship model, which is retired.
 
-**Planned model change (decided, not yet built):** move from "unlock ANY researcher" to a
-**capped** model — base $7/yr includes **3 researchers**, then **+$1/yr per additional**.
-Each unlocked researcher gets a **dedicated unique URL**. Abuse stance (user-confirmed):
-**protect the experience** (server-verified entitlement, capped unlocks, rate limiting), NOT
-the data — OpenAlex is public/free and is fair game to re-derive; the moat is the render.
-This requires per-account unlocked-researcher rows + server-side cap enforcement (today's
-`has_paid` global bool is insufficient for the cap). Billing mechanic for the +$1 add-on
-(proration vs. charge-at-renewal) is the open decision.
-
-## Shape (as actually shipped)
-- Entitlement lives on `users.has_paid` (bool) in the public schema — repurposed to mean
-  "active member" (NOT a one-time flag). No per-author rows; no separate `entitlements`
-  table. `stripe_customer_id` ties the account to its Stripe customer.
-- Price is created just-in-time (`getOrCreateMembershipPrice`): product looked up by
-  `metadata['galactic_unlock']='true'` (legacy key kept to reuse the product), then a
-  **recurring yearly** price (`recurring.interval='year'`, $10) is found-or-created. Filter
-  by `p.recurring?.interval==='year'` so an old one-time price on the same product is never
-  reused. Product name/desc are back-filled via `products.update` to stay on-brand.
-- Checkout: `mode:"subscription"`, `subscription_data.metadata.userId` (NOT
-  `payment_intent_data`, which is invalid in subscription mode). Session also carries
-  `metadata.userId`.
-- Grant paths (both require **payment actually settled**):
-  - Confirm-on-redirect: live `checkout.sessions.retrieve`; grant if
-    `payment_status==='paid'` and the session's `metadata.userId` matches.
-  - Webhook: `checkout.session.completed` / `async_payment_succeeded` → grant ONLY when
-    `payment_status==='paid'`. Do NOT also accept `status==='complete'` — it can precede
-    settlement for some payment methods (delayed cases arrive via async_payment_succeeded).
-- Revoke path (webhook): `customer.subscription.deleted` always revokes;
-  `customer.subscription.updated` revokes only on terminal statuses (canceled / unpaid /
-  incomplete_expired) — stay lenient on `past_due` retries. Find the user by the
-  subscription's `metadata.userId`, else by `stripe_customer_id`.
-
-**Why:** `stripe-replit-sync.processWebhook` resolves the webhook secret itself; a
-boot-captured secret is unreliable, so grant/revoke parse the already-verified payload (or
-live-retrieve) instead of our own `constructEvent`.
-
-**Known limitation:** `GET /me/entitlement` is a pure DB read of `has_paid` (resilient if
-Stripe is down). There is **no live re-check / periodic reconciliation**, so a *missed
-revoke webhook* leaves a lapsed member entitled. If this matters, add a reconciliation
-against synced `stripe.subscriptions` (read-only) — never INSERT into the `stripe` schema.
+- Plans: `annual` ($9.99/yr subscription) and `lifetime` ($29.99 one-time
+  payment). Prices have lookup keys `cosmograph_member_annual_v1` /
+  `cosmograph_member_lifetime_v1`, created ONCE by
+  `artifacts/api-server/scripts/stripe-setup.mjs`. The server only reads them
+  and refuses any price whose amount/currency/interval don't match
+  (`priceMatchesPlan`). Never create or edit prices at runtime. Changing a
+  price = new `_v2` lookup key.
+- State on `users`: `has_paid` stays the single "member right now" flag every
+  feature checks; detail in `member_plan`, `member_status`, `member_until`,
+  `member_since`, `cancel_at_period_end`, `stripe_subscription_id`,
+  `lifetime_payment_intent_id`.
+- Grant paths: signature-verified webhook (`stripe.webhooks.constructEventAsync`
+  with `STRIPE_WEBHOOK_SECRET`, 300 s tolerance) and the success-redirect
+  confirm, which re-fetches the session and requires
+  `metadata.userId === client_reference_id === caller`. Lifetime also requires
+  `mode=payment` and `amount_subtotal >= 2999`.
+- Idempotency: every event id is inserted into `stripe_events` first; a
+  duplicate is a no-op; on handler failure the row is deleted and 500 returned
+  so Stripe retries.
+- Subscription events re-fetch the live subscription (events arrive out of
+  order). past_due keeps access (Stripe retries the card); canceled / unpaid /
+  incomplete_expired revoke. Lifetime members ignore old annual subscription
+  events. Upgrading annual -> lifetime sets the annual sub to cancel at period end.
+- Full refund (`charge.refunded` with `refunded=true`) and chargeback
+  (`charge.dispute.created`) revoke and cancel any subscription. Partial
+  refunds keep membership.
+- User lookup prefers our `stripe_customer_id` mapping over object metadata.
+- Billing is OFF (503) unless BOTH `STRIPE_SECRET_KEY` and
+  `STRIPE_WEBHOOK_SECRET` are set. Checkout creation is capped at 20/day/user
+  (`CHECKOUT_DAILY_PER_USER`) and 5000/day globally (`CHECKOUT_DAILY_GLOBAL`).
+- Product rule: lapse/refund/dispute stops member extras, but published gift
+  links stay live (enforced in the publishing feature, not yet built).

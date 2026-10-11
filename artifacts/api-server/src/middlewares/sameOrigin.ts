@@ -1,4 +1,5 @@
 import type { RequestHandler } from "express";
+import { isAllowedOrigin } from "../lib/publicOrigin";
 
 // Paid endpoints answer only the Cosmograph page itself. Browsers always send an
 // Origin header on cross-site and same-site fetch POSTs, so a request with a
@@ -35,7 +36,10 @@ export function originAllowed(
 export const requireSameOrigin: RequestHandler = (req, res, next) => {
   const forwarded = req.get("x-forwarded-host")?.split(",")[0]?.trim();
   const publicHost = forwarded || req.get("host");
-  if (originAllowed(req.get("origin"), publicHost)) {
+  // Only the explicit allowlist (PUBLIC_APP_ORIGINS / ALLOWED_ORIGINS). Matching
+  // Origin against Host is not enough: a script sets both headers.
+  void publicHost;
+  if (isAllowedOrigin(req.get("origin"))) {
     next();
     return;
   }
