@@ -14,10 +14,13 @@ import { galaxyData } from "@/data/galaxy";
 import { presence } from "@/lib/presence";
 import { useEffect, useRef, useSyncExternalStore } from "react";
 import { toast } from "sonner";
+import { featureEnabled } from "@/config/features";
 
 const EMPTY_IDS: string[] = [];
 
 export function Overlay() {
+  const askCosmoEnabled = featureEnabled("ask-cosmo");
+  const shareCardsEnabled = featureEnabled("share-cards");
   const { introFinished, selectedObject, hoveredObject, tourActive } =
     useAppState();
 
@@ -83,11 +86,11 @@ export function Overlay() {
               </AnimatePresence>
 
               <Footer />
-              <EngagePrompt />
+              {shareCardsEnabled && <EngagePrompt />}
             </>
           )}
           <InfoDrawer />
-          <AskDrawer />
+          {askCosmoEnabled && <AskDrawer />}
           <CustomizeDrawer />
           <AuthDrawer />
         </>
@@ -141,7 +144,7 @@ function Header() {
           value={`${compactNumber(stats.estimatedWords)}+`}
         />
       </div>
-      <LivePresence />
+      {featureEnabled("live-presence") && <LivePresence />}
     </div>
   );
 }

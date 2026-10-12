@@ -25,8 +25,17 @@ Please include:
 
 ## Scope
 
-Cosmograph's core visualization is a **static site** with no backend, no database, and no user accounts — its data is baked in at build time from public [OpenAlex](https://openalex.org) records, so the attack surface is small.
+The core research visualization is generated from public
+[OpenAlex](https://openalex.org) records, but the deployed product also includes
+Clerk identity, a Postgres-backed entitlement layer, optional Stripe commerce,
+AI-assisted queries, feedback, referrals, and realtime presence. Treat the web
+client, API server, authentication proxy, database, webhook handlers, and
+deployment configuration as security-sensitive surfaces.
 
-The optional realtime `api-server` (anonymous, in-memory presence + a cached GitHub star count) is the main server-side surface. It persists nothing and stores no personal data, but reports of abuse vectors (e.g. denial of service, resource exhaustion) are welcome.
+Staging is private by default. It uses a dedicated database branch and requires
+an authenticated Clerk session for application access while leaving only its
+health endpoint and sign-in dependencies public. See
+[`docs/staging.md`](docs/staging.md) for the enforced boundary and verification
+checklist.
 
 Thank you for helping keep Cosmograph and its users safe.

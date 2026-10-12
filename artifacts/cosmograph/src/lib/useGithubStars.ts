@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { withAppBasePath } from "@/lib/appPath";
 
 type StarsState = { stars: number | null; url: string | null };
 
@@ -9,7 +10,7 @@ export function useGithubStars(): StarsState {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/github/stars")
+    fetch(withAppBasePath("/api/github/stars"))
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (cancelled || !d) return;

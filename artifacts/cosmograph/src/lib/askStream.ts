@@ -1,4 +1,5 @@
 import type { AskQuery } from "@/data/galaxy";
+import { withAppBasePath } from "@/lib/appPath";
 
 // Client reader for the "Ask Cosmos" SSE stream (POST /api/ask/chat). The server
 // streams typed frames: a single `action` (so the galaxy can react immediately),
@@ -107,7 +108,7 @@ export async function streamAsk(
   body: AskStreamRequest,
   h: AskStreamHandlers,
 ): Promise<void> {
-  const res = await fetch("/api/ask/chat", {
+  const res = await fetch(withAppBasePath("/api/ask/chat"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

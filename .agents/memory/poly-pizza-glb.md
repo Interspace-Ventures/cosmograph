@@ -14,4 +14,4 @@ download by checking the first 4 bytes are the ASCII magic `glTF`.
 
 **Why:** saved a wasted retry loop when adding the CC0 Quaternius spaceship
 (`artifacts/cosmograph/public/models/ship.glb`). License is CC0 — credited in
-`replit.md` Credits as good practice, not required.
+`docs/architecture.md` Credits as good practice, not required.

@@ -3,6 +3,7 @@ import { Heart, Github, Star, Share2 } from "lucide-react";
 import { useGithubStars, formatStars } from "@/lib/useGithubStars";
 import { SITE } from "@/config/site";
 import { ShareModal } from "./ShareModal";
+import { featureEnabled } from "@/config/features";
 
 /**
  * Project / social actions — Source (GitHub), Sponsor, and Share. These used to
@@ -11,6 +12,7 @@ import { ShareModal } from "./ShareModal";
  * star count.
  */
 export function SocialActions() {
+  const shareCardsEnabled = featureEnabled("share-cards");
   const [shareOpen, setShareOpen] = useState(false);
   const { stars, url } = useGithubStars();
 
@@ -45,18 +47,22 @@ export function SocialActions() {
             Sponsor
           </span>
         </a>
-        <button
-          type="button"
-          onClick={() => setShareOpen(true)}
-          className="relative flex h-7 shrink-0 items-center gap-1.5 border border-edge bg-white/5 px-2 text-ink transition-colors hover:bg-white/10"
-        >
-          <Share2 size={12} className="shrink-0" />
-          <span className="font-display text-[10px] uppercase tracking-wider">
-            Share
-          </span>
-        </button>
+        {shareCardsEnabled && (
+          <button
+            type="button"
+            onClick={() => setShareOpen(true)}
+            className="relative flex h-7 shrink-0 items-center gap-1.5 border border-edge bg-white/5 px-2 text-ink transition-colors hover:bg-white/10"
+          >
+            <Share2 size={12} className="shrink-0" />
+            <span className="font-display text-[10px] uppercase tracking-wider">
+              Share
+            </span>
+          </button>
+        )}
       </div>
-      <ShareModal open={shareOpen} onClose={() => setShareOpen(false)} />
+      {shareCardsEnabled && (
+        <ShareModal open={shareOpen} onClose={() => setShareOpen(false)} />
+      )}
     </>
   );
 }

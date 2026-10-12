@@ -3,6 +3,7 @@ import app from "./app";
 import { attachPresence } from "./presence/server";
 import { initStripe } from "./lib/stripeSetup";
 import { logger } from "./lib/logger";
+import { featureEnabled } from "./lib/features";
 
 const rawPort = process.env["PORT"];
 
@@ -19,7 +20,11 @@ if (Number.isNaN(port) || port <= 0) {
 }
 
 const server = createServer(app);
-attachPresence(server);
+if (featureEnabled("live-presence")) {
+  attachPresence(server);
+} else {
+  logger.info("Live presence disabled by release plan");
+}
 
 // Best-effort, non-fatal: initializes Stripe sync + webhook when connected.
 void initStripe();

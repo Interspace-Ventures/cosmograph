@@ -1,5 +1,6 @@
 import { SITE } from "@/config/site";
 import { useAppState } from "@/lib/store";
+import { withAppBasePath } from "@/lib/appPath";
 
 export function Footer() {
   const { setInfoOpen, setInfoTab } = useAppState();
@@ -23,7 +24,7 @@ export function Footer() {
         <span className="text-ink-dim/30">·</span>
         <span>
           <a
-            href="/"
+            href={withAppBasePath("/")}
             className="pointer-events-auto text-ink-dim underline-offset-2 hover:underline"
           >
             Cosmograph

@@ -56,6 +56,7 @@
   --accent-ink: #000000;
   --bg: #272933;
   --bg-2: #1f2028;
+  --body-surface: rgba(31, 32, 40, 0.95);
   --ink: #e6e6e6;
   --ink-dim: #9da0ab;
   --edge: 0 0 0;
@@ -142,6 +143,10 @@
   transition:
     transform 0.1s ease,
     box-shadow 0.1s ease;
+}
+
+.site-body-surface {
+  background: var(--body-surface);
 }
 
 .glass-panel-interactive:hover {

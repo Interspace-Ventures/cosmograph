@@ -51,7 +51,8 @@ class PresenceClient {
         ? "wss"
         : "ws";
     const host = typeof location !== "undefined" ? location.host : "localhost";
-    this.url = `${proto}://${host}/api/presence`;
+    const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
+    this.url = `${proto}://${host}${basePath}/api/presence`;
   }
 
   start(): void {

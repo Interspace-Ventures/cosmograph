@@ -19,7 +19,7 @@ Mission Control console's "Ask" drawer. One model call does four jobs:
    only the exact headline summary figures it is given; anything derived routes
    to a data turn.
 4. **Feedback** — bug reports / feature requests are classified, summarized, and
-   filed to Linear via the existing `/api/feedback/issue` route.
+   filed through EXO's private work-intake boundary via `/api/feedback/issue`.
 
 Off-topic prompts and jailbreak attempts ("ignore your instructions…") are
 politely declined and redirected back to the science.
@@ -60,7 +60,7 @@ The chat primitives live in `src/components/ui/chat.tsx`. They follow the same
 rules as the rest of Cosmograph's UI (see `index.css` — the whole radius scale is
 collapsed to `0px`, with `border-edge` / `ink` / `accent` tokens):
 
-- **Square edges, hard borders.** Message bubbles, the composer, the issue link,
+- **Square edges, hard borders.** Message bubbles, the composer, the work-item badge,
   and suggestion chips are all `border-2 border-edge` rectangles — no
   `rounded-*`. User messages get an `bg-accent/15` wash and sit right; assistant
   messages sit left on `bg-white/5`.
@@ -89,7 +89,7 @@ user text
               └─ OpenAI (gpt-5-mini, reasoning_effort:"low", stream)
                    └─ StreamSplitter → SSE frames
   ◄─ onAction  → data: runAskQuery + setFilters (galaxy lights up)
-                 feedback: useReportFeedback → Linear issue link
+                 feedback: useReportFeedback → EXO work-item identifier
   ◄─ onReasoning → ChatThinking (live "Thinking…")
   ◄─ onAnswer   → assistant bubble (streaming caret)
   ◄─ done       → commit answer into rolling history (multi-turn context)

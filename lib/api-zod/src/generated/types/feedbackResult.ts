@@ -7,8 +7,8 @@
  */
 
 export interface FeedbackResult {
-  /** The URL of the created Linear issue. */
-  url: string;
-  /** The Linear issue number (per-team). */
-  number: number;
+  /** Opaque EXO tracking id retained by the application. */
+  trackingId: string;
+  /** Human-readable EXO work-item identifier. */
+  identifier: string;
 }

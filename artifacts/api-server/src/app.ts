@@ -7,6 +7,7 @@ import { clerkMiddleware } from "@clerk/express";
 import { publishableKeyFromHost } from "@clerk/shared/keys";
 import {
   CLERK_PROXY_PATH,
+  clerkCanonicalHostMiddleware,
   clerkProxyMiddleware,
   getClerkProxyHost,
 } from "./middlewares/clerkProxyMiddleware";
@@ -15,6 +16,8 @@ import { logger } from "./lib/logger";
 import { getStripeSync } from "./lib/stripeClient";
 import { markUnlockedFromWebhook } from "./lib/billing";
 import { grantSkinFromWebhook } from "./lib/ship";
+import { stagingAccess } from "./middlewares/stagingAccess";
+import { appBasePathMiddleware } from "./lib/appPath";
 
 const app: Express = express();
 
@@ -22,6 +25,10 @@ const app: Express = express();
 // reads the real client IP from X-Forwarded-For instead of the proxy's, and so
 // req.protocol/host are correct when building Stripe redirect URLs.
 app.set("trust proxy", 1);
+
+// EXO's App gateway keeps the public App prefix in the upstream request.
+// Normalize it once at the service boundary so existing routes remain stable.
+app.use(appBasePathMiddleware);
 
 app.use(
   pinoHttp({
@@ -42,6 +49,8 @@ app.use(
     },
   }),
 );
+
+app.use(clerkCanonicalHostMiddleware());
 
 // Clerk auth proxy. Mounted before the body parsers because it streams raw
 // bytes through to Clerk's FAPI.
@@ -95,6 +104,10 @@ app.use(
     ),
   })),
 );
+
+// Staging is a private review surface. Production remains public because this
+// boundary is enabled only by an explicit environment variable in Railway.
+app.use(stagingAccess);
 
 // General per-IP request throttle for the REST API (presence WebSocket has its
 // own connection/message limits and does not pass through here).

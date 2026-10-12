@@ -2,7 +2,7 @@
  * Clerk Frontend API Proxy Middleware
  *
  * Proxies Clerk Frontend API requests through your domain, enabling Clerk
- * authentication on custom domains and .replit.app deployments without
+ * authentication on custom domains and provider deployments without
  * requiring CNAME DNS configuration.
  *
  * AUTH CONFIGURATION: To manage users, enable/disable login providers
@@ -22,9 +22,50 @@
 import { createProxyMiddleware } from "http-proxy-middleware";
 import type { RequestHandler } from "express";
 import type { IncomingHttpHeaders } from "http";
+import { withAppBasePath } from "../lib/appPath";
 
 const CLERK_FAPI = "https://frontend-api.clerk.dev";
 export const CLERK_PROXY_PATH = "/api/__clerk";
+
+function authorizedClerkHosts(): Set<string> {
+  return new Set(
+    (process.env["CLERK_AUTHORIZED_PARTIES"] ?? "")
+      .split(",")
+      .map((value) => {
+        try {
+          return new URL(value.trim()).host;
+        } catch {
+          return "";
+        }
+      })
+      .filter(Boolean),
+  );
+}
+
+export function getConfiguredClerkCanonicalHost(): string | undefined {
+  const canonicalHost = process.env["CLERK_CANONICAL_HOST"]?.trim();
+  return canonicalHost && authorizedClerkHosts().has(canonicalHost)
+    ? canonicalHost
+    : undefined;
+}
+
+/**
+ * Railway replaces forwarding headers on external rewrites. In EXO staging,
+ * set the request host to the allow-listed public gateway before Clerk runs so
+ * development-instance handshakes return to staging.exo.now, not the provider
+ * hostname. The environment value is ignored unless it is also authorized.
+ */
+export function clerkCanonicalHostMiddleware(): RequestHandler {
+  return (req, _res, next) => {
+    const canonicalHost = getConfiguredClerkCanonicalHost();
+    if (canonicalHost) {
+      req.headers.host = canonicalHost;
+      req.headers["x-forwarded-host"] = canonicalHost;
+      req.headers["x-forwarded-proto"] = "https";
+    }
+    next();
+  };
+}
 
 /**
  * Returns the first effective public hostname for the given request,
@@ -46,6 +87,16 @@ export const CLERK_PROXY_PATH = "/api/__clerk";
 export function getClerkProxyHost(req: {
   headers: IncomingHttpHeaders;
 }): string | undefined {
+  const canonical = req.headers["x-exo-canonical-host"];
+  const canonicalHost = (Array.isArray(canonical) ? canonical[0] : canonical)
+    ?.split(",")[0]
+    ?.trim();
+  const authorizedHosts = authorizedClerkHosts();
+
+  if (canonicalHost && authorizedHosts.has(canonicalHost)) {
+    return canonicalHost;
+  }
+
   const forwarded = req.headers["x-forwarded-host"];
   const raw = Array.isArray(forwarded) ? forwarded[0] : forwarded;
   const firstHop = raw?.split(",")[0]?.trim();
@@ -72,7 +123,7 @@ export function clerkProxyMiddleware(): RequestHandler {
       proxyReq: (proxyReq, req) => {
         const protocol = req.headers["x-forwarded-proto"] || "https";
         const host = getClerkProxyHost(req) || "";
-        const proxyUrl = `${protocol}://${host}${CLERK_PROXY_PATH}`;
+        const proxyUrl = `${protocol}://${host}${withAppBasePath(CLERK_PROXY_PATH)}`;
 
         proxyReq.setHeader("Clerk-Proxy-Url", proxyUrl);
         proxyReq.setHeader("Clerk-Secret-Key", secretKey);

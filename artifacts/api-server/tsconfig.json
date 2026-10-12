@@ -17,6 +17,9 @@
     },
     {
       "path": "../../lib/integrations-openai-ai-server"
+    },
+    {
+      "path": "../../lib/release-flags"
     }
   ]
 }

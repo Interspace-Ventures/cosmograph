@@ -5,8 +5,14 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export type HealthStatusDeployment = {
+  commit: string;
+  environment: string;
+};
+
 export interface HealthStatus {
   status: string;
+  deployment: HealthStatusDeployment;
 }
 
 export interface Entitlement {
@@ -160,10 +166,10 @@ export interface FeedbackRequest {
 }
 
 export interface FeedbackResult {
-  /** The URL of the created Linear issue. */
-  url: string;
-  /** The Linear issue number (per-team). */
-  number: number;
+  /** Opaque EXO tracking id retained by the application. */
+  trackingId: string;
+  /** Human-readable EXO work-item identifier. */
+  identifier: string;
 }
 
 export interface ReferralInfo {

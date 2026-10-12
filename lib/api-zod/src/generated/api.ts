@@ -13,7 +13,11 @@ import * as zod from 'zod';
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({
-  "status": zod.string()
+  "status": zod.string(),
+  "deployment": zod.object({
+  "commit": zod.string(),
+  "environment": zod.string()
+})
 })
 
 
@@ -211,9 +215,9 @@ export const ChatAskBody = zod.object({
 
 
 /**
- * Creates an issue in the project's Linear workspace from a visitor's message. Used by the Ask panel's "report a bug / request a feature" affordance.
+ * Creates a private work item through EXO's signed intake boundary from a visitor's message. Used by the Ask panel's "report a bug / request a feature" affordance.
 
- * @summary File a bug report or feature request as a Linear issue
+ * @summary File a bug report or feature request as a private EXO work item
  */
 export const ReportFeedbackBody = zod.object({
   "kind": zod.enum(['bug', 'feature']).describe('Whether this is a bug report or a feature request.'),
