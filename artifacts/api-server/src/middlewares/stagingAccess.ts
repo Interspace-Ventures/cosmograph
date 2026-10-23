@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
-import { getAuth } from "@clerk/express";
 import { withAppBasePath } from "../lib/appPath";
+import { getExoIdentity } from "./exoIdentity";
 
 const TRUE_VALUES = new Set(["1", "true", "yes", "on"]);
 
@@ -27,7 +27,9 @@ export function isPublicStagingPath(pathname: string): boolean {
     pathname === "/sign-in" ||
     pathname.startsWith("/sign-in/") ||
     pathname === "/sign-up" ||
-    pathname.startsWith("/sign-up/")
+    pathname.startsWith("/sign-up/") ||
+    // Exo ID redirect target: the browser redeems the one-time code here.
+    pathname === "/auth/callback"
   );
 }
 
@@ -54,18 +56,37 @@ export function stagingAccessDecision(input: {
 }
 
 /**
+ * Where a signed-out visitor goes: the sign-in page, returning to `returnTo`
+ * (app-relative path + query) afterwards. Only same-app relative paths are
+ * carried; anything else returns to the galaxy.
+ */
+export function signInLocation(returnTo: string): string {
+  const next =
+    returnTo.startsWith("/") &&
+    !returnTo.startsWith("//") &&
+    !returnTo.startsWith("/\\") &&
+    !returnTo.startsWith("/sign-in") &&
+    !returnTo.startsWith("/auth/")
+      ? returnTo
+      : "/";
+  return next === "/"
+    ? withAppBasePath("/sign-in")
+    : `${withAppBasePath("/sign-in")}?next=${encodeURIComponent(next)}`;
+}
+
+/**
  * Fail-closed access boundary for non-production deployments.
  *
  * Railway enables this explicitly with STAGING_AUTH_REQUIRED=true. Health,
- * Clerk's sign-in routes, and the static files needed to render those routes
- * remain public; every application route and API otherwise requires a valid
- * Clerk session established by clerkMiddleware().
+ * the sign-in and Exo ID callback routes, and the static files needed to render
+ * them remain public; every application route and API otherwise requires a
+ * verified Exo ID access token for this app's audience (see exoIdentity.ts).
  */
-export function stagingAccess(
+export async function stagingAccess(
   req: Request,
   res: Response,
   next: NextFunction,
-): void {
+): Promise<void> {
   const enabled = stagingAccessRequired(
     process.env["STAGING_AUTH_REQUIRED"],
   );
@@ -83,10 +104,11 @@ export function stagingAccess(
     "X-Robots-Tag": "noindex, nofollow, noarchive, nosnippet",
   });
 
-  const auth = getAuth(req);
   const decision = stagingAccessDecision({
     enabled,
-    userId: auth?.userId,
+    userId: isPublicStagingPath(req.path)
+      ? null
+      : (await getExoIdentity(req))?.subject,
     method: req.method,
     pathname: req.path,
     acceptsHtml: req.accepts("html") === "html",
@@ -98,7 +120,7 @@ export function stagingAccess(
   }
 
   if (decision === "redirect") {
-    res.redirect(302, withAppBasePath("/sign-in"));
+    res.redirect(302, signInLocation(req.url));
     return;
   }
 

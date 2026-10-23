@@ -17,6 +17,18 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.39.0",
+    codename: "Single Key",
+    date: "2026-10-22",
+    summary:
+      "Sign in to Cosmograph with Exo, the one account across Interspace apps.",
+    changes: [
+      "Replaced Clerk with Exo Key sign-in: one \"Continue with Exo\" step (Google, GitHub, or phone), and first-time visitors get an account by continuing.",
+      "The API now verifies Exo access tokens against Exo's public keys on every request and keys accounts by the Exo account id, with no auth secrets and no bypass.",
+      "Private staging hands off to Exo on its own after the gateway sign-in, with a loop guard, and removed the Clerk proxy dependency.",
+    ],
+  },
+  {
     version: "3.38.0",
     codename: "Mission Clock",
     date: "2026-07-30",

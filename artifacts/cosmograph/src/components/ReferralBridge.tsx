@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useAuth } from "@clerk/react";
+import { useAuth } from "@/lib/auth";
 import { useClaimReferral } from "@workspace/api-client-react";
 import {
   readReferralParam,
@@ -14,7 +14,7 @@ import {
 // nothing. Degrades silently: if the server is unreachable the galaxy is
 // unaffected and the pending code is simply cleared after the attempt.
 export function ReferralBridge() {
-  const { isLoaded, isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn, accessReady } = useAuth();
   const claim = useClaimReferral();
   const claimedRef = useRef(false);
 
@@ -34,7 +34,7 @@ export function ReferralBridge() {
   // the next authenticated load retries it, rather than silently losing a valid
   // signup. `claimedRef` keeps it to one in-flight attempt per mount.
   useEffect(() => {
-    if (!isLoaded || !isSignedIn || claimedRef.current) return;
+    if (!isLoaded || !isSignedIn || !accessReady || claimedRef.current) return;
     const code = getPendingReferral();
     if (!code) return;
     claimedRef.current = true;
@@ -49,7 +49,7 @@ export function ReferralBridge() {
       },
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoaded, isSignedIn]);
+  }, [isLoaded, isSignedIn, accessReady]);
 
   return null;
 }

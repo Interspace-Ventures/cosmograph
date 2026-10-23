@@ -14,6 +14,7 @@ import { z } from "zod/v4";
 export const shipUnlocksTable = pgTable(
   "ship_unlocks",
   {
+    // The account's Exo subject (users.exo_subject).
     userId: text("user_id").notNull(),
     sku: text("sku").notNull(),
     createdAt: timestamp("created_at").notNull().defaultNow(),

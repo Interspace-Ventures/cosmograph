@@ -4,10 +4,10 @@ import { Button } from "@/components/ui/button";
 
 /**
  * True when the app is running inside an iframe (e.g. an embedded dev preview, or
- * anyone embedding cosmograph.space). OAuth providers refuse to render their
- * consent screens in an iframe, so Clerk pops them into a new tab while the bot
- * challenge stays in the embedded page — a confusing split. We sidestep it by
- * handing the whole auth flow off to a single top-level tab.
+ * anyone embedding cosmograph.space). Exo's hosted sign-in page and the
+ * Google/GitHub consent screens behind it refuse to render in an iframe, so we
+ * hand the whole Exo Key flow off to a single top-level tab. The tokens land in
+ * this origin's localStorage, so the framed app picks the session up too.
  */
 function inIframe(): boolean {
   try {
@@ -19,11 +19,10 @@ function inIframe(): boolean {
 }
 
 /**
- * Wraps the Clerk <SignIn>/<SignUp> widget. When framed, it replaces the widget
- * with a card that opens the same auth route in a new top-level tab, so the bot
- * challenge and the OAuth redirect happen together in one window. When not
- * framed (the published app, or the preview opened in its own tab), it renders
- * the real auth widget unchanged.
+ * Wraps the Exo sign-in panel. When framed, it replaces the panel with a card
+ * that opens the sign-in route in a new top-level tab, so the whole Exo
+ * redirect happens in one window. When not framed (the published app, or the
+ * preview opened in its own tab), it renders the real panel unchanged.
  */
 export function AuthHandoff({
   mode,
@@ -67,9 +66,9 @@ export function AuthHandoff({
     >
       <h1 className="text-xl font-semibold text-foreground">{verb}</h1>
       <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-        For your security, sign-in opens in its own window — Google and GitHub
-        won&apos;t load inside an embedded preview. The whole flow finishes
-        there, then you&apos;ll be signed in here too.
+        For your security, sign-in opens in its own window: Exo&apos;s sign-in
+        page won&apos;t load inside an embedded preview. The whole flow
+        finishes there, then you&apos;ll be signed in here too.
       </p>
       <Button onClick={open} size="lg" className="mt-6 w-full gap-2">
         <ExternalLink className="h-4 w-4" />

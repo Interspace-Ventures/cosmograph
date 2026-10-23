@@ -133,7 +133,7 @@ interface AppState {
   customizeOpen: boolean;
   setCustomizeOpen: (val: boolean) => void;
   // Sign-in / sign-up panel. Rises from the cockpit like the other rich panels
-  // (mutually exclusive with them). `authMode` picks which Clerk widget shows.
+  // (mutually exclusive with them). `authMode` picks the sign-in vs. sign-up copy.
   authOpen: boolean;
   authMode: "sign-in" | "sign-up";
   setAuthOpen: (val: boolean, mode?: "sign-in" | "sign-up") => void;

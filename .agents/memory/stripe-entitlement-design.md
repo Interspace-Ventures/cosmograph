@@ -6,7 +6,7 @@ description: How the $10/year membership entitlement is granted/revoked without 
 # $7/year membership entitlement
 
 The app gates exploring *searched* (non-default) researchers behind a **$7/year recurring
-Stripe subscription** ("Cosmograph — Full Access"), tied to a Clerk user. The default
+Stripe subscription** ("Cosmograph — Full Access"), tied to the Exo Key account (users.exo_subject = Exo ID `sub`). The default
 researcher is always free. Donations are **GitHub Sponsors** (link-out), NOT Stripe.
 
 **Planned model change (decided, not yet built):** move from "unlock ANY researcher" to a

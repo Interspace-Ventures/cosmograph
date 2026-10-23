@@ -1,18 +1,15 @@
-import { useEffect, useRef, useState } from "react";
-import { X } from "lucide-react";
-import { ClerkProvider, SignIn, SignUp, useClerk } from "@clerk/react";
-import { publishableKeyFromHost } from "@clerk/react/internal";
-import { Switch, Route, useLocation, Router as WouterRouter } from "wouter";
-import { QueryClientProvider, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { Switch, Route, Router as WouterRouter } from "wouter";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster as Sonner } from "sonner";
 import { queryClient } from "@/lib/queryClient";
-import { clerkAppearance } from "@/lib/clerkAppearance";
+import { AuthProvider } from "@/lib/auth";
 import { AppStateProvider, useAppState } from "@/lib/store";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Scene } from "@/components/Scene";
 import { Overlay } from "@/components/Overlay";
 import { TourOverlay } from "@/components/TourOverlay";
-import { AuthHandoff } from "@/components/AuthHandoff";
+import { AuthCallbackPage, SignInPage } from "@/components/AuthPages";
 import { Dashboard } from "@/components/Dashboard";
 import { FlyCockpit } from "@/components/FlyCockpit";
 import { DatasetLoadingOverlay } from "@/components/DatasetLoadingOverlay";
@@ -26,38 +23,8 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { WebGLFallback } from "@/components/WebGLFallback";
 import { isWebGLAvailable } from "@/lib/webgl";
 import { featureEnabled } from "@/config/features";
-import { withAppBasePath } from "@/lib/appPath";
-
-// REQUIRED — copy verbatim. Resolves the key from window.location.hostname so the
-// same build serves multiple Clerk custom domains. Do not inline the env var, leave
-// publishableKey undefined, or replace publishableKeyFromHost with anything else.
-const clerkPubKey = publishableKeyFromHost(
-  window.location.hostname,
-  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
-);
-
-// Production Clerk instances can use the same-origin proxy. EXO staging shares
-// a Clerk development instance across Apps, and Clerk does not support proxying
-// development Frontend API traffic, so `direct` deliberately omits proxyUrl.
-const configuredClerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
-const clerkProxyUrl =
-  configuredClerkProxyUrl === "direct"
-    ? undefined
-    : withAppBasePath(configuredClerkProxyUrl || "/api/__clerk");
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
-
-// Clerk passes full paths to routerPush/routerReplace, but wouter's
-// setLocation prepends the base — strip it to avoid doubling.
-function stripBase(path: string): string {
-  return basePath && path.startsWith(basePath)
-    ? path.slice(basePath.length) || "/"
-    : path;
-}
-
-if (!clerkPubKey) {
-  throw new Error("Missing VITE_CLERK_PUBLISHABLE_KEY in .env file");
-}
 
 // Everything that reads the (swappable) dataset lives under a key={datasetVersion}
 // wrapper so loading a new scientist fully remounts the 3D scene and panels,
@@ -137,126 +104,12 @@ function GalaxyHome() {
   );
 }
 
-// Dismissible shell for the auth widget: a blurred backdrop over the galaxy with
-// an explicit close button, click-outside, and Escape — all navigating back to
-// the galaxy so sign-in/up reads as a panel you can leave, not a dead-end
-// full-screen takeover.
-function AuthModal({ children }: { children: React.ReactNode }) {
-  const [, setLocation] = useLocation();
-  const close = () => setLocation("/");
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+// Auth is Exo Key only (see lib/auth.tsx). /sign-in and /sign-up hand off to
+// Exo's hosted sign-in page; /auth/callback redeems the one-time code.
+function AppRoutes() {
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      onClick={close}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-background/85 px-4 backdrop-blur-sm"
-    >
-      <div className="relative" onClick={(e) => e.stopPropagation()}>
-        <button
-          type="button"
-          onClick={close}
-          aria-label="Back to the galaxy"
-          className="absolute -right-3 -top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full border-2 border-edge bg-background text-ink shadow-lg transition-colors hover:bg-white/10"
-        >
-          <X size={18} />
-        </button>
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function SignInPage() {
-  return (
-    <AuthModal>
-      <AuthHandoff mode="sign-in">
-        {/* path must be the full browser path — Clerk reads window.location.pathname directly */}
-        <SignIn
-          routing="path"
-          path={`${basePath}/sign-in`}
-          signUpUrl={`${basePath}/sign-up`}
-          forceRedirectUrl={basePath || "/"}
-        />
-      </AuthHandoff>
-    </AuthModal>
-  );
-}
-
-function SignUpPage() {
-  return (
-    <AuthModal>
-      <AuthHandoff mode="sign-up">
-        <SignUp
-          routing="path"
-          path={`${basePath}/sign-up`}
-          signInUrl={`${basePath}/sign-in`}
-          forceRedirectUrl={basePath || "/"}
-        />
-      </AuthHandoff>
-    </AuthModal>
-  );
-}
-
-// Helps user's webview stay up-to-date when the signed-in user changes by invalidating the QueryClient cache.
-function ClerkQueryClientCacheInvalidator() {
-  const { addListener } = useClerk();
-  const queryClient = useQueryClient();
-  const prevUserIdRef = useRef<string | null | undefined>(undefined);
-
-  useEffect(() => {
-    const unsubscribe = addListener(({ user }) => {
-      const userId = user?.id ?? null;
-      if (
-        prevUserIdRef.current !== undefined &&
-        prevUserIdRef.current !== userId
-      ) {
-        queryClient.clear();
-      }
-      prevUserIdRef.current = userId;
-    });
-    return unsubscribe;
-  }, [addListener, queryClient]);
-
-  return null;
-}
-
-function ClerkProviderWithRoutes() {
-  const [, setLocation] = useLocation();
-
-  return (
-    <ClerkProvider
-      publishableKey={clerkPubKey}
-      proxyUrl={clerkProxyUrl}
-      appearance={clerkAppearance}
-      signInUrl={`${basePath}/sign-in`}
-      signUpUrl={`${basePath}/sign-up`}
-      localization={{
-        signIn: {
-          start: {
-            title: "Welcome back, cosmonaut",
-            subtitle: "Sign in to unlock the full galaxy",
-          },
-        },
-        signUp: {
-          start: {
-            title: "Become a cosmonaut",
-            subtitle: "One account, every researcher's galaxy",
-          },
-        },
-      }}
-      routerPush={(to) => setLocation(stripBase(to))}
-      routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
-    >
-      <QueryClientProvider client={queryClient}>
-        <ClerkQueryClientCacheInvalidator />
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
         <AppStateProvider>
           <DocumentTitle />
           <EntitlementBridge />
@@ -265,18 +118,20 @@ function ClerkProviderWithRoutes() {
           <AuthMemoryBridge />
           <Switch>
             <Route path="/" component={GalaxyHome} />
-            {/* REQUIRED — copy "/sign-in/*?" and "/sign-up/*?" verbatim. The /*? optional
-                wildcard is the only wouter syntax that matches both the bare URL and Clerk's
-                OAuth sub-paths. Not /sign-in, not /sign-in/*, not /sign-in/:rest*. */}
-            <Route path="/sign-in/*?" component={SignInPage} />
-            <Route path="/sign-up/*?" component={SignUpPage} />
+            <Route path="/auth/callback" component={AuthCallbackPage} />
+            <Route path="/sign-in/*?">
+              <SignInPage mode="sign-in" />
+            </Route>
+            <Route path="/sign-up/*?">
+              <SignInPage mode="sign-up" />
+            </Route>
             <Route component={GalaxyHome} />
           </Switch>
           <Paywall />
           <Sonner theme="dark" position="top-center" richColors />
         </AppStateProvider>
-      </QueryClientProvider>
-    </ClerkProvider>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }
 
@@ -296,7 +151,7 @@ function DocumentTitle() {
 function App() {
   return (
     <WouterRouter base={basePath}>
-      <ClerkProviderWithRoutes />
+      <AppRoutes />
     </WouterRouter>
   );
 }

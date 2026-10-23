@@ -27,14 +27,20 @@ Please include:
 
 The core research visualization is generated from public
 [OpenAlex](https://openalex.org) records, but the deployed product also includes
-Clerk identity, a Postgres-backed entitlement layer, optional Stripe commerce,
-AI-assisted queries, feedback, referrals, and realtime presence. Treat the web
-client, API server, authentication proxy, database, webhook handlers, and
+Exo Key (Exo ID) identity, a Postgres-backed entitlement layer, optional Stripe
+commerce, AI-assisted queries, feedback, referrals, and realtime presence. Treat
+the web client, API server, token verification, database, webhook handlers, and
 deployment configuration as security-sensitive surfaces.
 
+Identity is Exo Key only. Cosmograph is a relying party: it holds no OAuth
+client, signing key, or auth secret. The API verifies every Exo ID access token
+(RS256 signature against Exo's public JWKS, exact issuer, an allowed audience,
+and expiry) on each request, and keys accounts by the token's `sub`. There is no
+auth bypass, dev override, or hardcoded identity.
+
 Staging is private by default. It uses a dedicated database branch and requires
-an authenticated Clerk session for application access while leaving only its
-health endpoint and sign-in dependencies public. See
+a verified Exo ID access token for this app's audience for application access
+while leaving only its health endpoint and sign-in dependencies public. See
 [`docs/staging.md`](docs/staging.md) for the enforced boundary and verification
 checklist.
 

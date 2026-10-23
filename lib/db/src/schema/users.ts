@@ -2,7 +2,11 @@ import { pgTable, text, boolean, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
-// Application user record, keyed by the Clerk user id. This is the only
+// Application user record, keyed by the Exo subject: the `sub` of a verified
+// Exo ID access token (the Exo user id, stable across Interspace apps). Clerk
+// is gone; migrations/0001_users_exo_subject.sql renamed the old Clerk-keyed
+// `id` column to `exo_subject`. Child tables (researcher_unlocks, ship_unlocks)
+// and `referred_by` hold the same Exo subject in their user columns. This is the only
 // app-owned table for accounts + entitlement; everything Stripe-owned
 // (customers, prices, checkout sessions, payments) lives in the `stripe`
 // schema that stripe-replit-sync manages — we never duplicate it here.
@@ -14,7 +18,7 @@ import { z } from "zod/v4";
 // separate `researcher_unlocks` table. `stripeCustomerId` ties this account to
 // its Stripe customer so repeat checkouts reuse one customer.
 export const usersTable = pgTable("users", {
-  id: text("id").primaryKey(),
+  exoSubject: text("exo_subject").primaryKey(),
   email: text("email"),
   stripeCustomerId: text("stripe_customer_id"),
   hasPaid: boolean("has_paid").notNull().default(false),

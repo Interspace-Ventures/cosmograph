@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Show, UserButton } from "@clerk/react";
 import {
+  LogOut,
   ShieldCheck,
   Sparkles,
   Shuffle,
@@ -20,20 +20,70 @@ import { useAppState } from "@/lib/store";
 import { shipLookFromSeed } from "@/lib/shipLook";
 import { SHIP_TYPES } from "@/lib/shipTypes";
 import { featureEnabled } from "@/config/features";
+import { SignedIn, useAuth } from "@/lib/auth";
+
+// The signed-in Exo account, replacing Clerk's UserButton: an initial avatar
+// and a Sign out control. Sign-out revokes the refresh token at Exo and clears
+// the local session and the `exo_access` cookie.
+function accountLabel(user: { name: string | null; email: string | null } | null): string {
+  return user?.name || user?.email || "Cosmonaut";
+}
+
+function Avatar({ label, onClick }: { label: string; onClick?: () => void }) {
+  const initial = label.trim().charAt(0).toUpperCase() || "C";
+  const className =
+    "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 border-accent/60 bg-accent/10 font-mono text-[11px] font-bold text-accent";
+  return onClick ? (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={`Account: ${label}`}
+      title={label}
+      className={`${className} transition-colors hover:bg-accent/20`}
+    >
+      {initial}
+    </button>
+  ) : (
+    <span aria-hidden title={label} className={className}>
+      {initial}
+    </span>
+  );
+}
+
+function SignOutButton() {
+  const { signOut } = useAuth();
+  const [signingOut, setSigningOut] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        setSigningOut(true);
+        signOut()
+          .catch(() => undefined)
+          .finally(() => setSigningOut(false));
+      }}
+      disabled={signingOut}
+      className="ml-auto flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest text-ink-dim transition-colors hover:text-accent disabled:cursor-wait"
+    >
+      <LogOut size={11} /> {signingOut ? "…" : "Sign out"}
+    </button>
+  );
+}
 
 // Lightweight auth state in the console: when signed-out it renders nothing
 // (Personalize is the single upgrade entry point), and when signed-in it shows
-// Clerk's UserButton (avatar + sign-out menu) plus whether the account has the
+// the Exo account avatar (with a sign-out menu) plus whether the account has the
 // global unlock. Renders nothing about the default scientist — that experience
 // is free and account-agnostic.
 export function AccountIndicator() {
   const { entitled } = useAppState();
+  const { user } = useAuth();
 
   return (
-    <Show when="signed-in">
+    <SignedIn>
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2 border-2 border-edge bg-white/5 px-2 py-1.5">
-          <UserButton />
+          <Avatar label={accountLabel(user)} />
           <span
             className={`flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest ${
               entitled ? "text-accent" : "text-ink-dim"
@@ -42,10 +92,11 @@ export function AccountIndicator() {
             {entitled ? <ShieldCheck size={12} /> : <Sparkles size={12} />}
             {entitled ? "Full access" : "Free preview"}
           </span>
+          <SignOutButton />
         </div>
         <ShipCustomizer />
       </div>
-    </Show>
+    </SignedIn>
   );
 }
 
@@ -225,13 +276,16 @@ function ShipCustomizer() {
   );
 }
 
-// Compact variant for the collapsed rail: just the avatar when signed-in.
+// Compact variant for the cockpit bar: just the avatar when signed-in. It
+// opens Personalize, where the account, ship, and Sign out live.
 export function AccountIndicatorRail() {
+  const { user } = useAuth();
+  const { setCustomizeOpen } = useAppState();
   return (
-    <Show when="signed-in">
+    <SignedIn>
       <div className="flex h-9 w-9 items-center justify-center">
-        <UserButton />
+        <Avatar label={accountLabel(user)} onClick={() => setCustomizeOpen(true)} />
       </div>
-    </Show>
+    </SignedIn>
   );
 }

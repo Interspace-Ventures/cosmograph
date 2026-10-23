@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { useAuth, useClerk } from "@clerk/react";
+import { useAuth } from "@/lib/auth";
 import { Check, Copy, UserPlus } from "lucide-react";
 import {
   useGetReferral,
@@ -11,15 +11,14 @@ import { buildReferralLink } from "@/lib/referral";
 // get their personal referral link + a running count; signed-out visitors get a
 // gentle CTA to create a free account (which is what makes referrals trackable).
 export function InviteSection({ open }: { open: boolean }) {
-  const { isLoaded, isSignedIn } = useAuth();
-  const clerk = useClerk();
+  const { isLoaded, isSignedIn, accessReady, signIn } = useAuth();
   const [copied, setCopied] = useState(false);
   const resetTimer = useRef<number | null>(null);
 
   const { data } = useGetReferral({
     query: {
       queryKey: getGetReferralQueryKey(),
-      enabled: open && isLoaded && !!isSignedIn,
+      enabled: open && isLoaded && accessReady,
     },
   });
 
@@ -54,7 +53,7 @@ export function InviteSection({ open }: { open: boolean }) {
           explorers you bring to Cosmograph.
         </p>
         <button
-          onClick={() => clerk.redirectToSignIn()}
+          onClick={() => void signIn().catch(() => undefined)}
           className="mt-3 flex items-center gap-1.5 border-2 border-accent/50 bg-accent/10 px-3.5 py-2 font-display text-[11px] uppercase tracking-wider text-accent transition-colors hover:bg-accent/20"
         >
           <UserPlus size={13} />

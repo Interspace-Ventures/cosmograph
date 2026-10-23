@@ -33,7 +33,6 @@ export default defineConfig({
         manualChunks(id) {
           if (!id.includes("node_modules")) return undefined;
           if (/[\\/](three|three-stdlib|@react-three|postprocessing|maath|troika-[^\\/]+)[\\/]/.test(id)) return "three";
-          if (/[\\/](@clerk)[\\/]/.test(id)) return "auth";
           if (/[\\/](react|react-dom|scheduler|framer-motion|motion-dom|motion-utils)[\\/]/.test(id)) return "react";
           return undefined;
         },

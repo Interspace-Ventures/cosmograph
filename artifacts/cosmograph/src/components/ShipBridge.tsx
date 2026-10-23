@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useAuth } from "@clerk/react";
+import { useAuth } from "@/lib/auth";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -13,9 +13,9 @@ import { useAppState } from "@/lib/store";
 // Renders nothing. When the account has a saved seed/type it overrides the local
 // per-browser default so the chosen ship follows the user across devices (and is
 // then broadcast to other cosmonauts by PresenceBroadcaster). Web auth is
-// cookie-based — no Bearer token is attached.
+// cookie-based (the `exo_access` cookie); no Bearer token is attached.
 export function ShipBridge() {
-  const { isLoaded, isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn, accessReady } = useAuth();
   const {
     setShipSeed,
     setSavedShipSeed,
@@ -34,7 +34,7 @@ export function ShipBridge() {
   const { data } = useGetShip({
     query: {
       queryKey: getGetShipQueryKey(),
-      enabled: isLoaded && !!isSignedIn,
+      enabled: isLoaded && accessReady,
     },
   });
 
@@ -81,7 +81,7 @@ export function ShipBridge() {
   // (skin_unlocked / skin_cancelled). On success the granted type is equipped
   // and the ship query refetched so ownedTypes/freeSlots refresh.
   useEffect(() => {
-    if (!isLoaded) return;
+    if (!isLoaded || (isSignedIn && !accessReady)) return;
     const params = new URLSearchParams(window.location.search);
     const stripParams = () => {
       params.delete("skin_unlocked");
@@ -125,7 +125,7 @@ export function ShipBridge() {
       toast("Checkout cancelled — no charge was made.");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoaded, isSignedIn]);
+  }, [isLoaded, isSignedIn, accessReady]);
 
   return null;
 }

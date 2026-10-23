@@ -4,7 +4,7 @@ import { eq, sql } from "drizzle-orm";
 import { db, usersTable, shipUnlocksTable } from "@workspace/db";
 import { getUncachableStripeClient } from "./stripeClient";
 import {
-  fetchClerkEmail,
+  fetchAccountEmail,
   getOrCreateUser,
   ensureCustomer,
   INCLUDED_UNLOCK_SLOTS,
@@ -150,7 +150,7 @@ export async function getShip(userId: string): Promise<ShipStateResult> {
   const [user] = await db
     .select()
     .from(usersTable)
-    .where(eq(usersTable.id, userId));
+    .where(eq(usersTable.exoSubject, userId));
   const ownedPremium = await listOwnedPremiumTypes(userId);
   return buildState(
     user?.shipSeed ?? null,
@@ -182,9 +182,9 @@ export async function saveShip(
   // before ever touching billing.
   await db
     .insert(usersTable)
-    .values({ id: userId, shipSeed: seed, shipType })
+    .values({ exoSubject: userId, shipSeed: seed, shipType })
     .onConflictDoUpdate({
-      target: usersTable.id,
+      target: usersTable.exoSubject,
       set: { shipSeed: seed, shipType },
     });
   return getShip(userId);
@@ -265,7 +265,7 @@ export async function claimOrCheckoutSkin(
 ): Promise<SkinCheckoutResult> {
   if (!PREMIUM_SHIP_TYPES.has(typeId)) throw new InvalidShipTypeError();
 
-  const email = await fetchClerkEmail(userId);
+  const email = await fetchAccountEmail(userId);
   const user = await getOrCreateUser(userId, email);
 
   // Serialize free-slot accounting per account so two concurrent claims can't
@@ -337,9 +337,9 @@ export async function confirmSkin(
     // any account that reached checkout; upsert keeps it safe regardless.
     await db
       .insert(usersTable)
-      .values({ id: userId, shipType: meta.skinType })
+      .values({ exoSubject: userId, shipType: meta.skinType })
       .onConflictDoUpdate({
-        target: usersTable.id,
+        target: usersTable.exoSubject,
         set: { shipType: meta.skinType },
       });
     log.info({ userId, sessionId, typeId: meta.skinType }, "skin confirmed");

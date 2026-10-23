@@ -12,6 +12,7 @@ import { z } from "zod/v4";
 export const researcherUnlocksTable = pgTable(
   "researcher_unlocks",
   {
+    // The account's Exo subject (users.exo_subject).
     userId: text("user_id").notNull(),
     authorId: text("author_id").notNull(),
     createdAt: timestamp("created_at").notNull().defaultNow(),

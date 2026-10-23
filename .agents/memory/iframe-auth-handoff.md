@@ -1,33 +1,35 @@
 ---
 name: Iframe auth handoff
-description: Why Cosmograph auth pages detect iframing and hand off to a new top-level tab.
+description: Why Cosmograph auth detects iframing and hands Exo Key sign-in off to a new top-level tab.
 ---
 
-In the Replit dev preview the app runs inside an iframe. OAuth providers
-(Google/GitHub) refuse to render their consent screens in an iframe, so Clerk
-pops OAuth into a new tab while its bot/Cloudflare challenge stays in the framed
-page — a confusing split. This split is essentially a **dev-preview artifact**:
-in the published app (or the preview opened in its own tab) the page is
-top-level, OAuth does a same-tab redirect, and the challenge renders inline.
+Sign-in is Exo Key (Exo ID) only: `/sign-in` and `/sign-up` start the Exo ID
+authorization-code + PKCE hand-off to Exo's hosted authorize page, and
+`/auth/callback` redeems the code (see `src/lib/auth.tsx`, `src/lib/exoId/`,
+`src/components/AuthPages.tsx`). Clerk is removed everywhere.
 
-**Decision:** `AuthHandoff` (wraps `<SignIn>`/`<SignUp>` in `App.tsx`) detects
-`window.self !== window.top` (try/catch → treat cross-origin throw as framed)
-and, when framed, replaces the Clerk widget with a "Continue in a new window"
-button (`window.open(location.href, "_blank", "noopener,noreferrer")`) so the
-whole flow finishes top-level. When not framed it renders the real widget
-unchanged, so production is untouched.
+Exo's authorize page and the Google/GitHub consent screens behind it refuse to
+render inside an iframe (embedded previews, anyone embedding cosmograph.space).
 
-**Why:** Clerk's bot challenge is Replit-managed and NOT code/Auth-pane
-configurable — can't suppress it; the only lever is keeping the whole flow in one
-top-level window. The handoff is purely a UX fix for embedded contexts.
+**Decision:** `AuthHandoff` (wraps `ExoSignInPanel` in the auth drawer and the
+`/sign-in` route) detects `window.self !== window.top` (try/catch, a cross-origin
+throw means framed) and, when framed, shows a "Continue in a new window" button
+that opens `<base>/<mode>` top-level. The sign-in route skips its automatic
+hand-off while framed. Tokens land in this origin's localStorage, so the framed
+app picks the session up through the `storage` event. When not framed it renders
+the real panel unchanged.
 
-## Signed-out "last used SSO" hint
-Clerk's hosted `<SignIn>` does NOT surface the strategy/provider of the *last*
-sign-in post-redirect. To greet returning visitors with "Sign in with <Provider>"
-we keep a per-browser localStorage hint (`lib/authMemory.ts`): an
-`AuthMemoryBridge` reads the signed-in user's linked external accounts (prefer a
-verified one) as a stand-in for "last SSO", and records a "seen" flag so the
-cockpit shows Sign Up to brand-new visitors and Sign In to returners.
-**Limitation:** for accounts with multiple linked providers (or password +
-social) the provider is a best-effort guess, not the true last-used strategy.
-Non-social sign-ins clear the stored SSO so the label doesn't go stale.
+## Signed-out "Sign In" vs "Sign Up" hint
+`lib/authMemory.ts` keeps a per-browser "seen" flag (set by `AuthMemoryBridge`
+after any sign-in) so the cockpit shows Sign Up to brand-new visitors and Sign In
+to returners. Exo's access token does not say which provider was used (Exo's own
+page remembers the last provider), so no SSO hint is stored any more; stale
+Clerk-era hints are cleared on the next sign-in.
+
+## Staging gateway loop
+Behind the EXO staging gateway the visitor already has an Exo session, so
+`/sign-in` starts the hand-off without a click (loop guard: two automatic tries
+per minute per tab, `lib/exoId/autoSignIn.ts`), and only returns to `next` once
+a fresh token is mirrored into the `exo_access` cookie. The server verifies the
+gateway's Bearer and the cookie in turn and accepts the first valid `cosmograph`
+token (Universe #33/#34).

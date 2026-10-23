@@ -3,14 +3,6 @@ import path from "node:path";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
 import pinoHttp from "pino-http";
-import { clerkMiddleware } from "@clerk/express";
-import { publishableKeyFromHost } from "@clerk/shared/keys";
-import {
-  CLERK_PROXY_PATH,
-  clerkCanonicalHostMiddleware,
-  clerkProxyMiddleware,
-  getClerkProxyHost,
-} from "./middlewares/clerkProxyMiddleware";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { getStripeSync } from "./lib/stripeClient";
@@ -50,12 +42,6 @@ app.use(
   }),
 );
 
-app.use(clerkCanonicalHostMiddleware());
-
-// Clerk auth proxy. Mounted before the body parsers because it streams raw
-// bytes through to Clerk's FAPI.
-app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
-
 // Stripe webhook needs the raw request body for signature verification, so it
 // MUST be registered before express.json() parses the body. StripeSync verifies
 // the signature and syncs Stripe data; we then best-effort grant the unlock in
@@ -94,16 +80,9 @@ app.use(cors({ credentials: true, origin: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Resolve the publishable key from the incoming request host so the same server
-// can serve multiple Clerk custom domains; falls back to CLERK_PUBLISHABLE_KEY.
-app.use(
-  clerkMiddleware((req) => ({
-    publishableKey: publishableKeyFromHost(
-      getClerkProxyHost(req) ?? "",
-      process.env.CLERK_PUBLISHABLE_KEY,
-    ),
-  })),
-);
+// Auth is stateless: Exo ID access tokens are verified per request against
+// Exo's public JWKS (middlewares/exoIdentity.ts) by stagingAccess and
+// requireAuth. There is no global session middleware and no auth proxy.
 
 // Staging is a private review surface. Production remains public because this
 // boundary is enabled only by an explicit environment variable in Railway.

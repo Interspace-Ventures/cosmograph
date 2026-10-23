@@ -2,7 +2,6 @@ import { randomBytes } from "node:crypto";
 import { and, count, eq, isNull } from "drizzle-orm";
 import type { Logger } from "pino";
 import { db, usersTable, type User } from "@workspace/db";
-import { clerkClient } from "@clerk/express";
 
 // Every signed-in account gets a stable short referral code used as
 // `?ref=<code>`. A "referral" is counted when a BRAND-NEW account signs up
@@ -17,9 +16,15 @@ export interface ReferralInfo {
 }
 
 // Only attribute a referral to a genuinely new account. We approximate "this is
-// a real sign-up happening now" by the age of the visitor's Clerk account: a
-// fresh sign-up is minutes old, while an existing member who later clicks a
-// friend's link has an account that is days/weeks old and is never credited.
+// a real sign-up happening now" by the age of the visitor's Cosmograph account
+// row (users.created_at). requireAuth records that row the first time a
+// verified Exo identity reaches the API, which for a new account is right after
+// sign-in (the entitlement fetch runs immediately), so a fresh sign-up is
+// minutes old, while an existing member who later clicks a friend's link has a
+// row that is days/weeks old and is never credited. The Exo access token carries
+// no account-creation time, so this is Cosmograph-local first use, not Exo
+// account age: someone with an older Exo account who first opens Cosmograph via
+// a referral link still counts as a new Cosmograph sign-up.
 const SIGNUP_ATTRIBUTION_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 // Unambiguous alphabet (no 0/O/1/I/l) so codes are easy to read and share.
@@ -42,13 +47,13 @@ function randomCode(): string {
 async function ensureAccount(userId: string): Promise<User> {
   await db
     .insert(usersTable)
-    .values({ id: userId })
-    .onConflictDoNothing({ target: usersTable.id });
+    .values({ exoSubject: userId })
+    .onConflictDoNothing({ target: usersTable.exoSubject });
 
   const [row] = await db
     .select()
     .from(usersTable)
-    .where(eq(usersTable.id, userId));
+    .where(eq(usersTable.exoSubject, userId));
   if (row.referralCode) return row;
 
   for (let attempt = 0; attempt < 6; attempt++) {
@@ -57,14 +62,14 @@ async function ensureAccount(userId: string): Promise<User> {
       const [updated] = await db
         .update(usersTable)
         .set({ referralCode: code })
-        .where(and(eq(usersTable.id, userId), isNull(usersTable.referralCode)))
+        .where(and(eq(usersTable.exoSubject, userId), isNull(usersTable.referralCode)))
         .returning();
       if (updated?.referralCode) return updated;
       // A concurrent call set the code first — re-read and use it.
       const [fresh] = await db
         .select()
         .from(usersTable)
-        .where(eq(usersTable.id, userId));
+        .where(eq(usersTable.exoSubject, userId));
       if (fresh?.referralCode) return fresh;
     } catch (err) {
       // 23505 = unique_violation on referral_code: pick another code and retry.
@@ -84,19 +89,14 @@ async function countReferred(userId: string): Promise<number> {
 }
 
 // Whether the account was created recently enough to count as a fresh sign-up.
-// Fails closed (returns false) if Clerk can't be reached, so we never miscredit.
-async function isFreshSignup(userId: string): Promise<boolean> {
-  try {
-    const user = await clerkClient.users.getUser(userId);
-    const createdAt =
-      typeof user.createdAt === "number"
-        ? user.createdAt
-        : new Date(user.createdAt as unknown as string).getTime();
-    if (!Number.isFinite(createdAt)) return false;
-    return Date.now() - createdAt <= SIGNUP_ATTRIBUTION_WINDOW_MS;
-  } catch {
-    return false;
-  }
+// Fails closed (returns false) when the row or its timestamp is missing.
+export function isWithinSignupWindow(
+  createdAt: Date | null | undefined,
+  now: number = Date.now(),
+): boolean {
+  const created = createdAt?.getTime();
+  if (created === undefined || !Number.isFinite(created)) return false;
+  return now - created >= 0 && now - created <= SIGNUP_ATTRIBUTION_WINDOW_MS;
 }
 
 export async function getReferral(userId: string): Promise<ReferralInfo> {
@@ -127,14 +127,14 @@ export async function claimReferral(
     .from(usersTable)
     .where(eq(usersTable.referralCode, trimmed));
 
-  if (referrer && referrer.id !== userId && (await isFreshSignup(userId))) {
+  if (referrer && referrer.exoSubject !== userId && isWithinSignupWindow(me.createdAt)) {
     const [updated] = await db
       .update(usersTable)
-      .set({ referredBy: referrer.id, referredAt: new Date() })
-      .where(and(eq(usersTable.id, userId), isNull(usersTable.referredBy)))
+      .set({ referredBy: referrer.exoSubject, referredAt: new Date() })
+      .where(and(eq(usersTable.exoSubject, userId), isNull(usersTable.referredBy)))
       .returning();
     if (updated?.referredBy) {
-      log.info({ userId, referrerId: referrer.id }, "referral attributed");
+      log.info({ userId, referrerId: referrer.exoSubject }, "referral attributed");
     }
   }
 

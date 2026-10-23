@@ -1,27 +1,16 @@
 import { useEffect } from "react";
-import { SignIn, SignUp, useAuth } from "@clerk/react";
+import { useAuth } from "@/lib/auth";
 import { useAppState } from "@/lib/store";
 import { AuthHandoff } from "./AuthHandoff";
 import { Drawer } from "./Drawer";
-
-const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
-
-// Inside the drawer the panel itself is the container, so strip the Clerk
-// card's own box (background + border) — otherwise it reads as a box inside
-// a box. Merges with the global clerkAppearance; `!` wins over its classes.
-const drawerAppearance = {
-  elements: {
-    cardBox: "!bg-transparent !border-0 !shadow-none w-[440px] max-w-full",
-  },
-};
+import { ExoSignInPanel } from "./ExoSignInPanel";
 
 /**
  * Sign-in / sign-up as a cockpit panel instead of a full-screen route. Rises
  * from the Dashboard like Info / Ask / Personalize (mutually exclusive with
- * them, see the store). Uses Clerk's `hash` routing so the widget's internal
- * steps live in the URL fragment without navigating away from the galaxy; the
- * standalone `/sign-in` and `/sign-up` routes still exist for direct links and
- * the iframe new-window handoff.
+ * them, see the store). The panel hands off to Exo Key and returns to the
+ * current galaxy; the standalone `/sign-in` and `/sign-up` routes still exist
+ * for direct links, the staging boundary, and the iframe new-window handoff.
  */
 export function AuthDrawer() {
   const { authOpen, authMode, setAuthOpen } = useAppState();
@@ -43,21 +32,7 @@ export function AuthDrawer() {
       </h2>
       <div className="flex justify-center">
         <AuthHandoff mode={authMode} bare>
-          {authMode === "sign-in" ? (
-            <SignIn
-              routing="hash"
-              appearance={drawerAppearance}
-              signUpUrl={`${basePath}/sign-up`}
-              forceRedirectUrl={basePath || "/"}
-            />
-          ) : (
-            <SignUp
-              routing="hash"
-              appearance={drawerAppearance}
-              signInUrl={`${basePath}/sign-in`}
-              forceRedirectUrl={basePath || "/"}
-            />
-          )}
+          <ExoSignInPanel mode={authMode} bare />
         </AuthHandoff>
       </div>
     </Drawer>

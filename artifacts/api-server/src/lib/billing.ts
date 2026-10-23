@@ -7,7 +7,7 @@ import {
   researcherUnlocksTable,
   type User,
 } from "@workspace/db";
-import { clerkClient } from "@clerk/express";
+import { accountEmail } from "./account";
 import { getUncachableStripeClient } from "./stripeClient";
 
 // Account-level membership: a $7/year subscription ("Full Access") makes the
@@ -75,13 +75,12 @@ export interface CheckoutResult {
   url?: string | null;
 }
 
-export async function fetchClerkEmail(userId: string): Promise<string | null> {
+// The account's verified Exo email (recorded by requireAuth from the access
+// token's `email` + `email_verified` claims), used only for Stripe receipts.
+// Phone-only Exo accounts have none; Stripe Checkout then collects one.
+export async function fetchAccountEmail(userId: string): Promise<string | null> {
   try {
-    const user = await clerkClient.users.getUser(userId);
-    const primary = user.emailAddresses.find(
-      (e) => e.id === user.primaryEmailAddressId,
-    );
-    return primary?.emailAddress ?? user.emailAddresses[0]?.emailAddress ?? null;
+    return await accountEmail(userId);
   } catch {
     return null;
   }
@@ -94,13 +93,13 @@ export async function getOrCreateUser(
   const [existing] = await db
     .select()
     .from(usersTable)
-    .where(eq(usersTable.id, userId));
+    .where(eq(usersTable.exoSubject, userId));
   if (existing) {
     if (email && existing.email !== email) {
       const [updated] = await db
         .update(usersTable)
         .set({ email })
-        .where(eq(usersTable.id, userId))
+        .where(eq(usersTable.exoSubject, userId))
         .returning();
       return updated;
     }
@@ -108,7 +107,7 @@ export async function getOrCreateUser(
   }
   const [created] = await db
     .insert(usersTable)
-    .values({ id: userId, email })
+    .values({ exoSubject: userId, email })
     .returning();
   return created;
 }
@@ -133,7 +132,7 @@ export async function getEntitlement(
   const [user] = await db
     .select()
     .from(usersTable)
-    .where(eq(usersTable.id, userId));
+    .where(eq(usersTable.exoSubject, userId));
   const unlocked = await listUnlockedAuthors(userId);
   return {
     entitled: user?.hasPaid ?? false,
@@ -157,15 +156,15 @@ export async function ensureCustomer(
   user: User,
 ): Promise<string> {
   if (user.stripeCustomerId) return user.stripeCustomerId;
-  const email = user.email ?? (await fetchClerkEmail(user.id)) ?? undefined;
+  const email = user.email ?? (await fetchAccountEmail(user.exoSubject)) ?? undefined;
   const customer = await stripe.customers.create({
     email,
-    metadata: { userId: user.id },
+    metadata: { userId: user.exoSubject },
   });
   await db
     .update(usersTable)
     .set({ stripeCustomerId: customer.id, email: email ?? user.email })
-    .where(eq(usersTable.id, user.id));
+    .where(eq(usersTable.exoSubject, user.exoSubject));
   return customer.id;
 }
 
@@ -330,7 +329,7 @@ export async function createCheckout(
   log: Logger,
   author?: string | null,
 ): Promise<CheckoutResult> {
-  const email = await fetchClerkEmail(userId);
+  const email = await fetchAccountEmail(userId);
   const user = await getOrCreateUser(userId, email);
   if (user.hasPaid) return { alreadyEntitled: true };
 
@@ -392,7 +391,7 @@ export async function unlockResearcher(
     const [user] = await tx
       .select()
       .from(usersTable)
-      .where(eq(usersTable.id, userId));
+      .where(eq(usersTable.exoSubject, userId));
     if (!user?.hasPaid) throw new NotAMemberError();
 
     const rows = await tx
@@ -447,9 +446,9 @@ export async function unlockResearcher(
 async function markPaid(userId: string): Promise<void> {
   await db
     .insert(usersTable)
-    .values({ id: userId, hasPaid: true })
+    .values({ exoSubject: userId, hasPaid: true })
     .onConflictDoUpdate({
-      target: usersTable.id,
+      target: usersTable.exoSubject,
       set: { hasPaid: true },
     });
 }
@@ -458,7 +457,7 @@ async function markUnpaid(userId: string): Promise<void> {
   await db
     .update(usersTable)
     .set({ hasPaid: false })
-    .where(eq(usersTable.id, userId));
+    .where(eq(usersTable.exoSubject, userId));
 }
 
 async function userIdForStripeCustomer(
@@ -468,7 +467,7 @@ async function userIdForStripeCustomer(
     .select()
     .from(usersTable)
     .where(eq(usersTable.stripeCustomerId, customerId));
-  return user?.id ?? null;
+  return user?.exoSubject ?? null;
 }
 
 // Authoritative confirmation on the success redirect: verify the session

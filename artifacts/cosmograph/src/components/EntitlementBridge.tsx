@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useAuth } from "@clerk/react";
+import { useAuth } from "@/lib/auth";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -9,12 +9,12 @@ import {
 } from "@workspace/api-client-react";
 import { useAppState } from "@/lib/store";
 
-// Bridges Clerk auth + the server entitlement into the galaxy store, and
+// Bridges Exo auth + the server entitlement into the galaxy store, and
 // finishes the Stripe redirect handshake. Renders nothing. Web auth is
-// cookie-based — no Bearer token is ever attached (the browser sends Clerk's
-// session cookie on same-origin /api calls).
+// cookie-based: the browser sends the `exo_access` cookie (Cosmograph's Exo ID
+// access token, see lib/auth.tsx) on same-origin /api calls.
 export function EntitlementBridge() {
-  const { isLoaded, isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn, accessReady } = useAuth();
   const { setEntitlement } = useAppState();
   const queryClient = useQueryClient();
   const confirm = useConfirmCheckout();
@@ -22,7 +22,7 @@ export function EntitlementBridge() {
   const { data } = useGetEntitlement({
     query: {
       queryKey: getGetEntitlementQueryKey(),
-      enabled: isLoaded && !!isSignedIn,
+      enabled: isLoaded && accessReady,
     },
   });
 
@@ -37,10 +37,10 @@ export function EntitlementBridge() {
     if (data) setEntitlement(data);
   }, [isLoaded, isSignedIn, data, setEntitlement]);
 
-  // Complete (or report) the Stripe Checkout return. Runs once we know the
-  // user is signed in so the confirm call carries their session cookie.
+  // Complete (or report) the Stripe Checkout return. Waits for a fresh access
+  // token so the confirm call carries a valid `exo_access` cookie.
   useEffect(() => {
-    if (!isLoaded) return;
+    if (!isLoaded || (isSignedIn && !accessReady)) return;
     const params = new URLSearchParams(window.location.search);
     const stripParams = () => {
       params.delete("unlocked");
@@ -77,7 +77,7 @@ export function EntitlementBridge() {
       toast("Checkout cancelled — no charge was made.");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoaded, isSignedIn]);
+  }, [isLoaded, isSignedIn, accessReady]);
 
   return null;
 }

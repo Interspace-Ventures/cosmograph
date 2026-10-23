@@ -1,4 +1,4 @@
-import { Show } from "@clerk/react";
+import { SignedIn, SignedOut } from "@/lib/auth";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { Lock, Loader2, Rocket, ShieldCheck } from "lucide-react";
@@ -79,14 +79,14 @@ export function MembershipActions({ onDone }: { onDone?: () => void }) {
 
   return (
     <>
-      <Show when="signed-out">
+      <SignedOut>
         <button onClick={goSignUp} style={ACCENT} className={BTN}>
           <Rocket size={14} />
           <span>Subscribe</span>
         </button>
-      </Show>
+      </SignedOut>
 
-      <Show when="signed-in">
+      <SignedIn>
         {entitled ? (
           <button
             onClick={startUnlock}
@@ -126,7 +126,7 @@ export function MembershipActions({ onDone }: { onDone?: () => void }) {
             </span>
           </button>
         )}
-      </Show>
+      </SignedIn>
     </>
   );
 }
@@ -137,7 +137,7 @@ export function MembershipActions({ onDone }: { onDone?: () => void }) {
 // devices, and billing stays self-serve) rather than a silent redirect.
 export function WhyAccountNote() {
   return (
-    <Show when="signed-out">
+    <SignedOut>
       <p className="mt-3 flex items-start gap-2 text-[12px] leading-relaxed text-ink-dim">
         <ShieldCheck size={13} className="mt-0.5 shrink-0 text-accent" />
         <span>
@@ -146,6 +146,6 @@ export function WhyAccountNote() {
           billing you can manage or cancel anytime.
         </span>
       </p>
-    </Show>
+    </SignedOut>
   );
 }
