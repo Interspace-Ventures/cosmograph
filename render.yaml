@@ -1,0 +1,140 @@
+# Render Blueprint: Cosmograph staging + production (Exo ADR 0016, Railway -> Render).
+# Based on templates/render/render.yaml in Interspace-Ventures/exo (PR #227).
+#
+# WHAT RUNS: one web service per environment, the same single process Railway runs today
+# (railway.json): Express api-server (artifacts/api-server) serving /api plus the built Vite client
+# (artifacts/cosmograph/dist/public) under APP_BASE_PATH=/cosmograph. The trailer artifact is not
+# deployed (Railway does not deploy it either).
+#
+# BUILD/START: Railway uses Railpack with `pnpm run railway:build` / `pnpm run railway:start`. Here:
+# the same build, plus a pinned 1Password CLI; the start script runs the same `node ./dist/index.mjs`
+# the railway:start script runs, wrapped in `op run`.
+#
+# SECRETS: none in this file, ever. The only secret Render holds is OP_SERVICE_ACCOUNT_TOKEN
+# (sync: false; Render asks once when the Blueprint is applied): one READ-ONLY 1Password service
+# account per environment, scoped to "Cosmograph Staging" / "Cosmograph Production". Every app
+# secret is an item in that vault (scripts/render/secrets.op.env) and reaches the server process
+# through `op run` (stopgap until the Exo Secure loader is ported). Other sync: false keys below are
+# NON-secret config whose value is not known from the repo: copy them from Railway at cutover.
+#
+# HEALTH: GET /cosmograph/api/health (railway.json healthcheckPath; routes/health.ts serves
+# /api/health and /api/healthz behind the base-path middleware; exempt from the staging sign-in).
+#
+# NODE: CI builds on Node 24 (.github/workflows/managed-standards.yml); pinned to 24.22.1 (security
+# release, 2026-10-20). pnpm comes from package.json "packageManager" (pnpm@11.9.0) via corepack.
+#
+# DOMAINS: none attached yet. At cutover (after the Railway service is drained):
+#   staging:    staging.exo.now/cosmograph is served by the EXO gateway, which proxies to this
+#               service's onrender.com host; no custom domain on this service.
+#   production: no production domain is defined in the repo yet; add it under the production
+#               service when Samir approves the production release, e.g.
+#               # domains:
+#               #   - <production host>
+#
+# COST: Pro workspace ($25/mo, shared) + starter ($7/mo) x 2. Previews off.
+version: "1"
+projects:
+  - name: cosmograph
+    environments:
+      - name: staging
+        services:
+          - type: web
+            name: cosmograph-staging
+            runtime: node
+            region: virginia
+            plan: starter
+            branch: staging
+            autoDeployTrigger: checksPass
+            buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm run railway:build && bash scripts/render/install-op.sh
+            startCommand: bash scripts/render/start.sh
+            healthCheckPath: /cosmograph/api/health
+            maxShutdownDelaySeconds: 30
+            previews:
+              generation: "off"
+            envVars:
+              - key: NODE_VERSION
+                value: "24.22.1"
+              - key: NODE_ENV
+                value: production
+              - key: EXO_DEPLOYMENT_ENVIRONMENT
+                value: staging
+              # 1Password: vault name is non-secret; the token is the one secret.
+              - key: EXO_SECURE_VAULT
+                value: Cosmograph Staging
+              - key: OP_SERVICE_ACCOUNT_TOKEN
+                sync: false
+              # Build + runtime: the app lives under /cosmograph (vite base + Express base path).
+              - key: APP_BASE_PATH
+                value: /cosmograph
+              - key: STAGING_AUTH_REQUIRED
+                value: "true"
+              - key: RELEASE_CHANNEL
+                value: friends-and-family
+              - key: VITE_RELEASE_CHANNEL
+                value: friends-and-family
+              # Non-secret config, values from Railway staging at cutover.
+              - key: VITE_CLERK_PUBLISHABLE_KEY
+                sync: false
+              - key: CLERK_PUBLISHABLE_KEY
+                sync: false
+              - key: VITE_CLERK_PROXY_URL
+                sync: false
+              - key: CLERK_AUTHORIZED_PARTIES
+                sync: false
+              - key: CLERK_CANONICAL_HOST
+                sync: false
+              - key: EXO_INTAKE_API_URL
+                sync: false
+              - key: PUBLIC_APP_DOMAIN
+                sync: false
+      - name: production
+        permissions:
+          protection: enabled
+        services:
+          - type: web
+            name: cosmograph-production
+            runtime: node
+            region: virginia
+            plan: starter
+            branch: main
+            # Production is an explicit approval gate (AGENTS.md): deploy by hand, never on push.
+            autoDeployTrigger: "off"
+            buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm run railway:build && bash scripts/render/install-op.sh
+            startCommand: bash scripts/render/start.sh
+            healthCheckPath: /cosmograph/api/health
+            maxShutdownDelaySeconds: 30
+            numInstances: 1
+            previews:
+              generation: "off"
+            envVars:
+              - key: NODE_VERSION
+                value: "24.22.1"
+              - key: NODE_ENV
+                value: production
+              - key: EXO_DEPLOYMENT_ENVIRONMENT
+                value: production
+              - key: EXO_SECURE_VAULT
+                value: Cosmograph Production
+              - key: OP_SERVICE_ACCOUNT_TOKEN
+                sync: false
+              - key: APP_BASE_PATH
+                value: /cosmograph
+              # Production stays public: never set STAGING_AUTH_REQUIRED here (docs/staging.md).
+              - key: RELEASE_CHANNEL
+                sync: false
+              - key: VITE_RELEASE_CHANNEL
+                sync: false
+              - key: VITE_CLERK_PUBLISHABLE_KEY
+                sync: false
+              - key: CLERK_PUBLISHABLE_KEY
+                sync: false
+              - key: VITE_CLERK_PROXY_URL
+                sync: false
+              - key: CLERK_AUTHORIZED_PARTIES
+                sync: false
+              - key: CLERK_CANONICAL_HOST
+                sync: false
+              - key: EXO_INTAKE_API_URL
+                sync: false
+              - key: PUBLIC_APP_DOMAIN
+                sync: false
