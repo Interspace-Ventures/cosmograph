@@ -17,6 +17,19 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.39.0",
+    codename: "Archipelago",
+    date: "2026-10-24",
+    summary:
+      "A first look at the isometric world: every research domain becomes an island, every paper a tile, and the papers with machines come alive when you tap them.",
+    changes: [
+      "Added an internal-only /world view behind the isometric-world release flag, ported from the approved world design: one glass island per research domain, tinted toward that domain's colour and strongest in the overview.",
+      "Every machine sits on a tile the same size as its neighbours; tapping one lifts and enlarges it over a dimmed world and runs it, and tapping away settles it back.",
+      "Pan, zoom, the domain list with minimap, hover titles and a Next machine tour all work on desktop and phone.",
+      "The world reads the same researcher data as the galaxy, so a researcher without hand-built machines still gets their islands and paper tiles.",
+    ],
+  },
+  {
     version: "3.38.0",
     codename: "Mission Clock",
     date: "2026-07-30",
