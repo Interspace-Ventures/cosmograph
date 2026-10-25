@@ -13,9 +13,9 @@ import { exoKeyConfig } from "./lib/exoKey";
  * (see convex/lib/exoKey.ts and .env.example). If they are missing, no provider
  * is registered and every caller is anonymous: fail closed, no bypass.
  *
- * TODO(exo#229): sign-in cannot complete until Exo registers app `cosmograph`
- * and its /auth/callback redirect URIs. Set EXO_ID_ISSUER / EXO_ID_AUDIENCE /
- * EXO_ID_CLIENT_ID on the staging Convex deployment once it merges.
+ * Exo registered app `cosmograph` (exo#229, merged as exo#240). Staging sets
+ * EXO_ID_ISSUER=https://frugal-eel-930.convex.site/exo-id, EXO_ID_AUDIENCE and
+ * EXO_ID_CLIENT_ID=cosmograph through Exo delivery.
  */
 const config = exoKeyConfig();
 

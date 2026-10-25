@@ -22,11 +22,10 @@ import type { Auth, UserIdentity } from "convex/server";
  *                    In Exo the app id is also the token audience, so it must
  *                    be one of EXO_ID_AUDIENCE.
  *
- * TODO(exo#229): Exo's app registry (convex/lib/exoIdApps.ts in
- * Interspace-Ventures/exo) must list app `cosmograph` with its /auth/callback
- * redirect URIs before the hosted authorize page will complete a sign-in. Until
- * exo#229 merges, tokens for this app cannot be minted, so sign-in cannot be
- * tested end to end.
+ * Exo registered app `cosmograph` in exo#229 (merged as exo#240): auth code +
+ * PKCE at <issuer>/id/authorize, redeemed at <issuer>/v1/token by the SPA
+ * (public client). The registration goes live once EXO redeploys its staging
+ * Convex (frugal-eel-930).
  */
 export interface ExoKeyConfig {
   issuer: string;

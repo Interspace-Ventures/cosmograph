@@ -23,8 +23,8 @@ configured deployment, so `convex/_generated` is not committed yet.
 
 ## Open
 
-- TODO(exo#229): Exo must register app `cosmograph` and its `/auth/callback`
-  redirect URIs before sign-in can be tested end to end.
+- Exo registration done (exo#229, merged as exo#240). End-to-end sign-in waits
+  on EXO redeploying staging Convex (frugal-eel-930) and the staging grant.
 - TODO(phase 2): create a dev deployment, run codegen, commit `_generated`,
   switch imports to `./_generated/server`, and call `users.ensure` from the SPA
   after sign-in.
