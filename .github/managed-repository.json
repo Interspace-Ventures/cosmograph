@@ -11,7 +11,7 @@
   "designSystem": {
     "name": "Structured Liquidity",
     "componentSystem": "shadcn",
-    "registry": "https://structured.glass/r/structured-liquidity-agent.json",
+    "registry": "https://structured.page/r/structured-liquidity-agent.json",
     "configs": [
       "artifacts/cosmograph/components.json"
     ],

@@ -40,7 +40,7 @@ export function Footer() {
           </a>
           . Built at the speed of thought with AI. Interface built with{" "}
           <a
-            href="https://structured.glass"
+            href="https://structured.page"
             target="_blank"
             rel="noopener noreferrer"
             className="pointer-events-auto text-accent underline-offset-2 hover:underline"

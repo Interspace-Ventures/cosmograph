@@ -45,7 +45,7 @@ jobs:
           }
           assert.equal(contract.designSystem?.name, "Structured Liquidity");
           assert.equal(contract.designSystem?.componentSystem, "shadcn");
-          assert.equal(contract.designSystem?.registry, "https://structured.glass/r/structured-liquidity-agent.json");
+          assert.equal(contract.designSystem?.registry, "https://structured.page/r/structured-liquidity-agent.json");
           for (const configPath of contract.designSystem?.configs ?? []) {
             assert(existsSync(configPath), `Missing shadcn config: ${configPath}`);
             const config = JSON.parse(readFileSync(configPath, "utf8"));
