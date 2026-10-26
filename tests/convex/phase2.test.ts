@@ -57,8 +57,13 @@ test("entitlement defaults to a non-member with no unlocks", async () => {
   assert.deepEqual(await entitlementHandler(makeCtx(db, ALICE)), {
     entitled: false,
     email: null,
-    includedSlots: 3,
+    // Phase 3 (#12): membership no longer meters researchers.
+    includedSlots: 100,
     unlocked: [],
+    plan: null,
+    status: null,
+    memberUntil: null,
+    cancelAtPeriodEnd: false,
   });
 });
 
@@ -81,19 +86,20 @@ test("unlock rejects non-canonical author ids", async () => {
   }
 });
 
-test("unlock fills the included slots, is idempotent, then fails closed", async () => {
+test("unlock is idempotent and capped only by the member limit (#12)", async () => {
   await member();
   const ctx = makeCtx(db, ALICE);
   await unlockHandler(ctx, { author: "A1" });
   await unlockHandler(ctx, { author: "A2" });
   const again = await unlockHandler(ctx, { author: "A1" });
   assert.deepEqual(again.unlocked, ["A1", "A2"]);
-  const third = await unlockHandler(ctx, { author: "A3" });
-  assert.deepEqual(third.unlocked, ["A1", "A2", "A3"]);
-  // Beyond the included slots the add-on charge is Phase 3: nothing recorded.
-  await rejectsWith(unlockHandler(ctx, { author: "A4" }), "ADDON_UNAVAILABLE");
-  assert.equal(db.rows("researcherUnlocks").length, 3);
-  assert.deepEqual((await entitlementHandler(ctx)).unlocked, ["A1", "A2", "A3"]);
+  await unlockHandler(ctx, { author: "A3" });
+  // The 4th researcher is included with membership now (no +$1/yr add-on).
+  const fourth = await unlockHandler(ctx, { author: "A4" });
+  assert.deepEqual(fourth.unlocked, ["A1", "A2", "A3", "A4"]);
+  for (let i = 5; i <= 100; i++) await unlockHandler(ctx, { author: `A${i}` });
+  await rejectsWith(unlockHandler(ctx, { author: "A101" }), "UNLOCK_LIMIT");
+  assert.equal(db.rows("researcherUnlocks").length, 100);
 });
 
 test("unlocks are scoped to the verified subject", async () => {

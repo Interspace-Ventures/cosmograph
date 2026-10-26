@@ -14,6 +14,10 @@ export const entitlementView = v.object({
   email: v.union(v.string(), v.null()),
   includedSlots: v.number(),
   unlocked: v.array(v.string()),
+  plan: v.union(v.literal("annual"), v.literal("lifetime"), v.null()),
+  status: v.union(v.string(), v.null()),
+  memberUntil: v.union(v.string(), v.null()),
+  cancelAtPeriodEnd: v.boolean(),
 });
 
 export async function entitlementHandler(
@@ -31,7 +35,8 @@ export async function entitlementHandler(
  * Port of GET /me/entitlement: the cached membership flag plus the researchers
  * this account unlocked (oldest first, so the first INCLUDED_UNLOCK_SLOTS are
  * the included ones). Pure read; never touches Stripe. `hasPaid` is written
- * only by server-side billing code (Phase 3), never from the browser.
+ * only by the signature-verified Stripe webhook (billingInternal.applyEvent),
+ * never from the browser or the checkout return URL.
  */
 export const entitlement = query({
   args: {},

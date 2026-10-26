@@ -25,9 +25,11 @@ import {
 /**
  * Account-saved cosmonaut ship, ported from GET/PUT /me/ship and
  * POST /me/ship/claim (artifacts/api-server/src/lib/ship.ts). Ownership of
- * premium hulls is enforced here, server-side. The $1 one-time checkout and
- * POST /me/ship/confirm move to Stripe in Phase 3; until then a claim that
- * needs payment reports `checkoutRequired` and grants nothing.
+ * premium hulls is enforced here, server-side. Phase 3 follows PR #12: ships
+ * are included in membership (the $1 hull sale is retired). A non-member's
+ * claim reports `checkoutRequired` and grants nothing; the SPA then starts
+ * membership checkout carrying the hull, and the verified webhook grants it
+ * once payment lands.
  */
 
 export const shipView = v.object({
@@ -106,7 +108,7 @@ export async function claimHandler(
     });
     return { alreadyOwned: false, granted: true, checkoutRequired: false };
   }
-  // TODO(convex phase 3): start the $1 Stripe checkout from an action.
+  // Not a member: payment goes through membership checkout (http.ts).
   return { alreadyOwned: false, granted: false, checkoutRequired: true };
 }
 

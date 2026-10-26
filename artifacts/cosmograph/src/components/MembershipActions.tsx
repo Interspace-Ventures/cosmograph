@@ -6,6 +6,11 @@ import { useAppState } from "@/lib/store";
 import { SessionShow } from "@/lib/session";
 import { convexAccountEnabled } from "@/config/features";
 import { useUnlockFlow } from "@/lib/useUnlockFlow";
+import {
+  checkoutErrorMessage,
+  useBillingActions,
+  type MemberPlan,
+} from "@/lib/billingApi";
 
 const ACCENT = { background: "var(--accent)" } as const;
 const BTN =
@@ -15,9 +20,12 @@ const BTN =
 // It renders one of three states:
 //   • signed-out          → "Subscribe" (routes to sign-up — new visitors need an
 //                            account first; the sign-up page links to sign-in)
-//   • signed-in non-member → "Subscribe · $7/year" (Stripe checkout)
+//   • signed-in non-member → "Subscribe · $7/year" (Stripe checkout). On a
+//                            Convex build (Phase 3): "Join · $9.99/year" or
+//                            "Lifetime · $29.99" through Convex checkout.
 //   • signed-in member     → "Unlock <name>" — free within the included slots, or
-//                            "+$1/year" for each researcher beyond them.
+//                            "+$1/year" for each researcher beyond them (Express
+//                            only; Convex includes researchers with membership).
 export function MembershipActions({ onDone }: { onDone?: () => void }) {
   const {
     entitled,
@@ -29,10 +37,13 @@ export function MembershipActions({ onDone }: { onDone?: () => void }) {
   } = useAppState();
   const [, setLocation] = useLocation();
   const checkout = useCreateCheckout();
+  const billing = useBillingActions();
   const { unlock, unlocking } = useUnlockFlow();
 
-  const isPaidSlot = unlockedAuthors.length >= includedSlots;
-  const busy = checkout.isPending || unlocking;
+  const isPaidSlot =
+    !convexAccountEnabled && unlockedAuthors.length >= includedSlots;
+  const checkingOut = convexAccountEnabled ? billing.pending : checkout.isPending;
+  const busy = checkingOut || unlocking;
 
   const goSignUp = () => {
     onDone?.();
@@ -43,11 +54,29 @@ export function MembershipActions({ onDone }: { onDone?: () => void }) {
     if (activeAuthorId) unlock(activeAuthorId, activeAuthorLabel, onDone);
   };
 
+  // Convex build (Phase 3): membership checkout through the Convex HTTP
+  // action. The researcher rides along and is unlocked by the verified
+  // webhook once payment lands; the return URL itself grants nothing.
+  const startConvexCheckout = (plan: MemberPlan) => {
+    billing.startCheckout({ plan, author: activeAuthorId }).then(
+      (res) => {
+        if (res.alreadyEntitled) {
+          if (activeAuthorId) unlock(activeAuthorId, activeAuthorLabel, onDone);
+          else onDone?.();
+          return;
+        }
+        if (res.url) window.location.href = res.url;
+        else toast.error("Could not start checkout. Please try again.");
+      },
+      (err: unknown) => {
+        toast.error(checkoutErrorMessage(err));
+      },
+    );
+  };
+
   const startCheckout = () => {
     if (convexAccountEnabled) {
-      // Membership checkout moves to a Convex action + Stripe webhook in
-      // Phase 3. Until then a Convex build offers no way to pay: fail closed.
-      toast("Memberships aren't available on this preview yet.");
+      startConvexCheckout("annual");
       return;
     }
     // Carry the explored researcher through the Stripe round-trip so the success
@@ -115,23 +144,36 @@ export function MembershipActions({ onDone }: { onDone?: () => void }) {
             </span>
           </button>
         ) : (
-          <button
-            onClick={startCheckout}
-            disabled={busy}
-            style={ACCENT}
-            className={BTN}
-          >
-            {checkout.isPending ? (
-              <Loader2 size={14} className="animate-spin" />
-            ) : (
-              <Lock size={14} />
+          <>
+            <button
+              onClick={startCheckout}
+              disabled={busy}
+              style={ACCENT}
+              className={BTN}
+            >
+              {checkingOut ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <Lock size={14} />
+              )}
+              <span>
+                {checkingOut
+                  ? "Starting checkout…"
+                  : convexAccountEnabled
+                    ? "Join · $9.99/year"
+                    : "Subscribe · $7/year"}
+              </span>
+            </button>
+            {convexAccountEnabled && (
+              <button
+                onClick={() => startConvexCheckout("lifetime")}
+                disabled={busy}
+                className="mt-2 w-full py-1.5 font-mono text-[11px] uppercase tracking-widest text-ink-dim underline-offset-4 hover:underline disabled:opacity-60"
+              >
+                Or lifetime · $29.99 once
+              </button>
             )}
-            <span>
-              {checkout.isPending
-                ? "Starting checkout…"
-                : "Subscribe · $7/year"}
-            </span>
-          </button>
+          </>
         )}
       </SessionShow>
     </>
