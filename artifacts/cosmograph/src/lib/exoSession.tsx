@@ -115,7 +115,7 @@ export function ExoSessionProvider({ children }: { children: ReactNode }) {
 
   const signIn = useCallback(
     async (returnPath?: string) => {
-      if (!getConfig) throw new Error("Exo sign-in is not configured.");
+      if (!getConfig) throw new Error("Exo Imprint sign-in is not configured.");
       const url = await beginSignIn({
         config: await getConfig(),
         origin: window.location.origin,
@@ -135,7 +135,7 @@ export function ExoSessionProvider({ children }: { children: ReactNode }) {
   const finishSignIn = useCallback(
     (search: string) => {
       if (!getConfig || !session) {
-        return Promise.reject(new Error("Exo sign-in is not configured."));
+        return Promise.reject(new Error("Exo Imprint sign-in is not configured."));
       }
       // The code is single use; StrictMode's double effect must share one try.
       let pending = callbacks.get(search);

@@ -83,7 +83,7 @@ function ExoAccountButton() {
     window.addEventListener("mousedown", onDown);
     return () => window.removeEventListener("mousedown", onDown);
   }, [open]);
-  const label = user?.name || user?.email || "Exo account";
+  const label = user?.name || user?.email || "Exo Imprint account";
   const initial = label.trim().charAt(0).toUpperCase() || "?";
   return (
     <div ref={ref} className="relative">

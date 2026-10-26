@@ -16,7 +16,7 @@ import { isFiltersActive } from "@/data/galaxy";
 import { readAuthMemory, ssoLabel } from "@/lib/authMemory";
 import { AccountIndicatorRail } from "./AccountIndicator";
 import { MessageCircleStar } from "./MessageCircleStar";
-import { featureEnabled } from "@/config/features";
+import { convexAccountEnabled, featureEnabled } from "@/config/features";
 
 /**
  * The cockpit dashboard — the bottom HUD that replaces the old Mission Control
@@ -154,7 +154,12 @@ function SignedOutAuthButton({
   // Read once on mount: it's signed-out, so the flag was written in a prior
   // session and won't change while this button is shown.
   const [mem] = useState(readAuthMemory);
-  const provider = mem.seen ? ssoLabel(mem.sso) : null;
+  // Exo Key build: there is one SSO, named "Exo Imprint" in copy (ADR 0019).
+  const provider = mem.seen
+    ? convexAccountEnabled
+      ? "Exo Imprint"
+      : ssoLabel(mem.sso)
+    : null;
   const label = mem.seen
     ? provider
       ? `Sign in with ${provider}`

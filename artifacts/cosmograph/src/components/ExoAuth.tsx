@@ -7,7 +7,8 @@ import { currentReturnPath, useExoSession } from "@/lib/exoSession";
 import { AuthHandoff } from "./AuthHandoff";
 
 /**
- * Exo Key sign-in surfaces (build flag `convex-account`). Cosmograph never
+ * Exo Key sign-in surfaces, shown to people as "Exo Imprint" (EXO ADR 0019:
+ * user-facing copy says Exo Imprint; identifiers, routes and env names stay) (build flag `convex-account`). Cosmograph never
  * shows its own credential form: the button sends the visitor to Exo's
  * authorize page (PKCE), and /auth/callback finishes the hand-off.
  */
@@ -33,7 +34,7 @@ export function ExoSignInPanel({
     setStarting(true);
     exo.signIn(returnPathForSignIn()).catch(() => {
       setStarting(false);
-      toast.error("Sign-in is unavailable right now. Please try again.");
+      toast.error("Exo Imprint sign-in is unavailable right now. Please try again.");
     });
   };
 
@@ -48,7 +49,7 @@ export function ExoSignInPanel({
       >
         <h1 className="text-xl font-semibold text-foreground">{title}</h1>
         <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-          Cosmograph signs you in with your Exo account: one account, every
+          Cosmograph signs you in with Exo Imprint: one identity, every
           researcher&apos;s galaxy.
         </p>
         <Button
@@ -62,7 +63,7 @@ export function ExoSignInPanel({
           ) : (
             <KeyRound className="h-4 w-4" />
           )}
-          {exo.configured ? "Continue with Exo" : "Sign-in unavailable"}
+          {exo.configured ? "Sign in with Exo Imprint" : "Exo Imprint unavailable"}
         </Button>
       </div>
     </AuthHandoff>

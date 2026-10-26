@@ -134,7 +134,7 @@ export function discoveryUrl(issuer: string) {
  */
 export function parseDiscovery(doc: unknown, env: ExoIdEnv): ExoIdConfig {
   const bad = (why: string) =>
-    new ExoIdError("invalid_discovery", `Exo sign-in is misconfigured (${why}).`);
+    new ExoIdError("invalid_discovery", `Exo Imprint sign-in is misconfigured (${why}).`);
   if (!isRecord(doc)) throw bad("not an object");
   if (normalizeEndpoint(doc.issuer) !== env.issuer) throw bad("issuer mismatch");
   const authorizeUrl = normalizeEndpoint(doc.authorization_endpoint);
@@ -171,13 +171,13 @@ export async function loadExoIdConfig(
   } catch {
     throw new ExoIdError(
       "network_error",
-      "Exo could not be reached. Check your connection and try again.",
+      "Exo Imprint could not be reached. Check your connection and try again.",
     );
   }
   if (!response.ok) {
     throw new ExoIdError(
       "discovery_failed",
-      "Exo sign-in is unavailable right now.",
+      "Exo Imprint sign-in is unavailable right now.",
       response.status,
     );
   }
@@ -334,7 +334,7 @@ export function parseTokenResponse(body: unknown, now = Date.now()): ExoIdTokens
   ) {
     throw new ExoIdError(
       "invalid_token_response",
-      "Exo returned an unexpected token response.",
+      "Exo Imprint returned an unexpected token response.",
     );
   }
   return {
@@ -399,7 +399,7 @@ async function postJson(fetcher: Fetcher, url: string, body: Record<string, stri
   } catch {
     throw new ExoIdError(
       "network_error",
-      "Exo could not be reached. Check your connection and try again.",
+      "Exo Imprint could not be reached. Check your connection and try again.",
     );
   }
   const payload: unknown = await response.json().catch(() => null);
@@ -408,7 +408,7 @@ async function postJson(fetcher: Fetcher, url: string, body: Record<string, stri
       isRecord(payload) && typeof payload.error === "string"
         ? payload.error
         : `http_${response.status}`;
-    throw new ExoIdError(code, `Exo rejected the request (${code}).`, response.status);
+    throw new ExoIdError(code, `Exo Imprint rejected the request (${code}).`, response.status);
   }
   return payload;
 }
@@ -493,7 +493,7 @@ export async function completeSignIn(options: {
   }
   const code = params.get("code");
   const pending = consumePendingSignIn(options.pendingStorage, params.get("state"), now());
-  if (!code) throw new ExoIdError("missing_code", "Exo did not return a sign-in code.");
+  if (!code) throw new ExoIdError("missing_code", "Exo Imprint did not return a sign-in code.");
   const config = await options.getConfig();
   const iss = params.get("iss");
   if (iss !== null && normalizeEndpoint(iss) !== config.issuer) {
