@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Show } from "@clerk/react";
 import {
   Info,
   Orbit,
@@ -12,6 +11,7 @@ import {
   UserPlus,
 } from "lucide-react";
 import { useAppState } from "@/lib/store";
+import { SessionShow } from "@/lib/session";
 import { isFiltersActive } from "@/data/galaxy";
 import { readAuthMemory, ssoLabel } from "@/lib/authMemory";
 import { AccountIndicatorRail } from "./AccountIndicator";
@@ -79,14 +79,14 @@ export function Dashboard() {
         >
           {/* Account — signed-in shows the avatar; signed-out shows a Sign In
               entry so visitors can make an account (then personalize a ship). */}
-          <Show when="signed-in">
+          <SessionShow when="signed-in">
             <AccountIndicatorRail />
             <Divider />
-          </Show>
-          <Show when="signed-out">
+          </SessionShow>
+          <SessionShow when="signed-out">
             <SignedOutAuthButton onOpenAuth={setAuthOpen} />
             <Divider />
-          </Show>
+          </SessionShow>
 
           {/* Ways to explore the galaxy: a guided Tour plus the Orbit/Fly
               throttle, grouped together in one section. */}

@@ -54,3 +54,20 @@ test("falls back when a release channel is invalid", () => {
   assert.equal(normalizeReleaseChannel("preview"), "friends-and-family");
   assert.equal(normalizeReleaseChannel("internal"), "internal");
 });
+
+test("the Convex account migration switch is off unless overridden", () => {
+  for (const channel of ["internal", "friends-and-family", "public"] as const) {
+    const decision = evaluateFeature("convex-account", {
+      channel,
+      now: new Date("2030-01-01T00:00:00.000Z"),
+    });
+    assert.equal(decision.enabled, false);
+    assert.equal(decision.reason, "unscheduled");
+  }
+  assert.equal(
+    evaluateFeature("convex-account", {
+      overrides: parseFeatureOverrides("convex-account=on"),
+    }).enabled,
+    true,
+  );
+});

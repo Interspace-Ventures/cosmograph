@@ -1,12 +1,14 @@
 import { useEffect } from "react";
 import { useUser } from "@clerk/react";
 import { rememberAuth } from "@/lib/authMemory";
+import { useAppSession } from "@/lib/session";
+import { convexAccountEnabled } from "@/config/features";
 
 // Records — locally, per browser — that this visitor has signed in, and which
 // social provider they used (read from their Clerk external accounts). The
 // signed-out cockpit uses this to greet returning visitors with "Sign In" (and
 // their usual SSO) instead of the default "Sign Up". Renders nothing.
-export function AuthMemoryBridge() {
+function ClerkAuthMemoryBridge() {
   const { isLoaded, isSignedIn, user } = useUser();
 
   useEffect(() => {
@@ -25,3 +27,17 @@ export function AuthMemoryBridge() {
 
   return null;
 }
+
+// Exo Key: the provider choice happens on Exo's own page, so only remember
+// that this browser has signed in before.
+function ExoAuthMemoryBridge() {
+  const { isLoaded, isSignedIn } = useAppSession();
+  useEffect(() => {
+    if (isLoaded && isSignedIn) rememberAuth(null);
+  }, [isLoaded, isSignedIn]);
+  return null;
+}
+
+export const AuthMemoryBridge = convexAccountEnabled
+  ? ExoAuthMemoryBridge
+  : ClerkAuthMemoryBridge;
