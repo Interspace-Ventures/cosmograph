@@ -147,6 +147,11 @@ overrides:
   "@expo/ngrok-bin>@expo/ngrok-bin-sunos-x64": "-"
   "@expo/ngrok-bin>@expo/ngrok-bin-win32-ia32": "-"
   "@expo/ngrok-bin>@expo/ngrok-bin-win32-x64": "-"
+  # Convex lists Clerk/Auth0 React bindings as optional peers. Cosmograph signs
+  # in with Exo Key only (exo#232), so never let Convex resolve them.
+  "convex>@clerk/react": "-"
+  "convex>@clerk/clerk-react": "-"
+  "convex>@auth0/auth0-react": "-"
   # drizzle-kit uses esbuild internally on an older version that's vulnerable, this overrides it
   "@esbuild-kit/esm-loader": "npm:tsx@^4.21.0"
   esbuild: "0.27.3"

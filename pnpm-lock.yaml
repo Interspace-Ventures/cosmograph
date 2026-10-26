@@ -137,6 +137,9 @@ overrides:
   '@expo/ngrok-bin>@expo/ngrok-bin-sunos-x64': '-'
   '@expo/ngrok-bin>@expo/ngrok-bin-win32-ia32': '-'
   '@expo/ngrok-bin>@expo/ngrok-bin-win32-x64': '-'
+  convex>@clerk/react: '-'
+  convex>@clerk/clerk-react: '-'
+  convex>@auth0/auth0-react: '-'
   '@esbuild-kit/esm-loader': npm:tsx@^4.21.0
   esbuild: 0.27.3
   '@babel/core': ^7.29.6
@@ -160,7 +163,14 @@ overrides:
 importers:
 
   .:
+    dependencies:
+      convex:
+        specifier: ^1.48.0
+        version: 1.48.0(react@19.1.0)
     devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 25.6.2
       prettier:
         specifier: ^3.8.3
         version: 3.8.3
@@ -172,7 +182,7 @@ importers:
     dependencies:
       '@clerk/express':
         specifier: ^2.1.30
-        version: 2.1.30(express@5.2.1)
+        version: 2.1.30(express@5.2.1)(react@19.1.0)
       '@clerk/shared':
         specifier: ^4.20.0
         version: 4.20.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -1186,6 +1196,25 @@ packages:
 
   convert-source-map@2.0.0:
     resolution: {integrity: sha512-Kvp459HrV2FEJ1CAsi1Ku+MY3kasH19TFykTz2xWmMeq6bk2NU3XXvfJ+Q61m0xktWwt+1HSYf3JZsTms3aRJg==}
+
+  convex@1.48.0:
+    resolution: {integrity: sha512-M9jEgTvCN8ziP/VgQQUH+j0ijM7g+NmQd8tFlvETK8/HMC/aaqHZwcu4hBO30X5DV2VIyYK4mOoLQGIb1766ew==}
+    engines: {node: '>=20.0.0', npm: '>=7.0.0'}
+    hasBin: true
+    peerDependencies:
+      '@auth0/auth0-react': '*'
+      '@clerk/clerk-react': '*'
+      '@clerk/react': '*'
+      react: ^18.0.0 || ^19.0.0-0 || ^19.0.0
+    peerDependenciesMeta:
+      '@auth0/auth0-react':
+        optional: true
+      '@clerk/clerk-react':
+        optional: true
+      '@clerk/react':
+        optional: true
+      react:
+        optional: true
 
   cookie-parser@1.4.7:
     resolution: {integrity: sha512-nGUvgXnotP3BsjiLX2ypbQnWoGUPIIfHQNZkkC668ntrzGWEZVW70HDEB1qnNGMicPje6EttlIgzo51YSwNQGw==}
@@ -2566,7 +2595,7 @@ snapshots:
       '@babel/helper-string-parser': 7.29.7
       '@babel/helper-validator-identifier': 7.29.7
 
-  '@clerk/backend@3.8.2':
+  '@clerk/backend@3.8.2(react@19.1.0)':
     dependencies:
       '@clerk/shared': 4.20.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       standardwebhooks: 1.0.0
@@ -2575,9 +2604,9 @@ snapshots:
       - react
       - react-dom
 
-  '@clerk/express@2.1.30(express@5.2.1)':
+  '@clerk/express@2.1.30(express@5.2.1)(react@19.1.0)':
     dependencies:
-      '@clerk/backend': 3.8.2
+      '@clerk/backend': 3.8.2(react@19.1.0)
       '@clerk/shared': 4.20.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       express: 5.2.1
       tslib: 2.8.1
@@ -3303,6 +3332,17 @@ snapshots:
   content-type@2.1.0: {}
 
   convert-source-map@2.0.0: {}
+
+  convex@1.48.0(react@19.1.0):
+    dependencies:
+      esbuild: 0.27.3
+      prettier: 3.8.3
+      ws: 8.21.0
+    optionalDependencies:
+      react: 19.1.0
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
 
   cookie-parser@1.4.7:
     dependencies:
