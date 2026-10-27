@@ -172,11 +172,12 @@ function DomainGroup({ d }: { d: WDomain }) {
 function Auras({ model }: { model: WorldModel }) {
   return (
     <g id="auras">
+      {/* v9: one aura per island, on its centre machine only (341 beams would wash the overview out) */}
       {model.domains
-        .filter((d) => d.machines.length)
+        .filter((d) => d.machines.some((m) => m.ring === 0))
         .map((d, n) => (
           <g key={d.idx} className="aura" style={{ ["--d" as string]: `${(-(n * 0.37) % 3.2).toFixed(2)}s` }}>
-            {d.machines.map((m) => {
+            {d.machines.filter((m) => m.ring === 0).map((m) => {
               const [bx, by] = at([m.cx, m.cy, ISLAND_Z]);
               const [tx, ty] = at([m.cx, m.cy, MZ0 + 150]);
               const e = 168;

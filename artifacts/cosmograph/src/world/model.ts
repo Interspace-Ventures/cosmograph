@@ -1,7 +1,7 @@
 // Builds the isometric world from the active researcher's dataset (galaxyData,
 // the same OpenAlex snapshot / live fetch the galaxy uses). Nothing here names a
 // researcher: when the dataset contains the papers of the curated overlay (the
-// approved v8 mockup's 16 domains + 64 machines, keyed by OpenAlex work ids) the
+// v9 mockup's 16 domains + 341 machines, keyed by OpenAlex work ids) the
 // world uses it; otherwise it falls back to the dataset's own domains with paper
 // tiles only.
 
@@ -40,6 +40,12 @@ interface CuratedMachine {
   accent: string;
   paperId: string;
   domain: string;
+  /** v9: 0 centre, 1 ring-1, 2 ring-2 */
+  ring?: number;
+  /** v9: tile offset from the island centre, exported from the mockup's own placement */
+  cell?: number[];
+  /** v9: false when the machine's live module does not ship with the app (thumbnail + render-pending state) */
+  live?: boolean;
 }
 interface Curated {
   domains: CuratedDomain[];
@@ -69,6 +75,10 @@ export interface WMachine {
   edge: string;
   paper: WPaper;
   d: number;
+  /** 0 = the island's centre machine, 1 = ring-1, 2 = ring-2 */
+  ring: number;
+  /** whether the machine's live module is available; otherwise it shows its thumbnail and a pending state */
+  live: boolean;
   /** plan centre of its tile */
   cx: number;
   cy: number;
@@ -340,30 +350,53 @@ export function buildWorld(data: GalaxyData, papersByDomain: Record<string, Pape
     const cheb = (c: Vec2) => Math.max(Math.abs(c[0]), Math.abs(c[1]));
     const dist = (c: Vec2) => Math.hypot(c[0], c[1]);
     const ang = (c: Vec2) => Math.atan2(c[1] - c[0], c[0] + c[1]);
-    const kN = ringM.length;
-    let rr = 1;
-    while (all.filter((c) => cheb(c) >= 1 && cheb(c) <= rr).length < kN && rr < half) rr++;
-    const pool = all.filter((c) => cheb(c) >= 1 && cheb(c) <= rr);
-    let best: { sc: number; set: Vec2[] } | null = null;
-    for (const set of kN ? combos(pool, kN) : [[] as Vec2[]]) {
-      const sx = set.reduce((a, c) => a + c[0], 0);
-      const sy = set.reduce((a, c) => a + c[1], 0);
-      const sc =
-        (10 * Math.hypot(sx, sy)) / Math.max(1, kN) +
-        set.reduce((a, c) => a + dist(c), 0) +
-        0.35 * set.filter((c) => c[0] === c[1]).length;
-      if (!best || sc < best.sc - 1e-9) best = { sc, set };
-    }
-    const mcells = (best?.set ?? [])
-      .slice()
-      .sort((a, b) => b[0] + b[1] - (a[0] + a[1]) || b[0] - b[1] - (a[0] - a[1]));
     const taken = new Set(["0,0"]);
     const cellOf = new Map<string, Vec2>();
-    ringM.forEach((x, r) => {
-      const c = mcells[r];
-      cellOf.set(x.p.id, c);
-      taken.add(c.join());
-    });
+    // v9: the curated overlay carries every machine's cell from the mockup's own placement
+    // (balanced ring-1 set, then ring-2 on the free tiles nearest the centre). Use it when
+    // every cell is valid and distinct; otherwise fall back to the balanced-ring search.
+    const given = ringM.map((x) => x.m.cell);
+    const givenOk =
+      ringM.length > 0 &&
+      given.every((c) => !!c && c.length === 2 && cheb([c[0], c[1]]) >= 1 && cheb([c[0], c[1]]) <= half) &&
+      new Set(given.map((c) => c!.join())).size === given.length;
+    if (givenOk) {
+      ringM.forEach((x) => {
+        const c: Vec2 = [x.m.cell![0], x.m.cell![1]];
+        cellOf.set(x.p.id, c);
+        taken.add(c.join());
+      });
+    } else {
+      // balanced ring: only searched for a handful of machines (combinations grow fast);
+      // any beyond that take the nearest free tiles
+      const kN = Math.min(ringM.length, 8);
+      let rr = 1;
+      while (all.filter((c) => cheb(c) >= 1 && cheb(c) <= rr).length < kN && rr < half) rr++;
+      const pool = all.filter((c) => cheb(c) >= 1 && cheb(c) <= rr);
+      let best: { sc: number; set: Vec2[] } | null = null;
+      for (const set of kN ? combos(pool, kN) : [[] as Vec2[]]) {
+        const sx = set.reduce((a, c) => a + c[0], 0);
+        const sy = set.reduce((a, c) => a + c[1], 0);
+        const sc =
+          (10 * Math.hypot(sx, sy)) / Math.max(1, kN) +
+          set.reduce((a, c) => a + dist(c), 0) +
+          0.35 * set.filter((c) => c[0] === c[1]).length;
+        if (!best || sc < best.sc - 1e-9) best = { sc, set };
+      }
+      const mcells = (best?.set ?? [])
+        .slice()
+        .sort((a, b) => b[0] + b[1] - (a[0] + a[1]) || b[0] - b[1] - (a[0] - a[1]));
+      mcells.forEach((c) => taken.add(c.join()));
+      const near = all
+        .filter((c) => !taken.has(c.join()))
+        .sort((a, b) => dist(a) - dist(b) || ang(a) - ang(b));
+      ringM.forEach((x, r) => {
+        const c = r < kN ? mcells[r] : near[r - kN];
+        if (!c) return;
+        cellOf.set(x.p.id, c);
+        taken.add(c.join());
+      });
+    }
     const free = all
       .filter((c) => !taken.has(c.join()))
       .sort((a, b) => dist(a) - dist(b) || ang(a) - ang(b));
@@ -383,6 +416,8 @@ export function buildWorld(data: GalaxyData, papersByDomain: Record<string, Pape
       edge: mixWhite(m.accent, 0.45),
       paper: p,
       d: i,
+      ring: m.ring ?? (p.id === hero.id ? 0 : 1),
+      live: m.live !== false,
       cx,
       cy,
       at: at([cx, cy, 150]),
@@ -391,7 +426,7 @@ export function buildWorld(data: GalaxyData, papersByDomain: Record<string, Pape
     });
     const used = new Set<string>(["0,0"]);
     rest.forEach((p, n) => {
-      const ringHit = ringM.find((x) => x.p.id === p.id);
+      const ringHit = ringM.find((x) => x.p.id === p.id && cellOf.has(p.id));
       const c = cellOf.get(p.id) ?? free[fi++];
       if (!c) return;
       used.add(c.join());

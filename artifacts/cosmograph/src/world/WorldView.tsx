@@ -1,7 +1,7 @@
 // The isometric researcher world: one island per research domain, one tile per
 // paper, and a live machine on every paper that has one. Ported from the
-// approved v8 mockup. Camera, bowls, labels and the machine lift are imperative
-// (refs + rAF) so pan and zoom never re-render React; selection, the tag and the
+// approved v8 mockup and extended to the v9 layout (341 machines). Camera,
+// bowls, labels and the machine lift are imperative (refs + rAF) so pan and zoom never re-render React; selection, the tag and the
 // HUD are React state.
 
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -40,6 +40,26 @@ type LabelEl = HTMLDivElement & { _x?: number; _y?: number };
 
 const SVGNS = "http://www.w3.org/2000/svg";
 const phone = () => window.innerWidth <= 560;
+
+/**
+ * Blueprint stand-in for a machine whose picture has not arrived (machine units,
+ * same projection as the machine drawings): a dashed plate and a wireframe block
+ * in the domain accent. Worlds never open empty; renders fill in as they land.
+ */
+function blueprintSvg(accent: string): string {
+  const [px, py] = MACHINE_PO;
+  const hw = 230;
+  const hh = hw / 2;
+  const up = 120;
+  const dia = (y: number) => `${px - hw},${y} ${px},${y - hh} ${px + hw},${y} ${px},${y + hh}`;
+  return (
+    `<g class="blueprint" fill="none" stroke="${accent}" stroke-width="2" stroke-dasharray="7 6" opacity=".55">` +
+    `<polygon points="${dia(py)}"/>` +
+    `<polygon points="${dia(py - up)}" opacity=".7"/>` +
+    `<path d="M${px - hw} ${py}V${py - up}M${px + hw} ${py}V${py - up}M${px} ${py + hh}V${py + hh - up}"/>` +
+    `</g>`
+  );
+}
 const reducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 const escHtml = (s: string) =>
   s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
@@ -261,7 +281,7 @@ export function WorldView({ backHref }: { backHref: string }) {
     const W = window.innerWidth;
     const H = window.innerHeight;
     for (const m of model.machines) {
-      if (S.lvl[m.key]) continue;
+      if (S.lvl[m.key] || !m.live) continue;
       const c = S.content[m.key];
       const im = c?.querySelector("image.mthumb");
       if (!c || !im) continue;
@@ -546,6 +566,12 @@ export function WorldView({ backHref }: { backHref: string }) {
       return;
     }
     if (cur === "loading") return;
+    if (!m.live) {
+      // the machine's live render is not shipped with the app yet: keep its picture (or blueprint) and say so
+      S.status[m.key] = "This machine's live render is on its way. For now you are looking at its picture.";
+      setStatusTick((n) => n + 1);
+      return;
+    }
     const content = S.content[m.key];
     const stubs = stubRef.current;
     if (!content || !stubs) return;
@@ -669,6 +695,12 @@ export function WorldView({ backHref }: { backHref: string }) {
       im.setAttribute("width", String(THUMB_BOX.w));
       im.setAttribute("height", String(THUMB_BOX.h));
       im.setAttribute("preserveAspectRatio", "none");
+      // no thumbnail yet: draw a blueprint plate instead, so the world never shows an empty tile
+      im.addEventListener("error", () => {
+        if (S.lvl[key]) return;
+        g.innerHTML = blueprintSvg(m.accent);
+        g.parentElement?.closest(".mach")?.classList.add("pending");
+      });
       g.appendChild(im);
       slot.appendChild(g);
       S.slot[key] = slot;
@@ -684,11 +716,20 @@ export function WorldView({ backHref }: { backHref: string }) {
       setSideOpen(true);
     } else S.cam = { ...viewOf(firstBuilt >= 0 ? firstBuilt : 0) };
     apply();
+    let hashDomain = firstBuilt >= 0 ? firstBuilt : 0;
     for (const part of q.split("&")) {
       const [k, v] = part.split("=");
       if (k === "m" && v && model.machineByKey[v]) {
         setCurKey(v);
-        S.cam = { ...viewOf(model.machineByKey[v].d) };
+        hashDomain = model.machineByKey[v].d;
+        S.cam = { ...viewOf(hashDomain) };
+        apply();
+      }
+      // v9: &zoom=F zooms F x into the current island, centred on its centre tile
+      if (k === "zoom" && model.domains[hashDomain]) {
+        const f = Number(v);
+        const d = model.domains[hashDomain];
+        S.cam = { z: clampZ(S.cam.z * (Number.isFinite(f) && f > 0 ? f : 1)), x: d.c[0], y: d.c[1] };
         apply();
       }
       if (k === "run" && v && model.machineByKey[v]) tapMachine(model.machineByKey[v], true);
@@ -985,7 +1026,7 @@ export function WorldView({ backHref }: { backHref: string }) {
                     <>
                       {" · "}
                       <i style={{ ["--c" as string]: d.accent }}>
-                        {nm} machine{nm > 1 ? "s" : ""} live
+                        {nm} machine{nm > 1 ? "s" : ""}
                       </i>
                     </>
                   )}
@@ -1037,7 +1078,7 @@ export function WorldView({ backHref }: { backHref: string }) {
                       display: "inline-block",
                     }}
                   />
-                  {selMachine.label} · live
+                  {selMachine.label} · {selMachine.live ? "live" : "render pending"}
                 </div>
                 <div className="t">{selMachine.paper.title}</div>
                 <div className="m mono">{meta(selMachine.paper)}</div>

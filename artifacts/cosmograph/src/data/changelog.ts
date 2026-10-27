@@ -17,6 +17,19 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.39.1",
+    codename: "Archipelago Filled",
+    date: "2026-10-27",
+    summary:
+      "The internal world view now places every built machine: 341 of them across the 16 islands.",
+    changes: [
+      "Each island keeps its centre machine and inner ring, and the newer machines take the tiles nearest the centre, with at least four tiles of water between islands.",
+      "Only the centre machine of each island glows in the wide view, so the overview stays readable with this many machines.",
+      "Machines whose live version is not bundled yet show their picture (or a blueprint when no picture has arrived) and say their render is on its way, so an island never looks empty.",
+      "Next machine tours all 341 in map order, long paper titles wrap, and a #&zoom= hook gives a close view for review.",
+    ],
+  },
+  {
     version: "3.39.0",
     codename: "Archipelago",
     date: "2026-10-24",
