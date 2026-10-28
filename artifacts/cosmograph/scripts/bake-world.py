@@ -178,7 +178,7 @@ async def bake_pyramid(page: Page, base: str, out_dir: str, data_dir: str, level
 
 async def bake_flip(page: Page, base: str, out_dir: str, data_dir: str, resume: bool = False):
     t0 = time.time()
-    cols, rows = 10, 8
+    cols, rows = 10, 4  # 40 live machines per batch keeps each batch short on a CPU-only box
     cw, ch = CELL[0] * 2, CELL[1] * 2
     W, H = cols * cw, rows * ch
     await open_world(page, f"{base}/world#bake=flip", W, H)
@@ -203,7 +203,9 @@ async def bake_flip(page: Page, base: str, out_dir: str, data_dir: str, resume: 
                     frames[s_] = [strip.crop((k * CELL[0], 0, (k + 1) * CELL[0], CELL[1])) for k in range(FRAMES)]
             log(f"flip: batch {start // per + 1} cached")
             continue
+        t1 = time.time()
         laid = await page.eval(f"window.__cgwBake.show({start},{per},{cols})", 180)
+        log(f"flip: batch {start // per + 1} mounted in {time.time() - t1:.0f} s")
         await asyncio.sleep(0.6)
         shots = [Image.open(io.BytesIO(await page.screenshot(W, H))).convert("RGBA")]
         await page.eval("window.__cgwBake.start()")
@@ -300,7 +302,7 @@ async def main():
     data = os.path.join(APP, "src", "world", "data")
     pub = a.out or os.path.join(APP, "public", "world")
     try:
-        chrome = Chrome(9334)
+        chrome = Chrome(9334, webgl=False)  # both bakes render the SVG world; no WebGL needed
         base = f"http://127.0.0.1:{a.port}"
         if a.only in (None, "flip"):
             page = await Page.open(chrome)

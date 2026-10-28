@@ -26,7 +26,7 @@ def chrome_bin() -> str:
 
 
 class Chrome:
-    def __init__(self, port: int = 9333, extra: list[str] | None = None):
+    def __init__(self, port: int = 9333, extra: list[str] | None = None, webgl: bool = True):
         self.port = port
         self.dir = tempfile.mkdtemp(prefix="cgw-chrome-")
         args = [
@@ -39,10 +39,10 @@ class Chrome:
             "--disable-dev-shm-usage",
             "--hide-scrollbars",
             "--mute-audio",
-            # WebGL2 without a GPU: ANGLE on SwiftShader (CPU rasteriser)
-            "--use-angle=swiftshader",
-            "--enable-unsafe-swiftshader",
-            "--ignore-gpu-blocklist",
+            # WebGL2 without a GPU: ANGLE on SwiftShader (CPU rasteriser). Pages that
+            # need no WebGL (the SVG bakes) use plain Skia software raster instead,
+            # which is far faster than compositing through SwiftShader GL.
+            *(["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] if webgl else ["--disable-gpu"]),
             "--enable-precise-memory-info",
             "--disable-background-timer-throttling",
             "--disable-renderer-backgrounding",
