@@ -167,6 +167,12 @@ export function WorldView({ backHref }: { backHref: string }) {
     observers: [] as MutationObserver[],
     gpu: null as GpuTier | null,
     camMoved: true,
+    // GPU tier: the camera the SVG viewBox was last committed at; between commits
+    // the SVG layer follows the camera with a compositor-only CSS transform
+    vbCam: null as Cam | null,
+    vbMoving: false,
+    vbCommit: false,
+    vbT: undefined as ReturnType<typeof setTimeout> | undefined,
     bowlBusy: false,
   });
 
@@ -385,8 +391,42 @@ export function WorldView({ backHref }: { backHref: string }) {
       S.cssTint = tint;
       svg.style.setProperty("--tint", tint.toFixed(3));
     }
-    const w = window.innerWidth / cam.z;
-    const h = window.innerHeight / cam.z;
+    const W0 = window.innerWidth;
+    const H0 = window.innerHeight;
+    // GPU tier: re-rasterising the SVG layer (close-up drawings with their filters)
+    // was the whole close-zoom frame budget, so while the camera moves the layer is
+    // moved by a CSS transform on the compositor and the viewBox is committed only
+    // when the camera settles or drifts too far (the pyramid underneath already
+    // shows every machine at rest, so the layer's edges never show a gap)
+    const vc = S.gpu && !bake ? S.vbCam : null;
+    if (vc) {
+      const s = cam.z / vc.z;
+      const tx = (vc.x - cam.x) * cam.z;
+      const ty = (vc.y - cam.y) * cam.z;
+      const fresh = s === 1 && tx === 0 && ty === 0;
+      if (!fresh && !S.vbCommit && s > 0.7 && s < 1.45 && Math.abs(tx) < W0 * 0.36 && Math.abs(ty) < H0 * 0.36) {
+        svg.style.transform = `translate(${tx.toFixed(1)}px,${ty.toFixed(1)}px) scale(${s.toFixed(4)})`;
+        S.vbMoving = true;
+        clearTimeout(S.vbT);
+        S.vbT = setTimeout(() => {
+          S.vbCommit = true;
+          apply();
+        }, 160);
+        place();
+        S.camMoved = true;
+        S.dirty = true;
+        return;
+      }
+    }
+    S.vbCommit = false;
+    clearTimeout(S.vbT);
+    if (S.gpu && !bake) {
+      S.vbCam = { ...cam };
+      S.vbMoving = false;
+      svg.style.transform = "";
+    }
+    const w = W0 / cam.z;
+    const h = H0 / cam.z;
     svg.setAttribute(
       "viewBox",
       `${(cam.x - w / 2).toFixed(1)} ${(cam.y - h / 2).toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)}`,
@@ -645,6 +685,7 @@ export function WorldView({ backHref }: { backHref: string }) {
     if (lm && typeof lm === "object") lm.dispose();
     S.live[key] = undefined;
     S.runOrder = S.runOrder.filter((k) => k !== key);
+    S.nodes.get(key)?.g.classList.remove("live");
     stubRef.current?.querySelector(`[data-stub="${CSS.escape(key)}"]`)?.remove();
   }, []);
 
@@ -738,13 +779,17 @@ export function WorldView({ backHref }: { backHref: string }) {
     // (GPU tier: only the close-up drawings are DOM; sprites and pyramid cover the rest)
     const want: WMachine[] = [];
     const gpuT = S.gpu;
-    if (lod !== "far" && S.assetsReady && (!gpuT || lod === "near")) {
+    // GPU tier, camera moving: keep the close-up set as it is (any DOM change would
+    // re-rasterise the whole layer); it is re-chosen when the camera settles
+    const frozen = !!gpuT && S.vbMoving && !bake;
+    if (frozen) S.nodes.forEach((n) => want.push(n.m));
+    if (!frozen && lod !== "far" && S.assetsReady && (!gpuT || lod === "near")) {
       const idx = grid.query(vx0 - 340, vy0 - 80, vx1 + 340, vy1 + 420);
       const dist = (m: WMachine) => (m.b[0] - cam.x) ** 2 + (m.b[1] - 180 - cam.y) ** 2;
       let ms = idx.map((i) => model.machines[i]!);
       if (gpuT) ms = ms.filter((m) => hasModule(m.slug, m.live));
       ms.sort((a, b) => dist(a) - dist(b));
-      want.push(...ms.slice(0, bake ? Infinity : gpuT ? CAPS.near() : CAPS.nodes()));
+      want.push(...ms.slice(0, bake ? Infinity : gpuT ? CAPS.nearGpu() : CAPS.nodes()));
     }
     const wantKeys = new Set(want.map((m) => m.key));
     const lifted = S.lifted?.key;
@@ -756,7 +801,7 @@ export function WorldView({ backHref }: { backHref: string }) {
     const keepSlugs = new Set<string>();
     for (const k of S.runOrder) keepSlugs.add(model.machineByKey[k]?.slug ?? "");
     for (const [k, v] of Object.entries(S.live)) if (v === "loading") keepSlugs.add(model.machineByKey[k]?.slug ?? "");
-    const nearCap = bake ? Infinity : CAPS.near();
+    const nearCap = bake ? Infinity : gpuT ? CAPS.nearGpu() : CAPS.near();
     let rank = 0;
     for (const m of want) {
       const n = S.nodes.get(m.key);
@@ -801,7 +846,7 @@ export function WorldView({ backHref }: { backHref: string }) {
 
     // prefetch: neighbours just outside the view when close, the view itself when approaching
     const px = MACHINE_S0 * MACHINE_W * cam.z * dpr;
-    if (S.assetsReady && px > NEAR_DEV_PX * 0.6) {
+    if (!frozen && S.assetsReady && px > NEAR_DEV_PX * 0.6) {
       const budget = CAPS.prefetch();
       let picked = 0;
       const tryPf = (m: WMachine) => {
@@ -825,7 +870,7 @@ export function WorldView({ backHref }: { backHref: string }) {
       }
     }
     // anything queued that is no longer wanted never downloads
-    cancelQueued((slug) => keepSlugs.has(slug));
+    if (!frozen) cancelQueued((slug) => keepSlugs.has(slug));
 
     // running machines that left the screen are stopped
     for (const k of [...S.runOrder]) if (!wantKeys.has(k) && k !== lifted) stopLive(k);
@@ -884,7 +929,7 @@ export function WorldView({ backHref }: { backHref: string }) {
         }
         node.lvl = 3;
         node.g.classList.remove("pending");
-        node.g.classList.add("on");
+        node.g.classList.add("on", "live");
         node.slot.style.filter = `drop-shadow(0 0 .8px ${rgba(m.edge, 0.75)})`;
         S.live[m.key] = lm;
         S.runOrder.push(m.key);

@@ -31,6 +31,8 @@ export const CAPS = {
   nodes: () => (phoneClass() ? 140 : 420),
   /** machines showing their full drawing */
   near: () => (phoneClass() ? 8 : 28),
+  /** GPU tier: close-up drawings in the DOM (the pyramid shows the rest at rest) */
+  nearGpu: () => (phoneClass() ? 3 : 6),
   /** machines whose script runs at once */
   running: () => (phoneClass() ? 1 : 3),
   /** neighbours to prefetch per update */
