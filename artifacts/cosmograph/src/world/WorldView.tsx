@@ -1131,7 +1131,14 @@ export function WorldView({ backHref }: { backHref: string }) {
         S.cam = { z: clampZ(S.cam.z * (Number.isFinite(f) && f > 0 ? f : 1)), x: d.c[0], y: d.c[1] };
         apply();
       }
-      if (k === "run" && v && model.machineByKey[v]) tapMachine(model.machineByKey[v], true);
+      // &run waits for the asset manifests, so a module that does not ship shows
+      // "render pending" instead of being requested (and failing) before they land
+      if (k === "run" && v && model.machineByKey[v]) {
+        const m = model.machineByKey[v];
+        void loadAssetManifests().then(() => {
+          if (alive) tapMachine(m, true);
+        });
+      }
       if (k === "list") setSideOpen(true);
     }
 

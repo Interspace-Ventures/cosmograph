@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite --config vite.config.ts --host 0.0.0.0",
     "build": "vite build --config vite.config.ts && node scripts/fetch-machine-archive.mjs",
+    "build:world": "VITE_RELEASE_CHANNEL=internal vite build --config vite.config.ts",
     "machines:pack": "node scripts/pack-machine-archive.mjs",
     "machines:fetch": "node scripts/fetch-machine-archive.mjs",
     "serve": "vite preview --config vite.config.ts --host 0.0.0.0",

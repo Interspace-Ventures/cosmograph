@@ -14,7 +14,7 @@
 Writes tiles/pages under public/world/{pyramid,flip}/ and their manifests to
 src/world/data/{pyramid,flip}.json (baked into the world chunk).
 
-Run after `vite build` (VITE_RELEASE_CHANNEL=internal so /world is routable):
+Run after `pnpm build:world` (VITE_RELEASE_CHANNEL=internal; a plain build routes /world to the galaxy home):
 
   CHROME=/path/to/chrome python3 scripts/bake-world.py [--modules DIR] [--only pyramid|flip]
 

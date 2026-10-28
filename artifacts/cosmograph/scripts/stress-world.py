@@ -67,7 +67,7 @@ async def run(chrome: Chrome, base: str, n: int, profile: str, renderer: str):
     hash_ = "overview" + (f"&stress={n}" if n != 341 else "") + ("&svg" if renderer == "svg" else "")
     t_nav[0] = time.time()
     await page.send("Page.navigate", {"url": f"{base}/world#{hash_}"})
-    ok = await page.wait_for("!!window.__cgwWorld", 240, 0.05)
+    ok = await page.wait_world(240, 0.05)
     ready = time.time() - t_nav[0]
     if not ok:
         await page.close()

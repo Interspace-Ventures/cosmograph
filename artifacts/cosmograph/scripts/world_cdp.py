@@ -131,6 +131,33 @@ class Page:
             await asyncio.sleep(every)
         return False
 
+    async def wait_world(self, timeout: float = 240, every: float = 0.05) -> bool:
+        """Waits for /world's hooks. Fails fast, with the fix, when the build routes
+        /world to the galaxy home: the isometric-world flag is internal-only, so a
+        plain `vite build` / `pnpm build` (channel friends-and-family) never requests
+        the WorldPage chunk. Build with `pnpm build:world` (VITE_RELEASE_CHANNEL=internal)."""
+        t0 = time.time()
+        loaded_at = None
+        while time.time() - t0 < timeout:
+            try:
+                if await self.eval("!!window.__cgwWorld", 10):
+                    return True
+                if loaded_at is None and await self.eval("document.readyState==='complete'", 10):
+                    loaded_at = time.time()
+                if loaded_at and time.time() - loaded_at > 20 and not await self.eval(
+                    "performance.getEntriesByType('resource').some(e=>/WorldPage/.test(e.name))", 10
+                ):
+                    raise RuntimeError(
+                        "/world served the galaxy home: this build has the isometric-world flag off. "
+                        "Rebuild with `pnpm --filter @workspace/cosmograph build:world` (VITE_RELEASE_CHANNEL=internal)."
+                    )
+            except RuntimeError:
+                raise
+            except Exception:
+                pass
+            await asyncio.sleep(every)
+        return False
+
     async def screenshot(self, w: int, h: int, fmt: str = "png") -> bytes:
         r = await self.send(
             "Page.captureScreenshot",
