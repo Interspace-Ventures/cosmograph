@@ -75,6 +75,10 @@ async def open_world(page: Page, url: str, w: int, h: int):
     await page.send("Runtime.enable")
     await page.send("Emulation.setDeviceMetricsOverride", {"width": w, "height": h, "deviceScaleFactor": 1, "mobile": False})
     await page.send("Emulation.setDefaultBackgroundColorOverride", {"color": {"r": 0, "g": 0, "b": 0, "a": 0}})
+    # via about:blank: /world#bake=flip -> /world#bake=pyramid in one tab would only be a
+    # same-document hash change and keep the previous bake page mounted
+    await page.send("Page.navigate", {"url": "about:blank"})
+    await asyncio.sleep(0.3)
     await page.send("Page.navigate", {"url": url})
 
 
