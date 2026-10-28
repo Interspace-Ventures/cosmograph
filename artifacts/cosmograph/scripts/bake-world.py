@@ -56,6 +56,20 @@ def log(*a):
     print("[bake]", *a, flush=True)
 
 
+def _prior(out_dir: str) -> float:
+    """Wall seconds spent by earlier, interrupted runs of a resumed bake."""
+    try:
+        return float(open(os.path.join(out_dir, ".seconds")).read())
+    except Exception:
+        return 0.0
+
+
+def _add_seconds(out_dir: str, sec: float):
+    os.makedirs(out_dir, exist_ok=True)
+    with open(os.path.join(out_dir, ".seconds"), "w") as f:
+        f.write(str(_prior(out_dir) + sec))
+
+
 async def open_world(page: Page, url: str, w: int, h: int):
     await page.send("Page.enable")
     await page.send("Runtime.enable")
@@ -68,7 +82,7 @@ async def transparent(page: Page):
     await page.eval(f"(()=>{{const s=document.createElement('style');s.textContent={json.dumps(TRANSPARENT)};document.head.appendChild(s)}})()")
 
 
-async def bake_pyramid(page: Page, base: str, out_dir: str, data_dir: str, levels_only: int | None = None):
+async def bake_pyramid(page: Page, base: str, out_dir: str, data_dir: str, levels_only: int | None = None, resume: bool = False):
     t0 = time.time()
     await open_world(page, f"{base}/world#bake=pyramid", VIEW, VIEW)
     if not await page.wait_for("!!(window.__cgwWorld && window.__cgwWorld.bakeIdle)", 90):
@@ -84,7 +98,7 @@ async def bake_pyramid(page: Page, base: str, out_dir: str, data_dir: str, level
     ox, oy = math.floor(bx0), math.floor(by0)
     levels = []
     L = 0
-    if os.path.isdir(out_dir):
+    if os.path.isdir(out_dir) and not resume:
         shutil.rmtree(out_dir)
     total = 0
     count = 0
@@ -98,6 +112,9 @@ async def bake_pyramid(page: Page, base: str, out_dir: str, data_dir: str, level
         per = VIEW // TILE
         for ry in range(math.ceil(rows / per)):
             for rx in range(math.ceil(cols / per)):
+                mark = f"{out_dir}/L{L}/.done_{rx}_{ry}"
+                if resume and os.path.exists(mark):
+                    continue
                 cx = ox + (rx * VIEW + VIEW / 2) / s
                 cy = oy + (ry * VIEW + VIEW / 2) / s
                 await page.eval(f"window.__cgwWorld.setCam({cx},{cy},{s})")
@@ -120,14 +137,21 @@ async def bake_pyramid(page: Page, base: str, out_dir: str, data_dir: str, level
                             continue
                         buf = io.BytesIO()
                         tile.save(buf, "WEBP", quality=80, alpha_quality=85, method=5)
-                        b = buf.getvalue()
                         with open(f"{out_dir}/L{L}/{c}_{r}.webp", "wb") as f:
-                            f.write(b)
-                        digest.update(b)
-                        total += len(b)
-                        count += 1
-                        i = r * cols + c
-                        bits[i >> 3] |= 1 << (i & 7)
+                            f.write(buf.getvalue())
+                open(mark, "w").close()
+        # tiles on disk are the source of truth (a resumed bake wrote some of them earlier)
+        for r in range(rows):
+            for c in range(cols):
+                fn = f"{out_dir}/L{L}/{c}_{r}.webp"
+                if not os.path.exists(fn):
+                    continue
+                b = open(fn, "rb").read()
+                digest.update(b)
+                total += len(b)
+                count += 1
+                i = r * cols + c
+                bits[i >> 3] |= 1 << (i & 7)
         levels.append({"s": s, "cols": cols, "rows": rows, "has": base64.b64encode(bytes(bits)).decode()})
         log(f"pyramid L{L} s={s:g} {cols}x{rows} tiles, {sum(bin(x).count('1') for x in bits)} kept, {time.time() - t0:.0f} s")
         if (cols <= 1 and rows <= 1) or (levels_only and L + 1 >= levels_only):
@@ -144,7 +168,7 @@ async def bake_pyramid(page: Page, base: str, out_dir: str, data_dir: str, level
         "levels": levels,
         "bytes": total,
         "tiles": count,
-        "bakeSeconds": round(time.time() - t0, 1),
+        "bakeSeconds": round(time.time() - t0 + _prior(out_dir), 1),
     }
     with open(f"{data_dir}/pyramid.json", "w") as f:
         json.dump(man, f, separators=(",", ":"))
@@ -152,7 +176,7 @@ async def bake_pyramid(page: Page, base: str, out_dir: str, data_dir: str, level
     return man
 
 
-async def bake_flip(page: Page, base: str, out_dir: str, data_dir: str):
+async def bake_flip(page: Page, base: str, out_dir: str, data_dir: str, resume: bool = False):
     t0 = time.time()
     cols, rows = 10, 8
     cw, ch = CELL[0] * 2, CELL[1] * 2
@@ -164,7 +188,21 @@ async def bake_flip(page: Page, base: str, out_dir: str, data_dir: str):
     slugs = await page.eval("window.__cgwBake.slugs()")
     frames: dict[str, list[Image.Image]] = {}
     per = cols * rows
+    fdir = out_dir + ".frames"  # per-machine frame strips, so an interrupted bake resumes by batch
+    os.makedirs(fdir, exist_ok=True)
+
+    def have(slug):
+        return os.path.exists(os.path.join(fdir, slug + ".png")) or os.path.exists(os.path.join(fdir, slug + ".none"))
+
     for start in range(0, len(slugs), per):
+        if resume and all(have(s_) for s_ in slugs[start : start + per]):
+            for s_ in slugs[start : start + per]:
+                fn = os.path.join(fdir, s_ + ".png")
+                if os.path.exists(fn):
+                    strip = Image.open(fn).convert("RGBA")
+                    frames[s_] = [strip.crop((k * CELL[0], 0, (k + 1) * CELL[0], CELL[1])) for k in range(FRAMES)]
+            log(f"flip: batch {start // per + 1} cached")
+            continue
         laid = await page.eval(f"window.__cgwBake.show({start},{per},{cols})", 180)
         await asyncio.sleep(0.6)
         shots = [Image.open(io.BytesIO(await page.screenshot(W, H))).convert("RGBA")]
@@ -178,6 +216,13 @@ async def bake_flip(page: Page, base: str, out_dir: str, data_dir: str):
                 continue
             x, y = (i % cols) * cw, (i // cols) * ch
             frames[slug] = [s.crop((x, y, x + cw, y + ch)).resize(CELL, Image.LANCZOS) for s in shots]
+            strip = Image.new("RGBA", (CELL[0] * FRAMES, CELL[1]))
+            for k, fr in enumerate(frames[slug]):
+                strip.paste(fr, (k * CELL[0], 0))
+            strip.save(os.path.join(fdir, slug + ".png"))
+        for s_ in slugs[start : start + per]:
+            if s_ not in frames:
+                open(os.path.join(fdir, s_ + ".none"), "w").close()
         log(f"flip: batch {start // per + 1}, {sum(1 for s in laid if s)} machines, {time.time() - t0:.0f} s")
     if os.path.isdir(out_dir):
         shutil.rmtree(out_dir)
@@ -244,6 +289,8 @@ async def main():
     ap.add_argument("--only", choices=["pyramid", "flip"], default=None)
     ap.add_argument("--levels", type=int, default=None, help="pyramid: stop after this many levels (testing)")
     ap.add_argument("--port", type=int, default=4199)
+    ap.add_argument("--out", default=None, help="write tiles/pages here instead of public/world (e.g. a persistent cache)")
+    ap.add_argument("--resume", action="store_true", help="keep finished pyramid chunks / flip batches from an interrupted run")
     a = ap.parse_args()
     if a.modules:
         stage_modules(a.dist, a.modules)
@@ -251,17 +298,22 @@ async def main():
     time.sleep(0.6)
     chrome = None
     data = os.path.join(APP, "src", "world", "data")
-    pub = os.path.join(APP, "public", "world")
+    pub = a.out or os.path.join(APP, "public", "world")
     try:
         chrome = Chrome(9334)
         base = f"http://127.0.0.1:{a.port}"
         if a.only in (None, "flip"):
             page = await Page.open(chrome)
-            await bake_flip(page, base, os.path.join(pub, "flip"), data)
+            await bake_flip(page, base, os.path.join(pub, "flip"), data, a.resume)
             await page.close()
         if a.only in (None, "pyramid"):
             page = await Page.open(chrome)
-            await bake_pyramid(page, base, os.path.join(pub, "pyramid"), data, a.levels)
+            t_run = time.time()
+            try:
+                await bake_pyramid(page, base, os.path.join(pub, "pyramid"), data, a.levels, a.resume)
+            finally:
+                if a.resume:
+                    _add_seconds(os.path.join(pub, "pyramid"), time.time() - t_run)
             await page.close()
     finally:
         if chrome:
