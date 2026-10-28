@@ -4,21 +4,20 @@
 // dataset; the camera, bowl shading, labels and machines are driven imperatively
 // by WorldView so panning and zooming never re-render React.
 
-import { memo, type ReactElement } from "react";
+import { memo } from "react";
 import tileVariantsRaw from "./data/tile-variants.svg?raw";
 import type { WDomain, WorldModel } from "./model";
 import {
   at,
   f1,
   ISLAND_Z,
-  machineTransform,
   MZ0,
   PITCH,
   planOutline,
   pts,
   type Vec2,
 } from "./iso";
-import { hslRgb, mixWhite, rgba, rgbCss, tintKeepLum } from "./color";
+import { hslRgb, mixWhite, rgbCss, tintKeepLum } from "./color";
 
 // tile variants are drawn once at the origin and placed with <use>
 const TILE_DEFS = tileVariantsRaw.replace(/id="pv(\d+)"/g, 'id="cgw-pv$1"');
@@ -100,57 +99,39 @@ function Island({ d }: { d: WDomain }) {
   );
 }
 
-function DomainGroup({ d }: { d: WDomain }) {
-  type Piece = { dep: number; el: ReactElement };
-  const pieces: Piece[] = [];
-  for (const t of d.tiles) {
-    const [sx, sy] = at([t.cx, t.cy, 0]);
-    pieces.push({
-      dep: t.cx + t.cy,
-      el: (
-        <g
-          key={t.id}
-          className="ph tile"
-          data-id={t.id}
-          data-p={t.paper.id}
-          transform={`translate(${f1(sx)} ${f1(sy)})`}
-        >
-          <use href={`#cgw-pv${t.variant}`} />
-        </g>
-      ),
-    });
-  }
+/** One diamond per machine plate, all in a single path: the far level of detail. */
+function machineDots(d: WDomain): string {
+  const e = 150;
+  let out = "";
   for (const m of d.machines) {
-    pieces.push({
-      dep: m.cx + m.cy,
-      el: (
-        <g
-          key={m.key}
-          className="mach rm iso built"
-          data-theme="dark"
-          data-m={m.key}
-          data-d={d.idx}
-          data-p={m.paper.id}
-          tabIndex={0}
-          role="button"
-          aria-label={`Run the machine: ${m.paper.title}`}
-        >
-          <path
-            className="rfoot"
-            d={planOutline({ x: m.cx - 140, y: m.cy - 140, w: 280, d: 280, r: 10 }, ISLAND_Z)}
-            stroke={m.accent}
-          />
-          <g
-            className="mpos"
-            data-slot={m.key}
-            transform={machineTransform(m.cx, m.cy)}
-            style={{ filter: `drop-shadow(0 0 .8px ${rgba(m.edge, 0.75)})` }}
-          />
-        </g>
-      ),
-    });
+    const c = [
+      at([m.cx - e, m.cy - e, ISLAND_Z]),
+      at([m.cx + e, m.cy - e, ISLAND_Z]),
+      at([m.cx + e, m.cy + e, ISLAND_Z]),
+      at([m.cx - e, m.cy + e, ISLAND_Z]),
+    ];
+    out += `M${f1(c[0][0])} ${f1(c[0][1])}L${f1(c[1][0])} ${f1(c[1][1])}L${f1(c[2][0])} ${f1(c[2][1])}L${f1(c[3][0])} ${f1(c[3][1])}Z`;
   }
+  return out;
+}
+
+/**
+ * An island's paper tiles as markup, back to front. Not part of the React tree:
+ * the view adds them only for islands on screen whose tiles are big enough to
+ * read, so the static drawing stays small however many islands the world has.
+ */
+export function tilesMarkup(d: WDomain): string {
+  const pieces = d.tiles.map((t) => ({ t, dep: t.cx + t.cy }));
   pieces.sort((a, b) => a.dep - b.dep);
+  let out = "";
+  for (const { t } of pieces) {
+    const [sx, sy] = at([t.cx, t.cy, 0]);
+    out += `<g class="ph tile" data-id="${t.id}" data-p="${t.paper.id.replace(/"/g, "&quot;")}" transform="translate(${f1(sx)} ${f1(sy)})"><use href="#cgw-pv${t.variant}"/></g>`;
+  }
+  return out;
+}
+
+function DomainGroup({ d }: { d: WDomain }) {
   return (
     <g className="domain" data-d={d.idx}>
       <Island d={d} />
@@ -158,13 +139,19 @@ function DomainGroup({ d }: { d: WDomain }) {
         <path
           key={`p${n}`}
           d={planOutline({ x: cx - 130, y: cy - 130, w: 260, d: 260, r: 8 }, ISLAND_Z)}
+          className="plot"
           fill="none"
           stroke="#3a3d4a"
           strokeWidth=".8"
           strokeDasharray="2 5"
         />
       ))}
-      {pieces.map((p) => p.el)}
+      {/* paper tiles: filled in by the view when the island is on screen (tilesMarkup) */}
+      <g className="tiles" data-d={d.idx} />
+      {/* far level of detail: every machine as a plate in one path (cheap at any count) */}
+      {d.machines.length > 0 && <path className="mdots" d={machineDots(d)} fill={d.accent} />}
+      {/* mid / close levels of detail: machine nodes are added here on demand, in depth order */}
+      <g className="mlayer" data-d={d.idx} />
     </g>
   );
 }
@@ -176,7 +163,7 @@ function Auras({ model }: { model: WorldModel }) {
       {model.domains
         .filter((d) => d.machines.some((m) => m.ring === 0))
         .map((d, n) => (
-          <g key={d.idx} className="aura" style={{ ["--d" as string]: `${(-(n * 0.37) % 3.2).toFixed(2)}s` }}>
+          <g key={d.idx} className="aura" data-d={d.idx} style={{ ["--d" as string]: `${(-(n * 0.37) % 3.2).toFixed(2)}s` }}>
             {d.machines.filter((m) => m.ring === 0).map((m) => {
               const [bx, by] = at([m.cx, m.cy, ISLAND_Z]);
               const [tx, ty] = at([m.cx, m.cy, MZ0 + 150]);

@@ -7,7 +7,7 @@
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { galaxyData, papersByDomain } from "@/data/galaxy";
 import { buildWorld, type WMachine, type WorldModel } from "./model";
-import { WorldScene } from "./WorldScene";
+import { tilesMarkup, WorldScene } from "./WorldScene";
 import { renderBowl } from "./bowl";
 import { hex2rgb, rgba } from "./color";
 import {
@@ -17,12 +17,25 @@ import {
   MACHINE_PO,
   MACHINE_S0,
   MACHINE_W,
+  PITCH,
   pts,
-  THUMB_BOX,
-  THUMB_PX,
   type Vec2,
 } from "./iso";
-import { loadMachine, mountLive, thumbUrl, type LiveMachine } from "./machineRuntime";
+import {
+  cancelQueued,
+  isCached,
+  loadDrawing,
+  loaderStats,
+  mountLive,
+  pin,
+  prefetch,
+  unpin,
+  phoneClass,
+  type LiveMachine,
+} from "./machineRuntime";
+import { hasModule, loadAssetManifests } from "./assets";
+import { CAPS, createNode, lodFor, MachineGrid, NEAR_DEV_PX, thumbContent, type Lod, type MNode } from "./machineLayer";
+import { stressCount, stressWorld } from "./stress";
 import "./world.css";
 
 type Sel =
@@ -38,35 +51,21 @@ interface Cam {
 
 type LabelEl = HTMLDivElement & { _x?: number; _y?: number };
 
-const SVGNS = "http://www.w3.org/2000/svg";
 const phone = () => window.innerWidth <= 560;
 
-/**
- * Blueprint stand-in for a machine whose picture has not arrived (machine units,
- * same projection as the machine drawings): a dashed plate and a wireframe block
- * in the domain accent. Worlds never open empty; renders fill in as they land.
- */
-function blueprintSvg(accent: string): string {
-  const [px, py] = MACHINE_PO;
-  const hw = 230;
-  const hh = hw / 2;
-  const up = 120;
-  const dia = (y: number) => `${px - hw},${y} ${px},${y - hh} ${px + hw},${y} ${px},${y + hh}`;
-  return (
-    `<g class="blueprint" fill="none" stroke="${accent}" stroke-width="2" stroke-dasharray="7 6" opacity=".55">` +
-    `<polygon points="${dia(py)}"/>` +
-    `<polygon points="${dia(py - up)}" opacity=".7"/>` +
-    `<path d="M${px - hw} ${py}V${py - up}M${px + hw} ${py}V${py - up}M${px} ${py + hh}V${py + hh - up}"/>` +
-    `</g>`
-  );
-}
 const reducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 const escHtml = (s: string) =>
   s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
 export function WorldView({ backHref }: { backHref: string }) {
   // Built from the active dataset; the parent remounts this view on a dataset swap.
-  const model = useMemo<WorldModel>(() => buildWorld(galaxyData, papersByDomain), []);
+  // `#stress=N` (internal flag only) tiles the real world until it holds N machines
+  const model = useMemo<WorldModel>(() => {
+    const base = buildWorld(galaxyData, papersByDomain);
+    const n = stressCount(window.location.hash);
+    return n ? stressWorld(base, n) : base;
+  }, []);
+  const grid = useMemo(() => new MachineGrid(model.machines), [model]);
   const author = galaxyData.author;
 
   const rootRef = useRef<HTMLDivElement>(null);
@@ -93,10 +92,28 @@ export function WorldView({ backHref }: { backHref: string }) {
     bowlQueue: [] as number[],
     bowlRaf: 0,
     bowlT: undefined as ReturnType<typeof setTimeout> | undefined,
+    // machine nodes that exist right now (mid / near level of detail); content + slot index them for the lift
+    nodes: new Map<string, MNode>(),
     content: {} as Record<string, SVGGElement>,
     slot: {} as Record<string, SVGGElement>,
-    lvl: {} as Record<string, 0 | 1 | 2>,
+    layers: {} as Record<number, Element | null>,
+    domEls: {} as Record<
+      number,
+      { g: SVGGElement | null; aura: SVGGElement | null; tiles: SVGGElement | null; filled: boolean; vis: boolean }
+    >,
+    filled: [] as number[],
     live: {} as Record<string, LiveMachine | "loading" | undefined>,
+    runOrder: [] as string[],
+    assetsReady: false,
+    dirty: true,
+    lod: "mid" as Lod,
+    loopRaf: 0,
+    fps: 0,
+    maxLoaded: 0,
+    maxNear: 0,
+    maxNodes: 0,
+    cssAura: -1,
+    cssTint: -1,
     status: {} as Record<string, string>,
     lifted: null as null | { key: string; L: number; rise: number; t: number },
     liftRaf: 0,
@@ -129,7 +146,12 @@ export function WorldView({ backHref }: { backHref: string }) {
       // keep the label on screen while its island is
       if (cc[1] > 0 && cc[1] < H && cc[0] > 0 && cc[0] < W) y = Math.max(y, phone() ? 140 : 110);
       const vis = x > 40 && x < W - 40 - (W > 900 ? 250 : 0) && y > 60 && y < H - 60;
-      el.style.display = vis ? "block" : "none";
+      if (!vis) {
+        // untouched while hidden: in a big world most labels are off screen every frame
+        if (el.style.display !== "none") el.style.display = "none";
+        return;
+      }
+      el.style.display = "block";
       el.classList.toggle("far", cam.z < 0.3);
       el.classList.remove("nos");
       el.style.left = x + "px";
@@ -144,6 +166,9 @@ export function WorldView({ backHref }: { backHref: string }) {
       .sort(
         (p, q) => Number(D[q].machines.length > 0) - Number(D[p].machines.length > 0) || D[q].cites - D[p].cites,
       );
+    // at most a screenful of labels get placed; the rest wait until the camera is closer
+    const maxLabels = phone() ? 10 : 28;
+    for (const i of LB.splice(maxLabels)) labels[i]!.style.display = "none";
     const done: number[][] = [];
     const obst: number[][] = D.filter((d) => d.machines.length).map((d) => {
       const c = toS(d.c);
@@ -158,6 +183,8 @@ export function WorldView({ backHref }: { backHref: string }) {
         const box = [m[0] - r, m[1] - r, m[0] + r, m[1] + r];
         obst.push(box, box); // counted twice: the overview marks are small and must stay readable
       });
+    // only obstacles on screen can collide with a label
+    const obstOn = obst.filter((r) => r[2] > 0 && r[0] < W && r[3] > 0 && r[1] < H);
     const ov2 = (r: number[], o: number[]) =>
       Math.max(0, Math.min(r[2], o[2]) - Math.max(r[0], o[0])) *
       Math.max(0, Math.min(r[3], o[3]) - Math.max(r[1], o[1]));
@@ -178,7 +205,7 @@ export function WorldView({ backHref }: { backHref: string }) {
             const r = [x - w / 2 - 6, y - hh - 3, x + w / 2 + 6, y + 3];
             let sc = 0;
             for (const o of done) sc += (1000 * ov2(r, o)) / A;
-            for (const o of obst) sc += (120 * ov2(r, o)) / A;
+            for (const o of obstOn) sc += (120 * ov2(r, o)) / A;
             sc += Math.abs(dx) * 6 + Math.abs(dy) * 2.2 + (nos ? 4 : 0);
             if (r[0] < 8 || r[2] > W - 8 || r[1] < (phone() ? 100 : 60)) sc += 500;
             if (!best || sc < best.sc) best = { sc, x, y, r, nos };
@@ -274,40 +301,11 @@ export function WorldView({ backHref }: { backHref: string }) {
     S.bowlRaf = requestAnimationFrame(step);
   }, [model]);
 
-  // upgrade a visible thumbnail to the machine's full drawing once it is drawn bigger than the thumbnail
-  const upgradeVisible = useCallback(() => {
-    const S = st.current;
-    const dpr = window.devicePixelRatio || 1;
-    const W = window.innerWidth;
-    const H = window.innerHeight;
-    for (const m of model.machines) {
-      if (S.lvl[m.key] || !m.live) continue;
-      const c = S.content[m.key];
-      const im = c?.querySelector("image.mthumb");
-      if (!c || !im) continue;
-      const r = im.getBoundingClientRect();
-      if (r.right < -50 || r.left > W + 50 || r.bottom < -50 || r.top > H + 50) continue;
-      if (r.width * dpr > THUMB_PX * 1.15) {
-        S.lvl[m.key] = 1;
-        loadMachine(m.slug)
-          .then((mod) => {
-            if (S.lvl[m.key] === 1) c.innerHTML = mod.svg;
-          })
-          .catch(() => {
-            S.lvl[m.key] = 0;
-          });
-      }
-    }
-  }, [model]);
-
   const bowlsLater = useCallback(() => {
     const S = st.current;
     clearTimeout(S.bowlT);
-    S.bowlT = setTimeout(() => {
-      bowlsUpdate();
-      upgradeVisible();
-    }, 140);
-  }, [bowlsUpdate, upgradeVisible]);
+    S.bowlT = setTimeout(bowlsUpdate, 140);
+  }, [bowlsUpdate]);
 
   const apply = useCallback(() => {
     const svg = svgRef.current;
@@ -317,11 +315,21 @@ export function WorldView({ backHref }: { backHref: string }) {
     cam.y = Math.max(BY0, Math.min(BY1, cam.y));
     // auras only in the wide view (gone by z = .2); planet tint full in the overview,
     // ~75% in the island view, ~35% with a machine enlarged, neutral by z = .5
-    const a = Math.max(0, Math.min(1, (0.2 - cam.z) / 0.1));
-    svg.style.setProperty("--aura", a.toFixed(3));
-    svg.classList.toggle("noaura", a < 0.01);
+    // custom properties on the root restyle the whole drawing, so write them only
+    // when the quantised value changes (at 20k machines this was the frame budget)
+    const S = st.current;
+    const a = Math.round(Math.max(0, Math.min(1, (0.2 - cam.z) / 0.1)) * 40) / 40;
+    if (a !== S.cssAura) {
+      S.cssAura = a;
+      svg.style.setProperty("--aura", a.toFixed(3));
+      svg.classList.toggle("noaura", a < 0.01);
+    }
     const tn = Math.max(0, Math.min(1, (0.5 - cam.z) / 0.42));
-    svg.style.setProperty("--tint", (tn * tn * (3 - 2 * tn)).toFixed(3));
+    const tint = Math.round(tn * tn * (3 - 2 * tn) * 40) / 40;
+    if (tint !== S.cssTint) {
+      S.cssTint = tint;
+      svg.style.setProperty("--tint", tint.toFixed(3));
+    }
     const w = window.innerWidth / cam.z;
     const h = window.innerHeight / cam.z;
     svg.setAttribute(
@@ -330,6 +338,7 @@ export function WorldView({ backHref }: { backHref: string }) {
     );
     place();
     bowlsLater();
+    st.current.dirty = true; // level of detail + loading run on the next (throttled) frame
   }, [BX0, BX1, BY0, BY1, place, bowlsLater]);
 
   // ---------- camera views ----------
@@ -557,24 +566,230 @@ export function WorldView({ backHref }: { backHref: string }) {
     [animLift, liftGeom],
   );
 
+  // ---------- machine nodes + level of detail ----------
+  const ensureNode = useCallback((m: WMachine): MNode | null => {
+    const S = st.current;
+    const have = S.nodes.get(m.key);
+    if (have) return have;
+    let layer = S.layers[m.d];
+    if (!layer) layer = S.layers[m.d] = svgRef.current?.querySelector(`g.mlayer[data-d="${m.d}"]`) ?? null;
+    if (!layer) return null;
+    const n = createNode(layer, m);
+    S.nodes.set(m.key, n);
+    S.content[m.key] = n.content;
+    S.slot[m.key] = n.slot;
+    const s = S.sel;
+    if (s && s.kind === "mach" && s.key === m.key) n.g.classList.add("sel");
+    return n;
+  }, []);
+
+  const stopLive = useCallback((key: string) => {
+    const S = st.current;
+    const lm = S.live[key];
+    if (lm && typeof lm === "object") lm.dispose();
+    S.live[key] = undefined;
+    S.runOrder = S.runOrder.filter((k) => k !== key);
+    stubRef.current?.querySelector(`[data-stub="${CSS.escape(key)}"]`)?.remove();
+  }, []);
+
+  const removeNode = useCallback(
+    (key: string) => {
+      const S = st.current;
+      const n = S.nodes.get(key);
+      if (!n) return;
+      stopLive(key);
+      if (n.pinned) unpin(n.m.slug);
+      n.g.remove();
+      S.nodes.delete(key);
+      delete S.content[key];
+      delete S.slot[key];
+    },
+    [stopLive],
+  );
+
+  // once per throttled frame: cull islands, pick each machine's level of detail,
+  // queue / cancel / prefetch module loads, stop machines that left the screen
+  const lodUpdate = useCallback(() => {
+    const S = st.current;
+    const svg = svgRef.current;
+    if (!svg) return;
+    const cam = S.cam;
+    const W = window.innerWidth;
+    const H = window.innerHeight;
+    const dpr = window.devicePixelRatio || 1;
+    const lod = lodFor(cam.z, dpr);
+    if (S.lod !== lod || svg.dataset.lod !== lod) {
+      S.lod = lod;
+      svg.dataset.lod = lod;
+    }
+    const hw = W / 2 / cam.z;
+    const hh = H / 2 / cam.z;
+    const vx0 = cam.x - hw;
+    const vx1 = cam.x + hw;
+    const vy0 = cam.y - hh;
+    const vy1 = cam.y + hh;
+
+    // islands (and their auras) off screen are taken out of rendering entirely
+    const tilesOn = PITCH * cam.z >= 3;
+    let visAuras = 0;
+    for (const d of model.domains) {
+      let e = S.domEls[d.idx];
+      if (!e)
+        e = S.domEls[d.idx] = {
+          g: svg.querySelector<SVGGElement>(`g.domain[data-d="${d.idx}"]`),
+          aura: svg.querySelector<SVGGElement>(`g.aura[data-d="${d.idx}"]`),
+          tiles: svg.querySelector<SVGGElement>(`g.tiles[data-d="${d.idx}"]`),
+          filled: false,
+          vis: true,
+        };
+      const b = d.bb;
+      const vis = !(b[2] < vx0 - 700 || b[0] > vx1 + 700 || b[3] < vy0 - 200 || b[1] > vy1 + 1400);
+      if (vis !== e.vis) {
+        e.vis = vis;
+        if (e.g) e.g.style.display = vis ? "" : "none";
+        if (e.aura) e.aura.style.display = vis ? "" : "none";
+      }
+      if (vis) visAuras += e.aura ? 1 : 0;
+      // paper tiles exist only for islands on screen, and only once they are big enough to read
+      if (vis && tilesOn && !e.filled && e.tiles) {
+        e.tiles.innerHTML = tilesMarkup(d);
+        e.filled = true;
+        S.filled.push(d.idx);
+        const s = S.sel;
+        if (s && s.kind === "tile" && s.d === d.idx) e.tiles.querySelector(`.tile[data-id="${s.id}"]`)?.classList.add("sel");
+      }
+    }
+    // keep the tile DOM bounded: islands that left the screen give theirs back
+    if (S.filled.length > (phoneClass() ? 24 : 64)) {
+      S.filled = S.filled.filter((i) => {
+        const e = S.domEls[i];
+        if (!e || e.vis || !e.tiles) return true;
+        e.tiles.textContent = "";
+        e.filled = false;
+        return false;
+      });
+    }
+    svg.classList.toggle("notiles", !tilesOn);
+    // many auras on screen at once: hold them still (each is a large animated gradient)
+    svg.classList.toggle("calm", visAuras > 48);
+
+    // machines in view, nearest the centre first, capped
+    const want: WMachine[] = [];
+    if (lod !== "far" && S.assetsReady) {
+      const idx = grid.query(vx0 - 340, vy0 - 80, vx1 + 340, vy1 + 420);
+      const dist = (m: WMachine) => (m.b[0] - cam.x) ** 2 + (m.b[1] - 180 - cam.y) ** 2;
+      const ms = idx.map((i) => model.machines[i]!);
+      ms.sort((a, b) => dist(a) - dist(b));
+      want.push(...ms.slice(0, CAPS.nodes()));
+    }
+    const wantKeys = new Set(want.map((m) => m.key));
+    const lifted = S.lifted?.key;
+    if (lifted) wantKeys.add(lifted);
+    for (const k of [...S.nodes.keys()]) if (!wantKeys.has(k)) removeNode(k);
+    for (const m of want) ensureNode(m);
+
+    // near: the closest few swap their thumbnail for the machine's own drawing
+    const keepSlugs = new Set<string>();
+    for (const k of S.runOrder) keepSlugs.add(model.machineByKey[k]?.slug ?? "");
+    for (const [k, v] of Object.entries(S.live)) if (v === "loading") keepSlugs.add(model.machineByKey[k]?.slug ?? "");
+    const nearCap = CAPS.near();
+    let rank = 0;
+    for (const m of want) {
+      const n = S.nodes.get(m.key);
+      if (!n) continue;
+      const isLive = !!S.live[m.key];
+      const near = lod === "near" && rank < nearCap && hasModule(m.slug, m.live);
+      if (hasModule(m.slug, m.live)) rank++;
+      if (near) {
+        keepSlugs.add(m.slug);
+        if (n.lvl === 1 && !isLive) {
+          n.lvl = 2;
+          loadDrawing(m.slug, 5 - rank / nearCap)
+            .then((svgText) => {
+              if (S.nodes.get(m.key) !== n || n.lvl !== 2 || S.live[m.key]) return;
+              n.content.innerHTML = svgText;
+              n.lvl = 3;
+              n.drawBytes = svgText.length * 2;
+              n.g.classList.remove("pending");
+              n.slot.style.filter = `drop-shadow(0 0 .8px ${rgba(m.edge, 0.75)})`;
+              if (!n.pinned) {
+                pin(m.slug);
+                n.pinned = true;
+              }
+            })
+            .catch(() => {
+              if (n.lvl === 2) n.lvl = 1;
+            });
+        }
+      } else if (n.lvl > 1 && !isLive && lifted !== m.key) {
+        // back to the thumbnail: drawings are heavy DOM
+        if (n.pinned) unpin(m.slug);
+        n.pinned = false;
+        n.lvl = 1;
+        n.drawBytes = 0;
+        n.slot.style.filter = "";
+        if (!thumbContent(n.content, m)) n.g.classList.add("pending");
+      }
+    }
+
+    // prefetch: neighbours just outside the view when close, the view itself when approaching
+    const px = MACHINE_S0 * MACHINE_W * cam.z * dpr;
+    if (S.assetsReady && px > NEAR_DEV_PX * 0.6) {
+      const budget = CAPS.prefetch();
+      let picked = 0;
+      const tryPf = (m: WMachine) => {
+        if (picked >= budget || !hasModule(m.slug, m.live) || isCached(m.slug) || keepSlugs.has(m.slug)) return;
+        keepSlugs.add(m.slug);
+        prefetch(m.slug);
+        picked++;
+      };
+      if (lod === "mid") want.slice(0, nearCap).forEach(tryPf);
+      else {
+        const ring = grid
+          .query(vx0 - hw, vy0 - hh, vx1 + hw, vy1 + hh)
+          .map((i) => model.machines[i]!)
+          .filter((m) => !wantKeys.has(m.key));
+        const dist = (m: WMachine) => (m.b[0] - cam.x) ** 2 + (m.b[1] - cam.y) ** 2;
+        ring.sort((a, b) => dist(a) - dist(b));
+        for (const m of ring) {
+          if (picked >= budget) break;
+          tryPf(m);
+        }
+      }
+    }
+    // anything queued that is no longer wanted never downloads
+    cancelQueued((slug) => keepSlugs.has(slug));
+
+    // running machines that left the screen are stopped
+    for (const k of [...S.runOrder]) if (!wantKeys.has(k) && k !== lifted) stopLive(k);
+
+    const ls = loaderStats();
+    S.maxLoaded = Math.max(S.maxLoaded, ls.cached);
+    S.maxNodes = Math.max(S.maxNodes, S.nodes.size);
+    let nearNow = 0;
+    S.nodes.forEach((n) => (nearNow += n.lvl === 3 ? 1 : 0));
+    S.maxNear = Math.max(S.maxNear, nearNow);
+  }, [grid, model, ensureNode, removeNode, stopLive]);
+
   // ---------- live machines ----------
   const runMachine = useCallback((m: WMachine) => {
     const S = st.current;
+    const node = ensureNode(m);
     const cur = S.live[m.key];
     if (cur && typeof cur === "object") {
       cur.hook()?.startTest();
       return;
     }
     if (cur === "loading") return;
-    if (!m.live) {
+    if (!hasModule(m.slug, m.live)) {
       // the machine's live render is not shipped with the app yet: keep its picture (or blueprint) and say so
       S.status[m.key] = "This machine's live render is on its way. For now you are looking at its picture.";
       setStatusTick((n) => n + 1);
       return;
     }
-    const content = S.content[m.key];
+    const content = node?.content;
     const stubs = stubRef.current;
-    if (!content || !stubs) return;
+    if (!node || !content || !stubs) return;
     S.live[m.key] = "loading";
     S.status[m.key] = "Loading the machine…";
     setStatusTick((n) => n + 1);
@@ -586,8 +801,22 @@ export function WorldView({ backHref }: { backHref: string }) {
     }
     mountLive(content, stub, m)
       .then((lm) => {
-        S.lvl[m.key] = 2;
+        if (S.nodes.get(m.key) !== node || S.live[m.key] !== "loading") {
+          // the machine left the screen while it loaded
+          lm.dispose();
+          return;
+        }
+        node.lvl = 3;
+        node.g.classList.remove("pending");
+        node.slot.style.filter = `drop-shadow(0 0 .8px ${rgba(m.edge, 0.75)})`;
         S.live[m.key] = lm;
+        S.runOrder.push(m.key);
+        // only a few machines run at once: stop the oldest (never the enlarged one)
+        while (S.runOrder.length > CAPS.running()) {
+          const old = S.runOrder.find((k) => k !== m.key && k !== S.lifted?.key);
+          if (!old) break;
+          stopLive(old);
+        }
         const stEl = lm.statusEl;
         if (stEl) {
           // mirror the machine's own status line into the tag
@@ -607,7 +836,7 @@ export function WorldView({ backHref }: { backHref: string }) {
         S.status[m.key] = "Could not load this machine.";
         setStatusTick((n) => n + 1);
       });
-  }, []);
+  }, [ensureNode, stopLive]);
 
   const select = useCallback(
     (s: Sel) => {
@@ -645,6 +874,7 @@ export function WorldView({ backHref }: { backHref: string }) {
       if (tipRef.current) tipRef.current.style.display = "none";
       if (S.lifted) dropLift(0);
       else S.homeCam = { ...S.cam };
+      ensureNode(m);
       const geo = liftUp(m, instant);
       select({ kind: "mach", key: m.key, d: m.d, at: m.at, lift: true });
       runMachine(m);
@@ -655,7 +885,7 @@ export function WorldView({ backHref }: { backHref: string }) {
         apply();
       } else flyTo({ z: geo.z, x: geo.x, y: geo.y }, 820);
     },
-    [apply, dropLift, flyTo, liftUp, runMachine, select],
+    [apply, dropLift, ensureNode, flyTo, liftUp, runMachine, select],
   );
 
   const goDomain = useCallback(
@@ -675,43 +905,90 @@ export function WorldView({ backHref }: { backHref: string }) {
     if (m) tapMachine(m);
   }, [curKey, model, tapMachine]);
 
-  // ---------- mount: machine thumbnails, input, first view ----------
+  // ---------- mount: input, first view, level-of-detail loop ----------
   useLayoutEffect(() => {
     const svg = svgRef.current;
     if (!svg) return;
     const S = st.current;
-    // each machine's drawing lives in an imperative <g> so it can travel to the lift layer
-    svg.querySelectorAll<SVGGElement>("g.mpos[data-slot]").forEach((slot) => {
-      const key = slot.dataset.slot!;
-      const m = model.machineByKey[key];
-      if (!m || S.content[key]) return;
-      const g = document.createElementNS(SVGNS, "g") as SVGGElement;
-      g.setAttribute("class", "mcontent");
-      const im = document.createElementNS(SVGNS, "image");
-      im.setAttribute("class", "mthumb");
-      im.setAttribute("href", thumbUrl(m.slug));
-      im.setAttribute("x", String(THUMB_BOX.x));
-      im.setAttribute("y", String(THUMB_BOX.y));
-      im.setAttribute("width", String(THUMB_BOX.w));
-      im.setAttribute("height", String(THUMB_BOX.h));
-      im.setAttribute("preserveAspectRatio", "none");
-      // no thumbnail yet: draw a blueprint plate instead, so the world never shows an empty tile
-      im.addEventListener("error", () => {
-        if (S.lvl[key]) return;
-        g.innerHTML = blueprintSvg(m.accent);
-        g.parentElement?.closest(".mach")?.classList.add("pending");
-      });
-      g.appendChild(im);
-      slot.appendChild(g);
-      S.slot[key] = slot;
-      S.content[key] = g;
+    // No machine is drawn or downloaded up front: the far level of detail is in the
+    // static scene, and the loop below adds nodes for what is on screen once the
+    // asset manifests (module + atlas URLs) are in.
+    let alive = true;
+    void loadAssetManifests().then(() => {
+      if (!alive) return;
+      S.assetsReady = true;
+      S.dirty = true;
+      setStatusTick((n) => n + 1);
     });
+    let lastLod = 0;
+    let frames = 0;
+    let fpsT = performance.now();
+    const loop = (t: number) => {
+      S.loopRaf = requestAnimationFrame(loop);
+      frames++;
+      if (t - fpsT >= 500) {
+        S.fps = (frames * 1000) / (t - fpsT);
+        frames = 0;
+        fpsT = t;
+      }
+      // throttled: at most ~15 updates/s while the camera moves, a slow tick otherwise
+      if ((S.dirty && t - lastLod > 66) || t - lastLod > 500) {
+        lastLod = t;
+        S.dirty = false;
+        lodUpdate();
+      }
+    };
+    S.loopRaf = requestAnimationFrame(loop);
+
+    // test + review hooks (internal flag only): stats and camera control
+    const hooks = {
+      stats: () => {
+        const ls = loaderStats();
+        let near = 0;
+        let drawBytes = 0;
+        S.nodes.forEach((n) => {
+          if (n.lvl === 3) near++;
+          drawBytes += n.drawBytes;
+        });
+        const mem = (performance as unknown as { memory?: { usedJSHeapSize: number } }).memory;
+        return {
+          machines: model.machines.length,
+          domains: model.domains.length,
+          lod: S.lod,
+          z: S.cam.z,
+          fps: Math.round(S.fps * 10) / 10,
+          liveNodes: S.nodes.size,
+          nearNodes: near,
+          running: S.runOrder.length,
+          loadedModules: ls.cached,
+          maxLoadedModules: S.maxLoaded,
+          maxNodes: S.maxNodes,
+          maxNear: S.maxNear,
+          memEstimateMB: Math.round(((ls.cachedBytes + drawBytes + S.nodes.size * 3000) / 1048576) * 10) / 10,
+          heapMB: mem ? Math.round((mem.usedJSHeapSize / 1048576) * 10) / 10 : null,
+          loader: ls,
+        };
+      },
+      cam: () => ({ ...S.cam }),
+      setCam: (x: number, y: number, z: number) => {
+        cancelAnimationFrame(S.flyRaf);
+        S.cam = { x, y, z: clampZ(z) };
+        apply();
+      },
+      fit: () => {
+        fitAll();
+        apply();
+      },
+      domainView: (i: number) => (model.domains[i] ? viewOf(i) : null),
+      bounds: () => model.bounds,
+    };
+    (window as unknown as Record<string, unknown>).__cgwWorld = hooks;
 
     // first view: the island of the first domain with machines (or the largest island);
     // #overview, #m=<key>, &run=<key>, &list are review/screenshot hooks
     const q = window.location.hash.slice(1);
     const firstBuilt = model.domains.findIndex((d) => d.machines.length);
-    if (q.startsWith("overview") || !model.domains.length) {
+    if (q.split("&").includes("overview") || !model.domains.length) {
       fitAll();
       setSideOpen(true);
     } else S.cam = { ...viewOf(firstBuilt >= 0 ? firstBuilt : 0) };
@@ -834,7 +1111,13 @@ export function WorldView({ backHref }: { backHref: string }) {
       const tg = hit(e.clientX, e.clientY, e.target);
       const mg = tg?.closest<SVGGElement>(".mach");
       const t = tg?.closest<SVGGElement>(".tile");
-      const m = mg?.dataset.m ? model.machineByKey[mg.dataset.m] : undefined;
+      let m = mg?.dataset.m ? model.machineByKey[mg.dataset.m] : undefined;
+      // far level of detail: machines are plates in one path, so pick the nearest plate
+      if (!m && S.lod === "far") {
+        const wx = S.cam.x + (e.clientX - W() / 2) / S.cam.z;
+        const wy = S.cam.y + (e.clientY - H() / 2) / S.cam.z;
+        m = grid.nearest(wx, wy, Math.max(220, 10 / S.cam.z)) ?? undefined;
+      }
       if (m) {
         if (tipRef.current) tipRef.current.style.display = "none";
         tapMachine(m);
@@ -934,6 +1217,10 @@ export function WorldView({ backHref }: { backHref: string }) {
       svg.removeEventListener("keydown", onSvgKey);
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("resize", onResize);
+      alive = false;
+      cancelAnimationFrame(S.loopRaf);
+      for (const k of [...S.nodes.keys()]) removeNode(k);
+      delete (window as unknown as Record<string, unknown>).__cgwWorld;
       cancelAnimationFrame(S.flyRaf);
       cancelAnimationFrame(S.bowlRaf);
       cancelAnimationFrame(S.liftRaf);
@@ -1078,7 +1365,7 @@ export function WorldView({ backHref }: { backHref: string }) {
                       display: "inline-block",
                     }}
                   />
-                  {selMachine.label} · {selMachine.live ? "live" : "render pending"}
+                  {selMachine.label} · {hasModule(selMachine.slug, selMachine.live) ? "live" : "render pending"}
                 </div>
                 <div className="t">{selMachine.paper.title}</div>
                 <div className="m mono">{meta(selMachine.paper)}</div>

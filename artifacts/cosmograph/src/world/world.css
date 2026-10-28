@@ -258,3 +258,9 @@
 .cgw .tag .gen[disabled]{opacity:.7;cursor:default}
 /* v9: a machine shown as a blueprint until its picture arrives */
 .cgw .mach.pending .rfoot{stroke-dasharray:4 5}
+/* scalable world: far level of detail is one plate path per island; machine nodes take over closer in */
+.cgw .mdots{pointer-events:none;opacity:.72}
+.cgw .cgw-world:not([data-lod="far"]) .mdots{opacity:.14}
+.cgw .mthumb{pointer-events:visiblePainted}
+.cgw .cgw-world.notiles .tiles,.cgw .cgw-world.notiles .plot{display:none}
+.cgw .cgw-world.calm .aura{animation:none}
