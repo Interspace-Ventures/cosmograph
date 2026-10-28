@@ -2,6 +2,9 @@
   "name": "cosmograph",
   "version": "0.0.0",
   "packageManager": "pnpm@11.9.0",
+  "engines": {
+    "node": "24.22.1"
+  },
   "license": "MIT",
   "scripts": {
     "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
@@ -10,12 +13,17 @@
     "railway:build": "pnpm --filter @workspace/cosmograph run build && pnpm --filter @workspace/api-server run build",
     "railway:start": "pnpm --filter @workspace/api-server run start",
     "typecheck:libs": "tsc --build",
-    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
+    "typecheck:convex": "tsc -p convex/tsconfig.json",
+    "typecheck": "pnpm run typecheck:libs && pnpm run typecheck:convex && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
   },
   "private": true,
   "devDependencies": {
+    "@types/node": "catalog:",
     "prettier": "^3.8.3",
     "typescript": "~5.9.3"
   },
-  "description": "**A scientist's life's work, rendered as a galaxy you can fly through.**"
+  "description": "**A scientist's life's work, rendered as a galaxy you can fly through.**",
+  "dependencies": {
+    "convex": "^1.48.0"
+  }
 }

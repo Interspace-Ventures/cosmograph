@@ -43,6 +43,16 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
+    version: "3.38.1",
+    codename: "Hull Patch",
+    date: "2026-10-22",
+    summary: "Security maintenance: patched dependencies and a pinned Node runtime.",
+    changes: [
+      "Pinned the Node runtime to 24.22.1 and upgraded Vite and the API code generator to their patched releases.",
+      "Cleared every known critical and high-severity dependency advisory except one with no upstream fix yet.",
+    ],
+  },
+  {
     version: "3.38.0",
     codename: "Mission Clock",
     date: "2026-07-30",
