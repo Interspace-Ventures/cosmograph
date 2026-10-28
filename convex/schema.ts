@@ -70,4 +70,16 @@ export default defineSchema({
     .index("by_user_sku", ["userId", "sku"])
     // Listing every SKU a member owns.
     .index("by_user", ["userId"]),
+
+  /**
+   * Content-addressed build assets in Convex file storage (docs/machine-archive.md).
+   * Today: the ring-2 machine archive the build downloads. Only archives whose
+   * sha256 is pinned in lib/machineArchive.ts are ever stored, once each.
+   */
+  machineArchives: defineTable({
+    /** sha256 of the stored bytes (hex). */
+    sha256: v.string(),
+    storageId: v.id("_storage"),
+    size: v.number(),
+  }).index("by_sha256", ["sha256"]),
 });
