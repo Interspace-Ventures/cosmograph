@@ -18,6 +18,7 @@ import { markUnlockedFromWebhook } from "./lib/billing";
 import { grantSkinFromWebhook } from "./lib/ship";
 import { stagingAccess } from "./middlewares/stagingAccess";
 import { appBasePathMiddleware } from "./lib/appPath";
+import { worldAssets } from "./lib/worldAssets";
 
 const app: Express = express();
 
@@ -131,6 +132,8 @@ const clientDist = process.env["CLIENT_DIST"] ?? path.resolve(
   "public",
 );
 
+// /world machine modules + atlases: precompressed, long-cached, 404 on a miss.
+app.use(worldAssets(clientDist));
 app.use(express.static(clientDist));
 app.use((req, res, next) => {
   if (
