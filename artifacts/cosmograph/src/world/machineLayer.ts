@@ -88,6 +88,28 @@ export class MachineGrid {
       }
     return out;
   }
+  /**
+   * GPU-tier hit test without DOM: the frontmost machine whose drawn body (its
+   * box in machine units, 40..560 x 20..370, projected) contains the point.
+   */
+  pick(x: number, y: number): WMachine | null {
+    const k = MACHINE_S0;
+    let best: WMachine | null = null;
+    let bd = -Infinity;
+    for (const i of this.query(x - 300 * k, y - 160 * k, x + 300 * k, y + 260 * k)) {
+      const m = this.machines[i]!;
+      const u = (x - m.b[0]) / k + 300;
+      const v = (y - m.b[1]) / k + 239.781;
+      if (u < 40 || u > 560 || v < 20 || v > 370) continue;
+      const dep = m.cx + m.cy;
+      if (dep > bd) {
+        bd = dep;
+        best = m;
+      }
+    }
+    return best;
+  }
+
   /** the machine whose base point is nearest (x, y), within r */
   nearest(x: number, y: number, r: number): WMachine | null {
     let best: WMachine | null = null;
@@ -166,7 +188,7 @@ export function thumbContent(content: SVGGElement, m: WMachine): boolean {
 }
 
 /** A machine's node, inserted into its island's layer in depth order. */
-export function createNode(layer: Element, m: WMachine): MNode {
+export function createNode(layer: Element, m: WMachine, gpu = false): MNode {
   const g = document.createElementNS(SVGNS, "g") as SVGGElement;
   g.setAttribute("class", "mach rm iso built");
   g.setAttribute("data-theme", "dark");
@@ -189,7 +211,10 @@ export function createNode(layer: Element, m: WMachine): MNode {
   // the 0.8px edge glow is invisible at thumbnail size and costly in bulk: drawings only
   const content = document.createElementNS(SVGNS, "g") as SVGGElement;
   content.setAttribute("class", "mcontent");
-  if (!thumbContent(content, m)) g.classList.add("pending");
+  // GPU tier: the node only ever holds the close-up drawing (the sprite / pyramid
+  // underneath shows the machine until it arrives, then the node fades in)
+  if (gpu) g.classList.add("gl");
+  else if (!thumbContent(content, m)) g.classList.add("pending");
   slot.appendChild(content);
   g.append(foot, slot);
   // depth order within the island: nodes are few, a linear scan is fine

@@ -48,11 +48,16 @@ export function stressWorld(base: WorldModel, n: number): WorldModel {
   const cells = Array.from({ length: copies }, (_, k) => ({ k, gx: k % cols, gy: Math.floor(k / cols) }));
   // paint copies back to front (iso depth = gx + gy)
   cells.sort((a, b) => a.gx + a.gy - (b.gx + b.gy) || a.gy - b.gy);
-  let left = n;
+  // whole copies only (20,000 -> 59 copies = 20,119 machines), so every copy
+  // matches the base layout exactly and the GPU tier can draw the base world's
+  // deep-zoom pyramid once per copy
+  let left = copies * perCopy;
+  const offsets: Vec2[] = [];
   for (const { k, gx, gy } of cells) {
     const dx = gx * stepX;
     const dy = gy * stepY;
     const s = shiftOf(dx, dy);
+    offsets.push(s);
     const idxMap = new Map<number, number>();
     for (const bi of base.order) {
       if (left <= 0) break;
@@ -128,6 +133,7 @@ export function stressWorld(base: WorldModel, n: number): WorldModel {
     tour: machines.map((m) => m.key),
     links: [],
     stars,
+    copies: offsets,
     bounds: [BX0, BY0, BX1, BY1],
     paperCount: domains.reduce((t, d) => t + d.papers.length, 0),
   };

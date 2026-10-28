@@ -264,3 +264,13 @@
 .cgw .mthumb{pointer-events:visiblePainted}
 .cgw .cgw-world.notiles .tiles,.cgw .cgw-world.notiles .plot{display:none}
 .cgw .cgw-world.calm .aura{animation:none}
+/* GPU tier (gpu/gpuTier.ts): the WebGL2 canvas draws the world; the SVG above it
+   keeps only close-up drawings, the selection outline and the lift */
+.cgw .cgw-gl{position:absolute;inset:0;width:100%;height:100%;display:block}
+.cgw .cgw-world.gl .mach.gl{opacity:0;transition:opacity .28s ease}
+.cgw .cgw-world.gl .mach.gl.on{opacity:1}
+.cgw #gsel{fill:none;stroke:var(--accent);stroke-width:2;vector-effect:non-scaling-stroke;pointer-events:none}
+/* offline baker (#bake=...): transparent background, world only */
+.cgw.bake .cgw-frame{background:transparent}
+.cgw.bake .cgw-frame > :not(svg){display:none!important}
+.cgw.bake .bg,.cgw.bake #auras,.cgw.bake #veil,.cgw.bake #lift{display:none}

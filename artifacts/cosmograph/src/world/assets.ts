@@ -130,3 +130,24 @@ export function sprite(slug: string): Sprite | null {
     sheetH: sh.h,
   };
 }
+
+// ---- GPU tiers: deep-zoom pyramid tiles and flipbook pages ----
+// Both manifests are baked into the world chunk (src/world/data/*.json, a few KB)
+// so the renderer is chosen synchronously; their `base` moves the bytes to a CDN
+// or Convex storage exactly like the module manifest above.
+
+export function pyramidTileUrl(
+  man: { base?: string | null; v: string },
+  L: number,
+  c: number,
+  r: number,
+): string {
+  const base = man.base ? slash(man.base) : `${appBase()}world/pyramid/`;
+  return `${base}L${L}/${c}_${r}.webp?v=${man.v}`;
+}
+
+export function flipPageUrl(man: { base?: string | null; pages: { file: string; v: string }[] }, page: number): string {
+  const p = man.pages[page]!;
+  const base = man.base ? slash(man.base) : `${appBase()}world/flip/`;
+  return `${base}${p.file}?v=${p.v}`;
+}

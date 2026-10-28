@@ -149,6 +149,27 @@ export interface WorldModel {
   stars: { x: number; y: number; r: number; o: number }[];
   bounds: [number, number, number, number];
   paperCount: number;
+  /** stress worlds: screen offset of each copy of the base layout */
+  copies?: Vec2[];
+}
+
+/**
+ * Identity of a world's layout for its baked assets (deep-zoom pyramid): FNV-1a
+ * over every machine's key and anchor, the islands and the bounds. A pyramid
+ * baked for another dataset never matches, and the view falls back to SVG.
+ */
+export function worldFingerprint(w: WorldModel): string {
+  let h = 0x811c9dc5;
+  const add = (s: string) => {
+    for (let i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 0x01000193) >>> 0;
+    }
+  };
+  for (const m of w.machines) add(`${m.key}|${Math.round(m.b[0])}|${Math.round(m.b[1])};`);
+  for (const d of w.domains) add(`${d.slug}|${Math.round(d.C[0])}|${Math.round(d.C[1])}|${d.tiles.length};`);
+  add(w.bounds.map((v) => Math.round(v)).join(","));
+  return h.toString(16).padStart(8, "0");
 }
 
 const plain = (t: string) => String(t).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();

@@ -189,7 +189,64 @@ function Auras({ model }: { model: WorldModel }) {
   );
 }
 
-export const WorldScene = memo(function WorldScene({ model }: { model: WorldModel }) {
+/** Veil + lift layer: the enlarged machine is drawn here, above everything. */
+function Lift() {
+  return (
+    <g id="lift">
+      <ellipse id="lshadow" fill="url(#cgw-liftshadow)" />
+      <ellipse id="lglow" fill="url(#cgw-liftglow)" />
+      <g id="lshell" className="mach rm iso built" data-theme="dark">
+        <g className="mpos" id="lholder" />
+      </g>
+    </g>
+  );
+}
+
+function LiftDefs() {
+  return (
+    <>
+      <radialGradient id="cgw-liftglow">
+        <stop offset="0" stopColor="#fff" stopOpacity=".16" />
+        <stop offset=".55" stopColor="#fff" stopOpacity=".05" />
+        <stop offset="1" stopColor="#fff" stopOpacity="0" />
+      </radialGradient>
+      <radialGradient id="cgw-liftshadow">
+        <stop offset="0" stopColor="#000" stopOpacity=".7" />
+        <stop offset=".6" stopColor="#000" stopOpacity=".3" />
+        <stop offset="1" stopColor="#000" stopOpacity="0" />
+      </radialGradient>
+    </>
+  );
+}
+
+/**
+ * GPU tier: everything static is on the WebGL canvas underneath (the deep-zoom
+ * pyramid, auras, flipbook sprites), so the SVG keeps only an empty layer per
+ * island for the few close-up machine drawings, the selected paper tile's
+ * outline, and the veil + lift.
+ */
+function LeanScene({ model }: { model: WorldModel }) {
+  const [BX0, BY0, BX1, BY1] = model.bounds;
+  const big = { x: BX0 - 4000, y: BY0 - 4000, width: BX1 - BX0 + 8000, height: BY1 - BY0 + 8000 };
+  return (
+    <>
+      <defs>
+        <LiftDefs />
+      </defs>
+      {model.order.map((i) => (
+        <g key={i} className="domain" data-d={i}>
+          <g className="mlayer" data-d={i} />
+        </g>
+      ))}
+      <polygon id="gsel" points="" />
+      <rect id="veil" {...big} />
+      <Lift />
+    </>
+  );
+}
+
+export const WorldScene = memo(function WorldScene({ model, gpu }: { model: WorldModel; gpu?: boolean }) {
+  if (gpu) return <LeanScene model={model} />;
   const [BX0, BY0, BX1, BY1] = model.bounds;
   const big = { x: BX0 - 4000, y: BY0 - 4000, width: BX1 - BX0 + 8000, height: BY1 - BY0 + 8000 };
   return (
@@ -198,19 +255,10 @@ export const WorldScene = memo(function WorldScene({ model }: { model: WorldMode
         {model.domains.map((d) => (
           <DomainGradients key={d.idx} d={d} />
         ))}
-        <radialGradient id="cgw-liftglow">
-          <stop offset="0" stopColor="#fff" stopOpacity=".16" />
-          <stop offset=".55" stopColor="#fff" stopOpacity=".05" />
-          <stop offset="1" stopColor="#fff" stopOpacity="0" />
-        </radialGradient>
-        <radialGradient id="cgw-liftshadow">
-          <stop offset="0" stopColor="#000" stopOpacity=".7" />
-          <stop offset=".6" stopColor="#000" stopOpacity=".3" />
-          <stop offset="1" stopColor="#000" stopOpacity="0" />
-        </radialGradient>
+        <LiftDefs />
       </defs>
       <defs dangerouslySetInnerHTML={{ __html: TILE_DEFS }} />
-      <rect {...big} fill="#15161c" />
+      <rect className="bg" {...big} fill="#15161c" />
       <g className="stars" fill="#e6e6e6">
         {model.stars.map((s, i) => (
           <circle key={i} cx={s.x} cy={s.y} r={s.r} opacity={s.o} />
@@ -237,13 +285,7 @@ export const WorldScene = memo(function WorldScene({ model }: { model: WorldMode
       </g>
       <Auras model={model} />
       <rect id="veil" {...big} />
-      <g id="lift">
-        <ellipse id="lshadow" fill="url(#cgw-liftshadow)" />
-        <ellipse id="lglow" fill="url(#cgw-liftglow)" />
-        <g id="lshell" className="mach rm iso built" data-theme="dark">
-          <g className="mpos" id="lholder" />
-        </g>
-      </g>
+      <Lift />
     </>
   );
 });

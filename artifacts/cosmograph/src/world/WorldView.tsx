@@ -6,7 +6,7 @@
 
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { galaxyData, papersByDomain } from "@/data/galaxy";
-import { buildWorld, type WMachine, type WorldModel } from "./model";
+import { buildWorld, worldFingerprint, type WMachine, type WorldModel } from "./model";
 import { tilesMarkup, WorldScene } from "./WorldScene";
 import { renderBowl } from "./bowl";
 import { hex2rgb, rgba } from "./color";
@@ -36,7 +36,24 @@ import {
 import { hasModule, loadAssetManifests } from "./assets";
 import { CAPS, createNode, lodFor, MachineGrid, NEAR_DEV_PX, thumbContent, type Lod, type MNode } from "./machineLayer";
 import { stressCount, stressWorld } from "./stress";
+import { GpuTier } from "./gpu/gpuTier";
+import type { PyramidManifest } from "./gpu/pyramid";
+import type { FlipManifest } from "./gpu/flipbook";
+import pyramidJson from "./data/pyramid.json";
+import flipJson from "./data/flip.json";
 import "./world.css";
+
+const PYRAMID = pyramidJson as unknown as PyramidManifest;
+const FLIP = flipJson as unknown as FlipManifest;
+
+/** `#bake=pyramid|flip` (internal flag only): render for the offline asset baker. */
+const bakeMode = (hash: string) => /(?:^|[#&])bake=(\w+)/.exec(hash)?.[1] ?? null;
+/** `#svg` forces the SVG renderer; `#q=0..3` pins GPU quality (review + stress hooks). */
+const forceSvg = (hash: string) => /(?:^|[#&])svg(?:&|$)/.test(hash);
+const pinnedQuality = (hash: string) => {
+  const m = /(?:^|[#&])q=(\d)/.exec(hash);
+  return m ? Math.min(3, Number(m[1])) : null;
+};
 
 type Sel =
   | { kind: "tile"; id: string; d: number; at: Vec2 }
@@ -53,6 +70,22 @@ type LabelEl = HTMLDivElement & { _x?: number; _y?: number };
 
 const phone = () => window.innerWidth <= 560;
 
+/** A paper tile's footprint (plan +-150 at ground level), for the GPU tier's selection outline. */
+const tileOutline = (cx: number, cy: number) =>
+  pts(
+    [
+      [-150, -150],
+      [150, -150],
+      [150, 150],
+      [-150, 150],
+    ].map(([a, b]) => at([cx + a, cy + b, 0])),
+  );
+/** GPU-tier tile hit test: inside the tile's iso diamond. */
+const inTile = (wx: number, wy: number, cx: number, cy: number) => {
+  const [tx, ty] = at([cx, cy, 0]);
+  return Math.abs(wx - tx) / 268 + Math.abs(wy - ty) / 134 <= 1;
+};
+
 const reducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 const escHtml = (s: string) =>
   s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
@@ -60,16 +93,28 @@ const escHtml = (s: string) =>
 export function WorldView({ backHref }: { backHref: string }) {
   // Built from the active dataset; the parent remounts this view on a dataset swap.
   // `#stress=N` (internal flag only) tiles the real world until it holds N machines
-  const model = useMemo<WorldModel>(() => {
+  const [model, baseFp] = useMemo<[WorldModel, string]>(() => {
     const base = buildWorld(galaxyData, papersByDomain);
     const n = stressCount(window.location.hash);
-    return n ? stressWorld(base, n) : base;
+    return [n ? stressWorld(base, n) : base, worldFingerprint(base)];
   }, []);
+  const bake = useMemo(() => bakeMode(window.location.hash), []);
+  // GPU tier when this world has a matching baked pyramid (the default researcher)
+  // and WebGL2 works; otherwise (other datasets, no WebGL2, #svg, baking) the SVG path
+  const [gpu, setGpu] = useState<boolean>(
+    () =>
+      !bake &&
+      !forceSvg(window.location.hash) &&
+      PYRAMID.levels.length > 0 &&
+      PYRAMID.fingerprint === baseFp &&
+      typeof WebGL2RenderingContext !== "undefined",
+  );
   const grid = useMemo(() => new MachineGrid(model.machines), [model]);
   const author = galaxyData.author;
 
   const rootRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const labelRefs = useRef<(LabelEl | null)[]>([]);
   const tagRef = useRef<HTMLDivElement>(null);
   const leaderRef = useRef<HTMLDivElement>(null);
@@ -120,6 +165,9 @@ export function WorldView({ backHref }: { backHref: string }) {
     liftFin: null as null | (() => void),
     homeCam: null as Cam | null,
     observers: [] as MutationObserver[],
+    gpu: null as GpuTier | null,
+    camMoved: true,
+    bowlBusy: false,
   });
 
   const [BX0, BY0, BX1, BY1] = model.bounds;
@@ -283,9 +331,13 @@ export function WorldView({ backHref }: { backHref: string }) {
     }
     S.bowlQueue = q;
     cancelAnimationFrame(S.bowlRaf);
+    S.bowlBusy = q.length > 0;
     const step = () => {
       const i = S.bowlQueue.shift();
-      if (i === undefined) return;
+      if (i === undefined) {
+        S.bowlBusy = false;
+        return;
+      }
       const d = model.domains[i];
       const cap = 2600 / Math.max(d.bb[2] - d.bb[0], d.bb[3] - d.bb[1]);
       const res = Math.min(want(), cap);
@@ -303,6 +355,7 @@ export function WorldView({ backHref }: { backHref: string }) {
 
   const bowlsLater = useCallback(() => {
     const S = st.current;
+    S.bowlBusy = true;
     clearTimeout(S.bowlT);
     S.bowlT = setTimeout(bowlsUpdate, 140);
   }, [bowlsUpdate]);
@@ -337,7 +390,8 @@ export function WorldView({ backHref }: { backHref: string }) {
       `${(cam.x - w / 2).toFixed(1)} ${(cam.y - h / 2).toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)}`,
     );
     place();
-    bowlsLater();
+    if (!S.gpu) bowlsLater();
+    S.camMoved = true;
     st.current.dirty = true; // level of detail + loading run on the next (throttled) frame
   }, [BX0, BX1, BY0, BY1, place, bowlsLater]);
 
@@ -574,7 +628,7 @@ export function WorldView({ backHref }: { backHref: string }) {
     let layer = S.layers[m.d];
     if (!layer) layer = S.layers[m.d] = svgRef.current?.querySelector(`g.mlayer[data-d="${m.d}"]`) ?? null;
     if (!layer) return null;
-    const n = createNode(layer, m);
+    const n = createNode(layer, m, !!S.gpu);
     S.nodes.set(m.key, n);
     S.content[m.key] = n.content;
     S.slot[m.key] = n.slot;
@@ -617,7 +671,9 @@ export function WorldView({ backHref }: { backHref: string }) {
     const W = window.innerWidth;
     const H = window.innerHeight;
     const dpr = window.devicePixelRatio || 1;
-    const lod = lodFor(cam.z, dpr);
+    // baking: real drawings wherever a machine is big enough to read, pictures below that
+    const bakePx = MACHINE_S0 * MACHINE_W * cam.z;
+    const lod: Lod = bake ? (bakePx < 6 ? "far" : bakePx > 60 ? "near" : "mid") : lodFor(cam.z, dpr);
     if (S.lod !== lod || svg.dataset.lod !== lod) {
       S.lod = lod;
       svg.dataset.lod = lod;
@@ -630,11 +686,13 @@ export function WorldView({ backHref }: { backHref: string }) {
     const vy1 = cam.y + hh;
 
     // islands (and their auras) off screen are taken out of rendering entirely
+    // (SVG renderer only: on the GPU tier the islands are pyramid tiles)
+    if (!S.gpu) {
     const tilesOn = PITCH * cam.z >= 3;
     let visAuras = 0;
     for (const d of model.domains) {
       let e = S.domEls[d.idx];
-      if (!e)
+      if (!e || !e.g)
         e = S.domEls[d.idx] = {
           g: svg.querySelector<SVGGElement>(`g.domain[data-d="${d.idx}"]`),
           aura: svg.querySelector<SVGGElement>(`g.aura[data-d="${d.idx}"]`),
@@ -672,15 +730,19 @@ export function WorldView({ backHref }: { backHref: string }) {
     svg.classList.toggle("notiles", !tilesOn);
     // many auras on screen at once: hold them still (each is a large animated gradient)
     svg.classList.toggle("calm", visAuras > 48);
+    }
 
     // machines in view, nearest the centre first, capped
+    // (GPU tier: only the close-up drawings are DOM; sprites and pyramid cover the rest)
     const want: WMachine[] = [];
-    if (lod !== "far" && S.assetsReady) {
+    const gpuT = S.gpu;
+    if (lod !== "far" && S.assetsReady && (!gpuT || lod === "near")) {
       const idx = grid.query(vx0 - 340, vy0 - 80, vx1 + 340, vy1 + 420);
       const dist = (m: WMachine) => (m.b[0] - cam.x) ** 2 + (m.b[1] - 180 - cam.y) ** 2;
-      const ms = idx.map((i) => model.machines[i]!);
+      let ms = idx.map((i) => model.machines[i]!);
+      if (gpuT) ms = ms.filter((m) => hasModule(m.slug, m.live));
       ms.sort((a, b) => dist(a) - dist(b));
-      want.push(...ms.slice(0, CAPS.nodes()));
+      want.push(...ms.slice(0, bake ? Infinity : gpuT ? CAPS.near() : CAPS.nodes()));
     }
     const wantKeys = new Set(want.map((m) => m.key));
     const lifted = S.lifted?.key;
@@ -692,7 +754,7 @@ export function WorldView({ backHref }: { backHref: string }) {
     const keepSlugs = new Set<string>();
     for (const k of S.runOrder) keepSlugs.add(model.machineByKey[k]?.slug ?? "");
     for (const [k, v] of Object.entries(S.live)) if (v === "loading") keepSlugs.add(model.machineByKey[k]?.slug ?? "");
-    const nearCap = CAPS.near();
+    const nearCap = bake ? Infinity : CAPS.near();
     let rank = 0;
     for (const m of want) {
       const n = S.nodes.get(m.key);
@@ -711,6 +773,9 @@ export function WorldView({ backHref }: { backHref: string }) {
               n.lvl = 3;
               n.drawBytes = svgText.length * 2;
               n.g.classList.remove("pending");
+              // GPU tier: cross-fade from the sprite / pyramid to the drawing
+              requestAnimationFrame(() => n.g.classList.add("on"));
+              S.dirty = true;
               n.slot.style.filter = `drop-shadow(0 0 .8px ${rgba(m.edge, 0.75)})`;
               if (!n.pinned) {
                 pin(m.slug);
@@ -769,7 +834,16 @@ export function WorldView({ backHref }: { backHref: string }) {
     let nearNow = 0;
     S.nodes.forEach((n) => (nearNow += n.lvl === 3 ? 1 : 0));
     S.maxNear = Math.max(S.maxNear, nearNow);
-  }, [grid, model, ensureNode, removeNode, stopLive]);
+
+    if (gpuT) {
+      const live = new Set<string>(S.runOrder);
+      for (const [k, v] of Object.entries(S.live)) if (v) live.add(k);
+      if (lifted) live.add(lifted);
+      const shown = new Set<string>();
+      S.nodes.forEach((n, k) => n.lvl === 3 && n.g.classList.contains("on") && shown.add(k));
+      gpuT.rebuild(cam, W, H, live, shown);
+    }
+  }, [grid, model, ensureNode, removeNode, stopLive, bake]);
 
   // ---------- live machines ----------
   const runMachine = useCallback((m: WMachine) => {
@@ -808,11 +882,13 @@ export function WorldView({ backHref }: { backHref: string }) {
         }
         node.lvl = 3;
         node.g.classList.remove("pending");
+        node.g.classList.add("on");
         node.slot.style.filter = `drop-shadow(0 0 .8px ${rgba(m.edge, 0.75)})`;
         S.live[m.key] = lm;
         S.runOrder.push(m.key);
         // only a few machines run at once: stop the oldest (never the enlarged one)
-        while (S.runOrder.length > CAPS.running()) {
+        const runCap = Math.min(CAPS.running(), S.gpu?.settings.liveCap ?? Infinity);
+        while (S.runOrder.length > runCap) {
           const old = S.runOrder.find((k) => k !== m.key && k !== S.lifted?.key);
           if (!old) break;
           stopLive(old);
@@ -845,6 +921,12 @@ export function WorldView({ backHref }: { backHref: string }) {
       svg?.querySelectorAll(".sel").forEach((e) => e.classList.remove("sel"));
       S.sel = s;
       setSelState(s);
+      // GPU tier: paper tiles are pyramid pixels, so the selection is one outline
+      const gsel = svg?.querySelector<SVGPolygonElement>("#gsel");
+      if (gsel) {
+        const t = s?.kind === "tile" ? model.domains[s.d]?.tiles.find((x) => x.id === s.id) : undefined;
+        gsel.setAttribute("points", t ? tileOutline(t.cx, t.cy) : "");
+      }
       if (!s) {
         if (S.lifted) {
           dropLift(420);
@@ -859,7 +941,7 @@ export function WorldView({ backHref }: { backHref: string }) {
       if (s.kind === "tile") svg?.querySelector(`.tile[data-id="${s.id}"]`)?.classList.add("sel");
       if (s.kind === "mach") svg?.querySelector(`.mach[data-m="${s.key}"]:not(#lshell)`)?.classList.add("sel");
     },
-    [dropLift, flyTo],
+    [dropLift, flyTo, model],
   );
 
   // tapping any machine: fly in, lift it, run it; tapping the enlarged machine again re-runs it
@@ -920,6 +1002,29 @@ export function WorldView({ backHref }: { backHref: string }) {
       S.dirty = true;
       setStatusTick((n) => n + 1);
     });
+    // GPU tier: one WebGL2 canvas under the SVG (see gpu/gpuTier.ts)
+    if (gpu && canvasRef.current && !S.gpu) {
+      const dpr = window.devicePixelRatio || 1;
+      S.gpu = GpuTier.create(canvasRef.current, model, grid, PYRAMID, FLIP, {
+        phone: phoneClass(),
+        dpr,
+        reduced: reducedMotion(),
+        pinQuality: pinnedQuality(window.location.hash),
+        requestFrame: () => {
+          S.camMoved = true;
+        },
+      });
+      if (!S.gpu) {
+        // no WebGL2 after all: the SVG renderer takes over
+        setGpu(false);
+      } else {
+        svg.dataset.renderer = "webgl2";
+        S.gpu.onQuality = (q) => {
+          svg.dataset.q = String(q.level);
+          S.dirty = true;
+        };
+      }
+    }
     let lastLod = 0;
     let frames = 0;
     let fpsT = performance.now();
@@ -936,6 +1041,10 @@ export function WorldView({ backHref }: { backHref: string }) {
         lastLod = t;
         S.dirty = false;
         lodUpdate();
+      }
+      if (S.gpu) {
+        S.gpu.frame(t, S.cam, window.innerWidth, window.innerHeight, S.camMoved);
+        S.camMoved = false;
       }
     };
     S.loopRaf = requestAnimationFrame(loop);
@@ -967,7 +1076,17 @@ export function WorldView({ backHref }: { backHref: string }) {
           memEstimateMB: Math.round(((ls.cachedBytes + drawBytes + S.nodes.size * 3000) / 1048576) * 10) / 10,
           heapMB: mem ? Math.round((mem.usedJSHeapSize / 1048576) * 10) / 10 : null,
           loader: ls,
+          renderer: S.gpu ? "webgl2" : "svg",
+          gpu: S.gpu?.stats() ?? null,
         };
+      },
+      /** baker: true once everything in view is drawn (bowls, drawings, pictures) */
+      bakeIdle: () => {
+        if (S.bowlBusy || S.dirty) return false;
+        const ls = loaderStats();
+        if (ls.inflight || ls.queued) return false;
+        for (const n of S.nodes.values()) if (n.lvl === 2) return false;
+        return true;
       },
       cam: () => ({ ...S.cam }),
       setCam: (x: number, y: number, z: number) => {
@@ -1102,6 +1221,15 @@ export function WorldView({ backHref }: { backHref: string }) {
       apply();
     };
     const tileById = new Map(model.domains.flatMap((d) => d.tiles.map((t) => [t.id, t] as const)));
+    const tileAt = (wx: number, wy: number) => {
+      for (const d of model.domains) {
+        const b = d.bb;
+        if (wx < b[0] || wx > b[2] || wy < b[1] || wy > b[3]) continue;
+        const t = d.tiles.find((x) => inTile(wx, wy, x.cx, x.cy));
+        if (t) return t;
+      }
+      return undefined;
+    };
     // pointer capture retargets click to the svg, so hit-test the point itself
     const hit = (x: number, y: number, fallback: EventTarget | null): Element | null => {
       const tg = (document.elementFromPoint(x, y) || fallback) as Element | null;
@@ -1112,18 +1240,18 @@ export function WorldView({ backHref }: { backHref: string }) {
       const mg = tg?.closest<SVGGElement>(".mach");
       const t = tg?.closest<SVGGElement>(".tile");
       let m = mg?.dataset.m ? model.machineByKey[mg.dataset.m] : undefined;
+      const wx = S.cam.x + (e.clientX - W() / 2) / S.cam.z;
+      const wy = S.cam.y + (e.clientY - H() / 2) / S.cam.z;
+      // GPU tier: no DOM per machine, so hit-test the spatial grid (frontmost body wins)
+      if (!m && S.gpu) m = grid.pick(wx, wy) ?? undefined;
       // far level of detail: machines are plates in one path, so pick the nearest plate
-      if (!m && S.lod === "far") {
-        const wx = S.cam.x + (e.clientX - W() / 2) / S.cam.z;
-        const wy = S.cam.y + (e.clientY - H() / 2) / S.cam.z;
-        m = grid.nearest(wx, wy, Math.max(220, 10 / S.cam.z)) ?? undefined;
-      }
+      if (!m && S.lod === "far") m = grid.nearest(wx, wy, Math.max(220, 10 / S.cam.z)) ?? undefined;
       if (m) {
         if (tipRef.current) tipRef.current.style.display = "none";
         tapMachine(m);
         return;
       }
-      const tile = t?.dataset.id ? tileById.get(t.dataset.id) : undefined;
+      const tile = (t?.dataset.id ? tileById.get(t.dataset.id) : undefined) ?? (S.gpu ? tileAt(wx, wy) : undefined);
       if (tile) {
         select({ kind: "tile", id: tile.id, d: tile.d, at: tile.at });
         return;
@@ -1157,8 +1285,14 @@ export function WorldView({ backHref }: { backHref: string }) {
       const tg = document.elementFromPoint(ev.clientX, ev.clientY);
       const mg = tg?.closest<SVGGElement>(".mach");
       const t = tg?.closest<SVGGElement>(".tile");
-      const m = mg?.dataset.m ? model.machineByKey[mg.dataset.m] : undefined;
-      const tile = t?.dataset.id ? tileById.get(t.dataset.id) : undefined;
+      let m = mg?.dataset.m ? model.machineByKey[mg.dataset.m] : undefined;
+      let tile = t?.dataset.id ? tileById.get(t.dataset.id) : undefined;
+      if (S.gpu && !m && !tile && S.lod !== "far") {
+        const wx = S.cam.x + (ev.clientX - W() / 2) / S.cam.z;
+        const wy = S.cam.y + (ev.clientY - H() / 2) / S.cam.z;
+        m = grid.pick(wx, wy) ?? undefined;
+        if (!m) tile = tileAt(wx, wy);
+      }
       let h = "";
       if (m)
         h = `<div class="k" style="--c:${m.accent}"><i></i>${escHtml(m.label)} · tap to run</div>${escHtml(m.paper.title)}`;
@@ -1228,6 +1362,8 @@ export function WorldView({ backHref }: { backHref: string }) {
       clearTimeout(S.bowlT);
       S.observers.forEach((o) => o.disconnect());
       S.observers = [];
+      S.gpu?.dispose();
+      S.gpu = null;
     };
     // Runs once per dataset (the parent remounts this view on a dataset swap).
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1278,18 +1414,19 @@ export function WorldView({ backHref }: { backHref: string }) {
     `${p.venue || "—"} · ${p.year ?? "—"} · ${p.citations.toLocaleString()} cited`;
 
   return (
-    <div ref={rootRef} className="cgw">
+    <div ref={rootRef} className={"cgw" + (bake ? " bake" : "")}>
       <div className="cgw-frame">
+        {gpu && <canvas ref={canvasRef} className="cgw-gl" aria-hidden="true" />}
         <svg
           ref={svgRef}
-          className="cgw-world"
+          className={"cgw-world" + (gpu ? " gl" : "")}
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 1600 1000"
           preserveAspectRatio="xMidYMid meet"
           role="application"
           aria-label={`Isometric world of ${author.name}'s research`}
         >
-          <WorldScene model={model} />
+          <WorldScene model={model} gpu={gpu} />
         </svg>
         <div id="ov">
           {model.domains.map((d, i) => {
