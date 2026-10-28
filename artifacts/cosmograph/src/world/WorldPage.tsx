@@ -5,6 +5,7 @@
 import { useEffect } from "react";
 import { useAppState } from "@/lib/store";
 import { WorldView } from "./WorldView";
+import BakeFlip from "./gpu/BakeFlip";
 import "./world.css";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -45,5 +46,7 @@ export default function WorldPage() {
     );
   }
 
+  // offline flipbook baker (scripts/bake-world.py); the world chunk is internal-flag only
+  if (/(?:^|[#&])bake=flip\b/.test(window.location.hash)) return <BakeFlip />;
   return <WorldView key={datasetVersion} backHref={backHref} />;
 }

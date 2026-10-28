@@ -364,8 +364,10 @@ export function WorldView({ backHref }: { backHref: string }) {
     const svg = svgRef.current;
     if (!svg) return;
     const cam = st.current.cam;
-    cam.x = Math.max(BX0, Math.min(BX1, cam.x));
-    cam.y = Math.max(BY0, Math.min(BY1, cam.y));
+    if (!bake) {
+      cam.x = Math.max(BX0, Math.min(BX1, cam.x));
+      cam.y = Math.max(BY0, Math.min(BY1, cam.y));
+    }
     // auras only in the wide view (gone by z = .2); planet tint full in the overview,
     // ~75% in the island view, ~35% with a machine enlarged, neutral by z = .5
     // custom properties on the root restyle the whole drawing, so write them only
@@ -393,7 +395,7 @@ export function WorldView({ backHref }: { backHref: string }) {
     if (!S.gpu) bowlsLater();
     S.camMoved = true;
     st.current.dirty = true; // level of detail + loading run on the next (throttled) frame
-  }, [BX0, BX1, BY0, BY1, place, bowlsLater]);
+  }, [BX0, BX1, BY0, BY1, place, bowlsLater, bake]);
 
   // ---------- camera views ----------
   const viewOf = useCallback(
@@ -1091,9 +1093,10 @@ export function WorldView({ backHref }: { backHref: string }) {
       cam: () => ({ ...S.cam }),
       setCam: (x: number, y: number, z: number) => {
         cancelAnimationFrame(S.flyRaf);
-        S.cam = { x, y, z: clampZ(z) };
+        S.cam = { x, y, z: bake ? z : clampZ(z) };
         apply();
       },
+      fingerprint: () => baseFp,
       fit: () => {
         fitAll();
         apply();
