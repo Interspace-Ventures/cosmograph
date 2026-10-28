@@ -271,6 +271,6 @@
 .cgw .cgw-world.gl .mach.gl.on{opacity:1}
 .cgw #gsel{fill:none;stroke:var(--accent);stroke-width:2;vector-effect:non-scaling-stroke;pointer-events:none}
 /* offline baker (#bake=...): transparent background, world only */
-.cgw.bake .cgw-frame{background:transparent}
+.cgw.bake,.cgw.bake .cgw-frame{background:transparent}
 .cgw.bake .cgw-frame > :not(svg){display:none!important}
 .cgw.bake .bg,.cgw.bake #auras,.cgw.bake #veil,.cgw.bake #lift{display:none}
