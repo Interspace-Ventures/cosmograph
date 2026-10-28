@@ -17,6 +17,20 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.40.0",
+    codename: "Deep Field",
+    date: "2026-10-28",
+    summary:
+      "The internal world view now draws on the GPU, so the archipelago stays smooth from the overview down to a single machine, even with thousands of machines.",
+    changes: [
+      "The wide view is a pre-rendered deep-zoom map of the whole world that streams in only the pieces on screen, sharpening as you zoom.",
+      "At island zoom every machine plays a short baked animation, drawn in one pass however many are in view.",
+      "Up close the real machines run, a few at a time, loaded only when you get near them and unloaded when you move on.",
+      "When a device struggles, the world quietly trades animation and sharpness for smoothness and earns them back once it can.",
+      "Machines whose live version has not shipped yet say their render is on its way, including when opened from a shared link.",
+    ],
+  },
+  {
     version: "3.39.1",
     codename: "Archipelago Filled",
     date: "2026-10-27",
