@@ -238,7 +238,7 @@ const SCREEN = {
   blend: true,
   blendColorOperation: "add",
   blendColorSrcFactor: "one",
-  blendColorDstFactor: "one-minus-src-color",
+  blendColorDstFactor: "one-minus-src",
   blendAlphaOperation: "add",
   blendAlphaSrcFactor: "one",
   blendAlphaDstFactor: "one-minus-src-alpha",
