@@ -21,13 +21,27 @@
 // Camera: an OrthographicView (y down) driven from the world view's own camera;
 // deck's controller is off because the world view owns gestures.
 
-import { Deck, Layer, OrthographicView, project32, type UpdateParameters } from "@deck.gl/core";
+import {
+  Deck,
+  Layer,
+  OrthographicView,
+  project32,
+  type UpdateParameters,
+} from "@deck.gl/core";
 import { BitmapLayer, IconLayer, SolidPolygonLayer } from "@deck.gl/layers";
 import { TileLayer } from "@deck.gl/geo-layers";
 import { Geometry, Model } from "@luma.gl/engine";
 import { Quality, type QualitySettings } from "./quality";
 import type { FlipManifest, PyramidManifest } from "./manifests";
-import { at, ISLAND_Z, MACHINE_PO, MACHINE_S0, MACHINE_W, MZ0, THUMB_BOX } from "../iso";
+import {
+  at,
+  ISLAND_Z,
+  MACHINE_PO,
+  MACHINE_S0,
+  MACHINE_W,
+  MZ0,
+  THUMB_BOX,
+} from "../iso";
 import { hex2rgb, hslRgb, mixWhite, tintKeepLum } from "../color";
 import { flipPageUrl, pyramidTileUrl } from "../assets";
 import { loadDrawing } from "../machineRuntime";
@@ -160,7 +174,11 @@ class AuraLayer extends Layer<AuraLayerProps> {
   declare state: { model?: Model };
 
   getShaders() {
-    return super.getShaders({ vs: AURA_VS, fs: AURA_FS, modules: [project32, auraUniforms] });
+    return super.getShaders({
+      vs: AURA_VS,
+      fs: AURA_FS,
+      modules: [project32, auraUniforms],
+    });
   }
   initializeState() {
     this.getAttributeManager()!.addInstanced({
@@ -180,7 +198,12 @@ class AuraLayer extends Layer<AuraLayerProps> {
         bufferLayout: this.getAttributeManager()!.getBufferLayouts(),
         geometry: new Geometry({
           topology: "triangle-strip",
-          attributes: { positions: { size: 3, value: new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0]) } },
+          attributes: {
+            positions: {
+              size: 3,
+              value: new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0]),
+            },
+          },
         }),
         isInstanced: true,
       });
@@ -228,7 +251,11 @@ function drawingCss(): string {
     }
     for (const r of Array.from(rules)) {
       const t = r.cssText;
-      if (/\.iso|anatomy|\.mach\b|\.mcontent/.test(t) && !/\.gl\b|\.pending|\.live|:hover|\.sel\b|\.held/.test(t)) out.push(t);
+      if (
+        /\.iso|anatomy|\.mach\b|\.mcontent/.test(t) &&
+        !/\.gl\b|\.pending|\.live|:hover|\.sel\b|\.held/.test(t)
+      )
+        out.push(t);
     }
   }
   snapCss = out.join("\n");
@@ -265,6 +292,16 @@ interface Snap {
 }
 
 // ---------------- the tier ----------------
+
+interface IconDef {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  anchorX: number;
+  anchorY: number;
+  mask: boolean;
+}
 
 interface SpriteDatum {
   m: WMachine;
@@ -306,12 +343,22 @@ export class DeckTier {
   private dirty = true;
   private tick = -1;
   private t0 = performance.now();
-  private iconMap: Record<string, object>;
-  private maskMap: Record<string, object>;
+  private iconMap: Record<string, IconDef>;
+  private maskMap: Record<string, IconDef>;
   // shared across the copies' TileLayers: one fetch + decode per tile
   private tileCache = new Map<string, Promise<ImageBitmap | null>>();
-  private pageCache = new Map<number, { p: Promise<ImageBitmap | null>; bmp: ImageBitmap | null; used: number }>();
-  private st = { tilesFetched: 0, tileBytes: 0, pagesFetched: 0, flipBytes: 0, tilesDrawn: 0, layers: 0 };
+  private pageCache = new Map<
+    number,
+    { p: Promise<ImageBitmap | null>; bmp: ImageBitmap | null; used: number }
+  >();
+  private st = {
+    tilesFetched: 0,
+    tileBytes: 0,
+    pagesFetched: 0,
+    flipBytes: 0,
+    tilesDrawn: 0,
+    layers: 0,
+  };
   private lastLevel = -1;
   private lost = false;
 
@@ -342,13 +389,21 @@ export class DeckTier {
     private flip: FlipManifest | null,
     private o: Opts,
   ) {
-    this.quality = new Quality(o.dpr, o.phone ? 24 : 40, o.reduced, o.pinQuality);
+    this.quality = new Quality(
+      o.dpr,
+      o.phone ? 24 : 40,
+      o.reduced,
+      o.pinQuality,
+    );
     this.q = this.quality.settings;
-    this.copies = (model.copies?.length ? model.copies : [[0, 0]]).map((c) => [c[0], c[1]] as [number, number]);
+    this.copies = (model.copies?.length ? model.copies : [[0, 0]]).map(
+      (c) => [c[0], c[1]] as [number, number],
+    );
     this.phase = new Float32Array(model.machines.length);
     model.machines.forEach((m, i) => {
       let h = 2166136261;
-      for (let k = 0; k < m.key.length; k++) h = Math.imul(h ^ m.key.charCodeAt(k), 16777619);
+      for (let k = 0; k < m.key.length; k++)
+        h = Math.imul(h ^ m.key.charCodeAt(k), 16777619);
       this.phase[i] = ((h >>> 0) % 1000) / 1000;
     });
     this.iconMap = {};
@@ -356,7 +411,14 @@ export class DeckTier {
     if (flip) {
       const [cw, ch] = flip.cell;
       for (let c = 0; c < flip.cols * flip.rows; c++) {
-        const e = { x: (c % flip.cols) * cw, y: Math.floor(c / flip.cols) * ch, width: cw, height: ch, anchorX: cw / 2, anchorY: ch / 2 };
+        const e = {
+          x: (c % flip.cols) * cw,
+          y: Math.floor(c / flip.cols) * ch,
+          width: cw,
+          height: ch,
+          anchorX: cw / 2,
+          anchorY: ch / 2,
+        };
         this.iconMap[c] = { ...e, mask: false };
         this.maskMap[c] = { ...e, mask: true };
       }
@@ -366,14 +428,28 @@ export class DeckTier {
       canvas,
       width: "100%",
       height: "100%",
-      views: new OrthographicView({ id: "world", flipY: true, clear: true, clearColor: BG }),
+      views: new OrthographicView({
+        id: "world",
+        flipY: true,
+        clear: true,
+        clearColor: BG,
+      }),
       viewState: { target: [0, 0, 0], zoom: 0 },
       controller: false,
       useDevicePixels: this.q.scale,
       layers: [],
       // the world view owns gestures, hover and the cursor
       getCursor: () => "inherit",
-      deviceProps: { type: "webgl", webgl: { alpha: false, antialias: false, depth: false, stencil: false, powerPreference: "high-performance" } },
+      deviceProps: {
+        type: "webgl",
+        webgl: {
+          alpha: false,
+          antialias: false,
+          depth: false,
+          stencil: false,
+          powerPreference: "high-performance",
+        },
+      },
       onError: (e: Error) => {
         console.warn("[world] deck.gl error", e);
         if (!this.lost) {
@@ -420,7 +496,11 @@ export class DeckTier {
       const dom = this.model.domains[d]!;
       const base = hslRgb(dom.hue, 6, 16.5);
       const tn = tintKeepLum(base, dom.accent);
-      g = [0, 1, 2].map((i) => base[i]! + (tn[i]! - base[i]!) * tint) as [number, number, number];
+      g = [0, 1, 2].map((i) => base[i]! + (tn[i]! - base[i]!) * tint) as [
+        number,
+        number,
+        number,
+      ];
       this.ground.set(d, g);
     }
     return g;
@@ -432,7 +512,13 @@ export class DeckTier {
    * snapshot: the DOM layer draws them. `snaps` are the close-up machines that
    * show a static raster of their drawing.
    */
-  rebuild(cam: GLCam, W: number, H: number, live: Set<string>, snaps: WMachine[]) {
+  rebuild(
+    cam: GLCam,
+    W: number,
+    H: number,
+    live: Set<string>,
+    snaps: WMachine[],
+  ) {
     const flip = this.flip;
     this.spritesByPage.clear();
     this.erasersByPage.clear();
@@ -450,7 +536,14 @@ export class DeckTier {
     const hh = H / 2 / cam.z;
     const idx: number[] = [];
     // machines on screen (hit areas whenever machines are bigger than plates)
-    if (px >= MID_PX - 6) this.grid.query(cam.x - hw - 320, cam.y - hh - 80, cam.x + hw + 320, cam.y + hh + 420, idx);
+    if (px >= MID_PX - 6)
+      this.grid.query(
+        cam.x - hw - 320,
+        cam.y - hh - 80,
+        cam.x + hw + 320,
+        cam.y + hh + 420,
+        idx,
+      );
     for (const k of live) {
       const m = this.model.machineByKey[k];
       if (m) idx.push(this.model.machines.indexOf(m));
@@ -487,13 +580,27 @@ export class DeckTier {
       const g = this.groundOf(m.d, tint);
       if (isLive || (this.q.anim && a > 0.01)) {
         const e = this.erasersByPage.get(sl[0]) ?? [];
-        e.push({ m, pos, size: w, cell: sl[1], phase: 0, color: [g[0], g[1], g[2], Math.round((isLive ? 1 : a) * 255)] });
+        e.push({
+          m,
+          pos,
+          size: w,
+          cell: sl[1],
+          phase: 0,
+          color: [g[0], g[1], g[2], Math.round((isLive ? 1 : a) * 255)],
+        });
         this.erasersByPage.set(sl[0], e);
         this.nErase++;
       }
       if (!isLive) {
         const s = this.spritesByPage.get(sl[0]) ?? [];
-        s.push({ m, pos, size: w, cell: sl[1], phase: this.phase[i]!, color: [255, 255, 255, Math.round(a * 255)] });
+        s.push({
+          m,
+          pos,
+          size: w,
+          cell: sl[1],
+          phase: this.phase[i]!,
+          color: [255, 255, 255, Math.round(a * 255)],
+        });
         this.spritesByPage.set(sl[0], s);
         this.nSprites++;
       }
@@ -506,7 +613,12 @@ export class DeckTier {
       if (live.has(m.key)) continue;
       let s = this.snaps.get(m.key);
       if (!s && this.snapBusy < 2) {
-        const entry: Snap = { state: "loading", bmp: null, used: this.frameNo, m };
+        const entry: Snap = {
+          state: "loading",
+          bmp: null,
+          used: this.frameNo,
+          m,
+        };
         s = entry;
         this.snaps.set(m.key, entry);
         this.snapBusy++;
@@ -565,7 +677,8 @@ export class DeckTier {
       this.tileCache.set(url, p);
       // decoded tiles held for the copies: bounded, oldest first (layers keep their own texture)
       const cap = this.o.phone ? 160 : 400;
-      if (this.tileCache.size > cap) this.tileCache.delete(this.tileCache.keys().next().value!);
+      if (this.tileCache.size > cap)
+        this.tileCache.delete(this.tileCache.keys().next().value!);
     }
     return p;
   }
@@ -574,7 +687,11 @@ export class DeckTier {
     const flip = this.flip!;
     let e = this.pageCache.get(i);
     if (!e) {
-      const entry: { p: Promise<ImageBitmap | null>; bmp: ImageBitmap | null; used: number } = {
+      const entry: {
+        p: Promise<ImageBitmap | null>;
+        bmp: ImageBitmap | null;
+        used: number;
+      } = {
         p: Promise.resolve(null),
         bmp: null,
         used: this.frameNo,
@@ -601,7 +718,9 @@ export class DeckTier {
       e = entry;
       const cap = this.o.phone ? 4 : 8;
       if (this.pageCache.size > cap) {
-        const old = [...this.pageCache.entries()].filter(([k]) => k !== i).sort((a, b) => a[1].used - b[1].used)[0];
+        const old = [...this.pageCache.entries()]
+          .filter(([k]) => k !== i)
+          .sort((a, b) => a[1].used - b[1].used)[0];
         if (old) this.pageCache.delete(old[0]);
       }
     }
@@ -616,8 +735,17 @@ export class DeckTier {
     const maxZoom = Math.round(Math.log2(pyr.levels[0]!.s));
     const minZoom = Math.round(Math.log2(pyr.levels[nL - 1]!.s));
     const L0 = pyr.levels[0]!;
-    const extent: [number, number, number, number] = [0, 0, (L0.cols * pyr.tile) / L0.s, (L0.rows * pyr.tile) / L0.s];
-    const bits = this.bits ?? (this.bits = pyr.levels.map((l) => Uint8Array.from(atob(l.has), (c) => c.charCodeAt(0))));
+    const extent: [number, number, number, number] = [
+      0,
+      0,
+      (L0.cols * pyr.tile) / L0.s,
+      (L0.rows * pyr.tile) / L0.s,
+    ];
+    const bits =
+      this.bits ??
+      (this.bits = pyr.levels.map((l) =>
+        Uint8Array.from(atob(l.has), (c) => c.charCodeAt(0)),
+      ));
     const has = (L: number, c: number, r: number) => {
       const lv = pyr.levels[L];
       if (!lv || c < 0 || r < 0 || c >= lv.cols || r >= lv.rows) return false;
@@ -628,10 +756,26 @@ export class DeckTier {
     const hw = W / 2 / cam.z;
     const hh = H / 2 / cam.z;
     const [ex0, ey0, ex1, ey1] = pyr.extent;
-    this.lastLevel = Math.max(0, Math.min(nL - 1, maxZoom - Math.max(minZoom, Math.min(maxZoom, Math.ceil(Math.log2(cam.z) + zoomOffset)))));
+    this.lastLevel = Math.max(
+      0,
+      Math.min(
+        nL - 1,
+        maxZoom -
+          Math.max(
+            minZoom,
+            Math.min(maxZoom, Math.ceil(Math.log2(cam.z) + zoomOffset)),
+          ),
+      ),
+    );
     for (let ci = 0; ci < this.copies.length; ci++) {
       const [ox, oy] = this.copies[ci]!;
-      if (cam.x + hw < ex0 + ox || cam.x - hw > ex1 + ox || cam.y + hh < ey0 + oy || cam.y - hh > ey1 + oy) continue;
+      if (
+        cam.x + hw < ex0 + ox ||
+        cam.x - hw > ex1 + ox ||
+        cam.y + hh < ey0 + oy ||
+        cam.y - hh > ey1 + oy
+      )
+        continue;
       const tx = pyr.origin[0] + ox;
       const ty = pyr.origin[1] + oy;
       out.push(
@@ -653,14 +797,25 @@ export class DeckTier {
           renderSubLayers: (p) => {
             const tile = p.tile;
             if (!p.data) return null;
-            const { left, top, right, bottom } = tile.bbox as { left: number; top: number; right: number; bottom: number };
+            const { left, top, right, bottom } = tile.bbox as {
+              left: number;
+              top: number;
+              right: number;
+              bottom: number;
+            };
             return new BitmapLayer({
               ...p,
               id: `${p.id}-bm`,
               data: undefined,
               image: p.data,
               bounds: [left, bottom, right, top],
-              textureParameters: { minFilter: "linear", magFilter: "linear", mipmapFilter: "none", addressModeU: "clamp-to-edge", addressModeV: "clamp-to-edge" },
+              textureParameters: {
+                minFilter: "linear",
+                magFilter: "linear",
+                mipmapFilter: "none",
+                addressModeU: "clamp-to-edge",
+                addressModeV: "clamp-to-edge",
+              },
             });
           },
           onViewportLoad: (tiles) => {
@@ -681,11 +836,29 @@ export class DeckTier {
         const k = Math.floor(ts * flip.fps + d.phase * period) % period;
         return d.cell + (k < n ? k : period - k);
       };
-      const common = { billboard: true, sizeUnits: "common" as const, sizeBasis: "width" as const, getPosition: (d: SpriteDatum) => d.pos, getSize: (d: SpriteDatum) => d.size, getColor: (d: SpriteDatum) => d.color };
+      const common = {
+        billboard: true,
+        sizeUnits: "common" as const,
+        sizeBasis: "width" as const,
+        getPosition: (d: SpriteDatum) => d.pos,
+        getSize: (d: SpriteDatum) => d.size,
+        getColor: (d: SpriteDatum) => d.color,
+      };
       for (const [pg, data] of this.erasersByPage) {
         const img = this.page(pg);
         if (!img) continue;
-        out.push(new IconLayer<SpriteDatum>({ ...common, id: `era-${pg}`, data, iconAtlas: img as unknown as string, iconMapping: this.maskMap, getIcon: (d) => String(d.cell), alphaCutoff: 0.02, updateTriggers: { getColor: this.frameNo } }));
+        out.push(
+          new IconLayer<SpriteDatum>({
+            ...common,
+            id: `era-${pg}`,
+            data,
+            iconAtlas: img as unknown as string,
+            iconMapping: this.maskMap,
+            getIcon: (d) => String(d.cell),
+            alphaCutoff: 0.02,
+            updateTriggers: { getColor: this.frameNo },
+          }),
+        );
       }
       for (const [pg, data] of this.spritesByPage) {
         const img = this.page(pg);
@@ -705,14 +878,22 @@ export class DeckTier {
       }
     }
     // close-up snapshots, back to front
-    const snaps = this.snapOn.map((k) => this.snaps.get(k)!).filter((s) => s?.bmp);
+    const snaps = this.snapOn
+      .map((k) => this.snaps.get(k)!)
+      .filter((s) => s?.bmp);
     snaps.sort((a, b) => a.m.cx + a.m.cy - (b.m.cx + b.m.cy));
     for (const s of snaps) {
       const m = s.m;
       const kx = MACHINE_S0;
       const x = m.b[0] + kx * (THUMB_BOX.x - MACHINE_PO[0]);
       const y = m.b[1] + kx * (THUMB_BOX.y - MACHINE_PO[1]);
-      out.push(new BitmapLayer({ id: `snap-${m.key}`, image: s.bmp!, bounds: [x, y + kx * THUMB_BOX.h, x + kx * THUMB_BOX.w, y] }));
+      out.push(
+        new BitmapLayer({
+          id: `snap-${m.key}`,
+          image: s.bmp!,
+          bounds: [x, y + kx * THUMB_BOX.h, x + kx * THUMB_BOX.w, y],
+        }),
+      );
     }
     // GPU picking: one transparent body box per machine on screen, back to front
     if (this.hit.length)
@@ -727,7 +908,8 @@ export class DeckTier {
         }),
       );
     // island auras
-    const fade = Math.round(Math.max(0, Math.min(1, (0.2 - cam.z) / 0.1)) * 40) / 40;
+    const fade =
+      Math.round(Math.max(0, Math.min(1, (0.2 - cam.z) / 0.1)) * 40) / 40;
     if (fade > 0.005 && this.auras.length)
       out.push(
         new AuraLayer({
@@ -747,11 +929,18 @@ export class DeckTier {
   private bits: Uint8Array[] | null = null;
 
   /** Every animation frame. Returns false when nothing needed drawing. */
-  frame(t: number, cam: GLCam, W: number, H: number, camMoved: boolean): boolean {
+  frame(
+    t: number,
+    cam: GLCam,
+    W: number,
+    H: number,
+    camMoved: boolean,
+  ): boolean {
     if (this.lost) return false;
     if (this.quality.frame(t)) {
       const s = this.quality.settings;
-      if (s.scale !== this.q.scale) this.deck.setProps({ useDevicePixels: s.scale });
+      if (s.scale !== this.q.scale)
+        this.deck.setProps({ useDevicePixels: s.scale });
       this.q = s;
       this.onQuality?.(this.q);
       this.dirty = true;
@@ -759,9 +948,13 @@ export class DeckTier {
     const fade = Math.max(0, Math.min(1, (0.2 - cam.z) / 0.1));
     const flip = this.flip;
     // sprite clock at quarter-frame resolution keeps per-machine phases distinct
-    const tick = this.q.anim && this.nSprites > 0 && flip ? Math.floor(((t - this.t0) / 1000) * flip.fps * 4) : -1;
+    const tick =
+      this.q.anim && this.nSprites > 0 && flip
+        ? Math.floor(((t - this.t0) / 1000) * flip.fps * 4)
+        : -1;
     const pulsing = this.q.pulse && fade > 0.005;
-    if (!camMoved && !this.dirty && tick === this.tick && !pulsing) return false;
+    if (!camMoved && !this.dirty && tick === this.tick && !pulsing)
+      return false;
     this.tick = tick;
     this.dirty = false;
     this.deck.setProps({
@@ -775,9 +968,15 @@ export class DeckTier {
   /** GPU pick: the frontmost machine body under a client point. */
   pick(clientX: number, clientY: number): WMachine | null {
     if (this.lost || !this.hit.length) return null;
-    const c = (this.deck as unknown as { canvas: HTMLCanvasElement | null }).canvas;
+    const c = (this.deck as unknown as { canvas: HTMLCanvasElement | null })
+      .canvas;
     const r = c?.getBoundingClientRect();
-    const info = this.deck.pickObject({ x: clientX - (r?.left ?? 0), y: clientY - (r?.top ?? 0), radius: 0, layerIds: ["hit"] });
+    const info = this.deck.pickObject({
+      x: clientX - (r?.left ?? 0),
+      y: clientY - (r?.top ?? 0),
+      radius: 0,
+      layerIds: ["hit"],
+    });
     return (info?.object as { m: WMachine } | undefined)?.m ?? null;
   }
 
@@ -792,7 +991,9 @@ export class DeckTier {
     this.pageCache.forEach((p) => (pages += p.bmp ? 1 : 0));
     const fw = this.flip ? this.flip.page[0] * this.flip.page[1] * 4 : 0;
     let snapBytes = 0;
-    this.snaps.forEach((s) => (snapBytes += s.bmp ? s.bmp.width * s.bmp.height * 4 : 0));
+    this.snaps.forEach(
+      (s) => (snapBytes += s.bmp ? s.bmp.width * s.bmp.height * 4 : 0),
+    );
     return {
       renderer: "webgl2",
       engine: "deck.gl",
@@ -809,7 +1010,11 @@ export class DeckTier {
       flipPagesResident: pages,
       flipPagesFetched: this.st.pagesFetched,
       flipBytes: this.st.flipBytes,
-      gpuTexMB: Math.round(((tilesResident * 256 * 256 * 4 + pages * fw + snapBytes) / 1048576) * 10) / 10,
+      gpuTexMB:
+        Math.round(
+          ((tilesResident * 256 * 256 * 4 + pages * fw + snapBytes) / 1048576) *
+            10,
+        ) / 10,
     };
   }
 
