@@ -119,6 +119,7 @@ flat out vec2 vBase;
 flat out vec2 vTop;
 flat out vec4 vCol;
 flat out vec3 vEd;
+flat out float vZoom;
 void main(){
   // box covering pool (560 x 320 around the base) and beam (300 x 3000 above the top)
   vec2 lo = vec2(min(instanceBase.x - 560.0, instanceTop.x - 150.0), instanceTop.y - 3000.0);
@@ -126,6 +127,7 @@ void main(){
   vec2 w = mix(lo, hi, positions.xy);
   geometry.worldPosition = vec3(w, 0.0);
   gl_Position = project_position_to_clipspace(vec3(w, 0.0), vec3(0.0), vec3(0.0), geometry.position);
+  vZoom = project.scale;
   vW = w; vBase = instanceBase; vTop = instanceTop; vCol = instanceCol; vEd = instanceEd;
 }`;
 
@@ -137,6 +139,7 @@ flat in vec2 vBase;
 flat in vec2 vTop;
 flat in vec4 vCol;
 flat in vec3 vEd;
+flat in float vZoom;
 out vec4 fragColor;
 vec4 grad(float t, float a0, float m, float a1){
   t = clamp(t, 0.0, 1.0);
@@ -162,7 +165,7 @@ void main(){
   }
   vec2 r = abs(p - vBase);
   float hx = 300.5, hy = 150.3;
-  float dd = (r.x / hx + r.y / hy - 1.0) * (hx * hy / length(vec2(hx, hy))) * aura.zoom;
+  float dd = (r.x / hx + r.y / hy - 1.0) * (hx * hy / length(vec2(hx, hy))) * vZoom;
   float ring = (1.0 - smoothstep(1.0, 2.0, abs(dd))) * 0.85;
   col = col + vec4(vCol.rgb * ring, ring) * (1.0 - col.a);
   float pulse = mix(1.0, 0.81 + 0.19 * sin(6.2831853 * (aura.time / 3.2 + vCol.a)), aura.pulse);
@@ -729,6 +732,15 @@ export class DeckTier {
           this.st.tileBytes += b.size;
           return createImageBitmap(b);
         })
+        .then((bmp) => {
+          if (bmp) {
+            this.tileNow.set(url, bmp);
+            if (this.tileNow.size > 64)
+              this.tileNow.delete(this.tileNow.keys().next().value!);
+            this.dirty = true;
+          }
+          return bmp;
+        })
         .catch(() => {
           this.tileCache.delete(url);
           return null;
@@ -835,6 +847,59 @@ export class DeckTier {
         )
       )
         vis.push(ci);
+    }
+    // a world of copies seen whole (the coarse levels: a handful of tiles per copy):
+    // one instanced IconLayer per tile, an instance per copy on screen, instead of a
+    // TileLayer per copy
+    const lv = pyr.levels[this.lastLevel]!;
+    if (this.copies.length > 1 && lv.cols * lv.rows <= 4) {
+      const span = pyr.tile / lv.s;
+      const got: { c: number; r: number; bmp: ImageBitmap }[] = [];
+      for (let r = 0; r < lv.rows; r++)
+        for (let c = 0; c < lv.cols; c++) {
+          if (!has(this.lastLevel, c, r)) continue;
+          const url = pyramidTileUrl(pyr, this.lastLevel, c, r);
+          const bmp = this.tileNow.get(url);
+          if (bmp) got.push({ c, r, bmp });
+          else void this.tile(url);
+        }
+      const okey = `ov|${this.lastLevel}|${got.map((g) => `${g.c}_${g.r}`).join(",")}|${vis.join(",")}`;
+      if (okey === this.tileCacheKey) return this.tileLayersCached;
+      this.tileCacheKey = okey;
+      this.tileLayersCached = out;
+      const mapping = {
+        t: {
+          x: 0,
+          y: 0,
+          width: pyr.tile,
+          height: pyr.tile,
+          anchorX: pyr.tile / 2,
+          anchorY: pyr.tile / 2,
+          mask: false,
+        },
+      };
+      for (const g of got) {
+        out.push(
+          new IconLayer<number>({
+            id: `ov-${this.lastLevel}-${g.c}-${g.r}`,
+            data: vis,
+            iconAtlas: g.bmp as unknown as string,
+            iconMapping: mapping,
+            getIcon: () => "t",
+            getPosition: (ci) => [
+              pyr.origin[0] + this.copies[ci]![0] + (g.c + 0.5) * span,
+              pyr.origin[1] + this.copies[ci]![1] + (g.r + 0.5) * span,
+            ],
+            getSize: span,
+            sizeUnits: "common",
+            sizeBasis: "width",
+            billboard: true,
+            alphaCutoff: 0,
+            updateTriggers: { getPosition: okey },
+          }),
+        );
+      }
+      return out;
     }
     const key = `${vis.join(",")}|${zoomOffset}`;
     if (key === this.tileCacheKey) return this.tileLayersCached;
@@ -1022,6 +1087,8 @@ export class DeckTier {
   /** last camera move (rAF time): close-up rasters wait for the camera to settle */
   private lastMove = 0;
   private lastCam: GLCam | null = null;
+  /** decoded tiles, for the instanced overview of a world of copies */
+  private tileNow = new Map<string, ImageBitmap>();
 
   /** Every animation frame. Returns false when nothing needed drawing. */
   frame(
@@ -1063,7 +1130,7 @@ export class DeckTier {
       changed = true;
     }
     const fq = Math.round(fade * 40);
-    if (pulsing || fq !== this.auraKey || (fq > 0 && camMoved)) {
+    if (pulsing || fq !== this.auraKey) {
       this.auraCached = this.auraLayers(cam, t);
       this.auraKey = fq;
       changed = true;
