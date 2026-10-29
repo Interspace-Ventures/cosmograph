@@ -667,6 +667,14 @@ export class DeckTier {
         this.snaps.delete(k);
       }
     }
+    // flipbook pages: keep every page this view uses, drop the least recently used beyond the cap
+    const pcap = this.o.phone ? 4 : 8;
+    if (this.pageCache.size > pcap) {
+      const old = [...this.pageCache.entries()]
+        .filter(([, e]) => e.bmp && e.used < this.frameNo - 1)
+        .sort((a, b) => a[1].used - b[1].used);
+      for (const [k] of old.slice(0, this.pageCache.size - pcap)) this.pageCache.delete(k);
+    }
     this.dirty = true;
   }
 
@@ -731,13 +739,6 @@ export class DeckTier {
         });
       this.pageCache.set(i, entry);
       e = entry;
-      const cap = this.o.phone ? 4 : 8;
-      if (this.pageCache.size > cap) {
-        const old = [...this.pageCache.entries()]
-          .filter(([k]) => k !== i)
-          .sort((a, b) => a[1].used - b[1].used)[0];
-        if (old) this.pageCache.delete(old[0]);
-      }
     }
     e.used = this.frameNo;
     return e.bmp;
