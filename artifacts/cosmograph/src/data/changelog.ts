@@ -17,6 +17,69 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.40.2",
+    codename: "Deep Field Census",
+    date: "2026-10-29",
+    summary:
+      "The internal world view is tuned for real worlds, from a few hundred machines up to about two thousand, and the overview of a big world is many times smoother on phones.",
+    changes: [
+      "Island names no longer force the page to re-measure itself for every island on every frame, which was most of the work when a large world was seen whole.",
+      "The world's renderer was re-checked against lighter options at the size of real worlds; deck.gl stays.",
+    ],
+  },
+  {
+    version: "3.40.1",
+    codename: "Deep Field Survey",
+    date: "2026-10-29",
+    summary:
+      "The internal world view now runs on a proven open-source map engine, and close-ups stay smooth because only the machine you tapped is live.",
+    changes: [
+      "The world's map, animations and tap targets are drawn by deck.gl, loaded only when you open the world, in place of a hand-built renderer.",
+      "Up close, every machine you are not running is a sharp still picture on the map; the one you tap comes alive, so panning around a close-up no longer stutters.",
+      "A world made of many copies of the archipelago draws its overview in a single pass per map tile.",
+    ],
+  },
+  {
+    version: "3.40.0",
+    codename: "Deep Field",
+    date: "2026-10-28",
+    summary:
+      "The internal world view now draws on the GPU, so the archipelago stays smooth from the overview down to a single machine, even with thousands of machines.",
+    changes: [
+      "The wide view is a pre-rendered deep-zoom map of the whole world that streams in only the pieces on screen, sharpening as you zoom.",
+      "At island zoom every machine plays a short baked animation, drawn in one pass however many are in view.",
+      "Up close the real machines run, a few at a time, loaded only when you get near them and unloaded when you move on.",
+      "When a device struggles, the world quietly trades animation and sharpness for smoothness and earns them back once it can.",
+      "Machines whose live version has not shipped yet say their render is on its way, including when opened from a shared link.",
+    ],
+  },
+  {
+    version: "3.39.1",
+    codename: "Archipelago Filled",
+    date: "2026-10-27",
+    summary:
+      "The internal world view now places every built machine: 341 of them across the 16 islands.",
+    changes: [
+      "Each island keeps its centre machine and inner ring, and the newer machines take the tiles nearest the centre, with at least four tiles of water between islands.",
+      "Only the centre machine of each island glows in the wide view, so the overview stays readable with this many machines.",
+      "Machines whose live version is not bundled yet show their picture (or a blueprint when no picture has arrived) and say their render is on its way, so an island never looks empty.",
+      "Next machine tours all 341 in map order, long paper titles wrap, and a #&zoom= hook gives a close view for review.",
+    ],
+  },
+  {
+    version: "3.39.0",
+    codename: "Archipelago",
+    date: "2026-10-24",
+    summary:
+      "A first look at the isometric world: every research domain becomes an island, every paper a tile, and the papers with machines come alive when you tap them.",
+    changes: [
+      "Added an internal-only /world view behind the isometric-world release flag, ported from the approved world design: one glass island per research domain, tinted toward that domain's colour and strongest in the overview.",
+      "Every machine sits on a tile the same size as its neighbours; tapping one lifts and enlarges it over a dimmed world and runs it, and tapping away settles it back.",
+      "Pan, zoom, the domain list with minimap, hover titles and a Next machine tour all work on desktop and phone.",
+      "The world reads the same researcher data as the galaxy, so a researcher without hand-built machines still gets their islands and paper tiles.",
+    ],
+  },
+  {
     version: "3.38.1",
     codename: "Hull Patch",
     date: "2026-10-22",

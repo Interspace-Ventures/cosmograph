@@ -1,0 +1,3 @@
+# baker scratch (per-machine frame strips for --resume)
+public/world/flip.frames/
+scripts/__pycache__/

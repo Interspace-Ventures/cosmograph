@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { ClerkProvider, SignIn, SignUp, useClerk } from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
@@ -27,6 +27,20 @@ import { WebGLFallback } from "@/components/WebGLFallback";
 import { isWebGLAvailable } from "@/lib/webgl";
 import { featureEnabled } from "@/config/features";
 import { withAppBasePath } from "@/lib/appPath";
+
+// The isometric world view (/world) ships in its own chunk, behind the
+// "isometric-world" release flag.
+const WorldPage = lazy(() => import("@/world/WorldPage"));
+
+function WorldHome() {
+  return (
+    <ErrorBoundary fallback={<WebGLFallback variant="error" />}>
+      <Suspense fallback={<div className="fixed inset-0 bg-[#15161c]" />}>
+        <WorldPage />
+      </Suspense>
+    </ErrorBoundary>
+  );
+}
 
 // REQUIRED — copy verbatim. Resolves the key from window.location.hostname so the
 // same build serves multiple Clerk custom domains. Do not inline the env var, leave
@@ -265,6 +279,9 @@ function ClerkProviderWithRoutes() {
           <AuthMemoryBridge />
           <Switch>
             <Route path="/" component={GalaxyHome} />
+            {featureEnabled("isometric-world") && (
+              <Route path="/world" component={WorldHome} />
+            )}
             {/* REQUIRED — copy "/sign-in/*?" and "/sign-up/*?" verbatim. The /*? optional
                 wildcard is the only wouter syntax that matches both the bare URL and Clerk's
                 OAuth sub-paths. Not /sign-in, not /sign-in/*, not /sign-in/:rest*. */}

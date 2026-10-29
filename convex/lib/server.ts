@@ -1,4 +1,5 @@
 import {
+  httpActionGeneric,
   internalMutationGeneric,
   internalQueryGeneric,
   mutationGeneric,
@@ -39,3 +40,5 @@ export const internalQuery: QueryBuilder<DataModel, "internal"> =
 export const mutation: MutationBuilder<DataModel, "public"> = mutationGeneric;
 export const internalMutation: MutationBuilder<DataModel, "internal"> =
   internalMutationGeneric;
+/** HTTP actions (convex/http.ts). */
+export const httpAction = httpActionGeneric;
