@@ -848,11 +848,11 @@ export class DeckTier {
       )
         vis.push(ci);
     }
-    // a world of copies seen whole (the coarse levels: a handful of tiles per copy):
+    // a world of copies seen whole (the coarse levels: up to 8 tiles per copy):
     // one instanced IconLayer per tile, an instance per copy on screen, instead of a
     // TileLayer per copy
     const lv = pyr.levels[this.lastLevel]!;
-    if (this.copies.length > 1 && lv.cols * lv.rows <= 4) {
+    if (this.copies.length > 1 && lv.cols * lv.rows <= 8) {
       const span = pyr.tile / lv.s;
       const got: { c: number; r: number; bmp: ImageBitmap }[] = [];
       for (let r = 0; r < lv.rows; r++)

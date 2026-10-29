@@ -17,6 +17,18 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.40.1",
+    codename: "Deep Field Survey",
+    date: "2026-10-29",
+    summary:
+      "The internal world view now runs on a proven open-source map engine, and close-ups stay smooth because only the machine you tapped is live.",
+    changes: [
+      "The world's map, animations and tap targets are drawn by deck.gl, loaded only when you open the world, in place of a hand-built renderer.",
+      "Up close, every machine you are not running is a sharp still picture on the map; the one you tap comes alive, so panning around a close-up no longer stutters.",
+      "A world made of many copies of the archipelago draws its overview in a single pass per map tile.",
+    ],
+  },
+  {
     version: "3.40.0",
     codename: "Deep Field",
     date: "2026-10-28",
