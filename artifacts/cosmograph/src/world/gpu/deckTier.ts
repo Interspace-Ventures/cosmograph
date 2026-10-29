@@ -456,6 +456,14 @@ export class DeckTier {
       layers: [],
       // the world view owns gestures, hover and the cursor
       getCursor: () => "inherit",
+      // the transparent hit boxes only ever draw into the picking buffer
+      layerFilter: ({
+        layer,
+        renderPass,
+      }: {
+        layer: Layer;
+        renderPass: string;
+      }) => layer.id !== "hit" || renderPass.startsWith("picking"),
       deviceProps: {
         type: "webgl",
         webgl: {
