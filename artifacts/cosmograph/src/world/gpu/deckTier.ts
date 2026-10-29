@@ -278,7 +278,9 @@ async function rasterize(svgText: string, wPx: number): Promise<ImageBitmap> {
   // through the DOM so the standalone SVG image is well-formed XML
   const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
   g.innerHTML = svgText;
-  const xml = Array.from(g.childNodes, (n) => new XMLSerializer().serializeToString(n)).join("");
+  const xml = Array.from(g.childNodes, (n) =>
+    new XMLSerializer().serializeToString(n),
+  ).join("");
   const doc =
     `<svg xmlns="http://www.w3.org/2000/svg" width="${wPx}" height="${hPx}" viewBox="${x} ${y} ${w} ${h}">` +
     `<style>${drawingCss().replace(/<\//g, "<\\/")}</style>` +
@@ -626,7 +628,7 @@ export class DeckTier {
     for (const m of snaps) {
       if (live.has(m.key)) continue;
       let s = this.snaps.get(m.key);
-      if (!s && this.snapBusy < 2) {
+      if (!s && this.snapBusy < 2 && performance.now() - this.lastMove > 220) {
         const entry: Snap = {
           state: "loading",
           bmp: null,
@@ -673,7 +675,8 @@ export class DeckTier {
       const old = [...this.pageCache.entries()]
         .filter(([, e]) => e.bmp && e.used < this.frameNo - 1)
         .sort((a, b) => a[1].used - b[1].used);
-      for (const [k] of old.slice(0, this.pageCache.size - pcap)) this.pageCache.delete(k);
+      for (const [k] of old.slice(0, this.pageCache.size - pcap))
+        this.pageCache.delete(k);
     }
     this.dirty = true;
   }
@@ -744,7 +747,11 @@ export class DeckTier {
     return e.bmp;
   }
 
-  private layers(cam: GLCam, W: number, H: number, t: number): Layer[] {
+  // ground: rebuilt only when the copies on screen or the level offset change;
+  // between those, deck's TileLayer follows the camera by itself
+  private tileCacheKey = "";
+  private tileLayersCached: Layer[] = [];
+  private tileLayers(cam: GLCam, W: number, H: number): Layer[] {
     const out: Layer[] = [];
     const pyr = this.pyr;
     const nL = pyr.levels.length;
@@ -783,6 +790,23 @@ export class DeckTier {
           ),
       ),
     );
+    const vis: number[] = [];
+    for (let ci = 0; ci < this.copies.length; ci++) {
+      const [ox, oy] = this.copies[ci]!;
+      if (
+        !(
+          cam.x + hw < ex0 + ox ||
+          cam.x - hw > ex1 + ox ||
+          cam.y + hh < ey0 + oy ||
+          cam.y - hh > ey1 + oy
+        )
+      )
+        vis.push(ci);
+    }
+    const key = `${vis.join(",")}|${zoomOffset}`;
+    if (key === this.tileCacheKey) return this.tileLayersCached;
+    this.tileCacheKey = key;
+    this.tileLayersCached = out;
     for (let ci = 0; ci < this.copies.length; ci++) {
       const [ox, oy] = this.copies[ci]!;
       if (
@@ -840,6 +864,11 @@ export class DeckTier {
         }),
       );
     }
+    return out;
+  }
+
+  private flipLayers(t: number): Layer[] {
+    const out: Layer[] = [];
     // flipbooks: erasers first (all pages), then the playing sprites, page by page
     const flip = this.flip;
     if (flip) {
@@ -893,6 +922,11 @@ export class DeckTier {
         );
       }
     }
+    return out;
+  }
+
+  private snapLayers(): Layer[] {
+    const out: Layer[] = [];
     // close-up snapshots, back to front
     const snaps = this.snapOn
       .map((k) => this.snaps.get(k)!)
@@ -923,6 +957,11 @@ export class DeckTier {
           updateTriggers: { getPolygon: this.frameNo },
         }),
       );
+    return out;
+  }
+
+  private auraLayers(cam: GLCam, t: number): Layer[] {
+    const out: Layer[] = [];
     // island auras
     const fade =
       Math.round(Math.max(0, Math.min(1, (0.2 - cam.z) / 0.1)) * 40) / 40;
@@ -939,10 +978,16 @@ export class DeckTier {
           parameters: SCREEN,
         } as AuraLayerProps & Record<string, unknown>),
       );
-    this.st.layers = out.length;
     return out;
   }
   private bits: Uint8Array[] | null = null;
+  private lastTiles: Layer[] | null = null;
+  private flipCached: Layer[] = [];
+  private snapCached: Layer[] = [];
+  private auraCached: Layer[] = [];
+  private auraKey = -1;
+  /** last camera move (rAF time): close-up rasters wait for the camera to settle */
+  private lastMove = 0;
 
   /** Every animation frame. Returns false when nothing needed drawing. */
   frame(
@@ -971,12 +1016,40 @@ export class DeckTier {
     const pulsing = this.q.pulse && fade > 0.005;
     if (!camMoved && !this.dirty && tick === this.tick && !pulsing)
       return false;
+    if (camMoved) this.lastMove = t;
+    const tiles = this.tileLayers(cam, W, H);
+    let changed = tiles !== this.lastTiles;
+    this.lastTiles = tiles;
+    if (this.dirty) {
+      this.flipCached = this.flipLayers(t);
+      this.snapCached = this.snapLayers();
+      changed = true;
+    } else if (tick !== this.tick) {
+      this.flipCached = this.flipLayers(t);
+      changed = true;
+    }
+    const fq = Math.round(fade * 40);
+    if (pulsing || fq !== this.auraKey || (fq > 0 && camMoved)) {
+      this.auraCached = this.auraLayers(cam, t);
+      this.auraKey = fq;
+      changed = true;
+    }
     this.tick = tick;
     this.dirty = false;
-    this.deck.setProps({
-      viewState: { target: [cam.x, cam.y, 0], zoom: Math.log2(cam.z) },
-      layers: this.layers(cam, W, H, t),
-    });
+    const props: Record<string, unknown> = {};
+    if (camMoved)
+      props.viewState = { target: [cam.x, cam.y, 0], zoom: Math.log2(cam.z) };
+    if (changed) {
+      const layers = [
+        ...tiles,
+        ...this.flipCached,
+        ...this.snapCached,
+        ...this.auraCached,
+      ];
+      this.st.layers = layers.length;
+      props.layers = layers;
+    }
+    this.deck.setProps(props);
     this.deck.redraw("cgw-frame");
     return true;
   }
