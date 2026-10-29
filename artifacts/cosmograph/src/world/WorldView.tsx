@@ -36,9 +36,9 @@ import {
 import { hasModule, loadAssetManifests } from "./assets";
 import { CAPS, createNode, lodFor, MachineGrid, NEAR_DEV_PX, thumbContent, type Lod, type MNode } from "./machineLayer";
 import { stressCount, stressWorld } from "./stress";
-import { GpuTier } from "./gpu/gpuTier";
-import type { PyramidManifest } from "./gpu/pyramid";
-import type { FlipManifest } from "./gpu/flipbook";
+// the deck.gl tier is a separate chunk, fetched only when this view uses it
+import type { DeckTier } from "./gpu/deckTier";
+import type { FlipManifest, PyramidManifest } from "./gpu/manifests";
 import pyramidJson from "./data/pyramid.json";
 import flipJson from "./data/flip.json";
 import "./world.css";
@@ -165,7 +165,9 @@ export function WorldView({ backHref }: { backHref: string }) {
     liftFin: null as null | (() => void),
     homeCam: null as Cam | null,
     observers: [] as MutationObserver[],
-    gpu: null as GpuTier | null,
+    gpu: null as DeckTier | null,
+    // the deck.gl chunk is loading: nothing per machine is drawn yet
+    gpuPending: false,
     camMoved: true,
     // GPU tier: the camera the SVG viewBox was last committed at; between commits
     // the SVG layer follows the camera with a compositor-only CSS transform
@@ -709,7 +711,7 @@ export function WorldView({ backHref }: { backHref: string }) {
   const lodUpdate = useCallback(() => {
     const S = st.current;
     const svg = svgRef.current;
-    if (!svg) return;
+    if (!svg || S.gpuPending) return;
     const cam = S.cam;
     const W = window.innerWidth;
     const H = window.innerHeight;
@@ -776,20 +778,31 @@ export function WorldView({ backHref }: { backHref: string }) {
     }
 
     // machines in view, nearest the centre first, capped
-    // (GPU tier: only the close-up drawings are DOM; sprites and pyramid cover the rest)
+    // (GPU tier: only live machines are DOM; every other close-up is a static raster
+    // of its drawing on the canvas, and sprites and pyramid cover the rest)
     const want: WMachine[] = [];
+    const snaps: WMachine[] = [];
     const gpuT = S.gpu;
-    // GPU tier, camera moving: keep the close-up set as it is (any DOM change would
-    // re-rasterise the whole layer); it is re-chosen when the camera settles
+    // GPU tier, camera moving: keep the DOM layer as it is (any DOM change would
+    // re-rasterise it); it is re-chosen when the camera settles
     const frozen = !!gpuT && S.vbMoving && !bake;
-    if (frozen) S.nodes.forEach((n) => want.push(n.m));
-    if (!frozen && lod !== "far" && S.assetsReady && (!gpuT || lod === "near")) {
+    if (gpuT) {
+      S.nodes.forEach((n) => {
+        if (S.live[n.m.key] || S.runOrder.includes(n.m.key)) want.push(n.m);
+      });
+      if (lod === "near" && S.assetsReady) {
+        const idx = grid.query(vx0 - 340, vy0 - 80, vx1 + 340, vy1 + 420);
+        const dist = (m: WMachine) => (m.b[0] - cam.x) ** 2 + (m.b[1] - 180 - cam.y) ** 2;
+        const ms = idx.map((i) => model.machines[i]!).filter((m) => hasModule(m.slug, m.live));
+        ms.sort((a, b) => dist(a) - dist(b));
+        snaps.push(...ms.slice(0, CAPS.snapGpu()));
+      }
+    } else if (lod !== "far" && S.assetsReady) {
       const idx = grid.query(vx0 - 340, vy0 - 80, vx1 + 340, vy1 + 420);
       const dist = (m: WMachine) => (m.b[0] - cam.x) ** 2 + (m.b[1] - 180 - cam.y) ** 2;
-      let ms = idx.map((i) => model.machines[i]!);
-      if (gpuT) ms = ms.filter((m) => hasModule(m.slug, m.live));
+      const ms = idx.map((i) => model.machines[i]!);
       ms.sort((a, b) => dist(a) - dist(b));
-      want.push(...ms.slice(0, bake ? Infinity : gpuT ? CAPS.nearGpu() : CAPS.nodes()));
+      want.push(...ms.slice(0, bake ? Infinity : CAPS.nodes()));
     }
     const wantKeys = new Set(want.map((m) => m.key));
     const lifted = S.lifted?.key;
@@ -801,13 +814,14 @@ export function WorldView({ backHref }: { backHref: string }) {
     const keepSlugs = new Set<string>();
     for (const k of S.runOrder) keepSlugs.add(model.machineByKey[k]?.slug ?? "");
     for (const [k, v] of Object.entries(S.live)) if (v === "loading") keepSlugs.add(model.machineByKey[k]?.slug ?? "");
-    const nearCap = bake ? Infinity : gpuT ? CAPS.nearGpu() : CAPS.near();
+    for (const m of snaps) keepSlugs.add(m.slug);
+    const nearCap = bake ? Infinity : CAPS.near();
     let rank = 0;
     for (const m of want) {
       const n = S.nodes.get(m.key);
       if (!n) continue;
       const isLive = !!S.live[m.key];
-      const near = lod === "near" && rank < nearCap && hasModule(m.slug, m.live);
+      const near = !gpuT && lod === "near" && rank < nearCap && hasModule(m.slug, m.live);
       if (hasModule(m.slug, m.live)) rank++;
       if (near) {
         keepSlugs.add(m.slug);
@@ -855,7 +869,7 @@ export function WorldView({ backHref }: { backHref: string }) {
         prefetch(m.slug);
         picked++;
       };
-      if (lod === "mid") want.slice(0, nearCap).forEach(tryPf);
+      if (lod === "mid") (gpuT ? [] : want.slice(0, nearCap)).forEach(tryPf);
       else {
         const ring = grid
           .query(vx0 - hw, vy0 - hh, vx1 + hw, vy1 + hh)
@@ -883,12 +897,13 @@ export function WorldView({ backHref }: { backHref: string }) {
     S.maxNear = Math.max(S.maxNear, nearNow);
 
     if (gpuT) {
-      const live = new Set<string>(S.runOrder);
-      for (const [k, v] of Object.entries(S.live)) if (v) live.add(k);
-      if (lifted) live.add(lifted);
-      const shown = new Set<string>();
-      S.nodes.forEach((n, k) => n.lvl === 3 && n.g.classList.contains("on") && shown.add(k));
-      gpuT.rebuild(cam, W, H, live, shown);
+      // machines the DOM layer is drawing right now: the canvas erases their resting
+      // copy and draws no sprite or snapshot for them (until then it keeps showing them)
+      const live = new Set<string>();
+      S.nodes.forEach((n, k) => {
+        if (n.lvl === 3 && (typeof S.live[k] === "object" || lifted === k)) live.add(k);
+      });
+      gpuT.rebuild(cam, W, H, live, snaps);
     }
   }, [grid, model, ensureNode, removeNode, stopLive, bake]);
 
@@ -1049,28 +1064,50 @@ export function WorldView({ backHref }: { backHref: string }) {
       S.dirty = true;
       setStatusTick((n) => n + 1);
     });
-    // GPU tier: one WebGL2 canvas under the SVG (see gpu/gpuTier.ts)
-    if (gpu && canvasRef.current && !S.gpu) {
+    // GPU tier: deck.gl on one canvas under the SVG (see gpu/deckTier.ts), lazy-loaded
+    if (gpu && canvasRef.current && !S.gpu && !S.gpuPending) {
+      const canvas = canvasRef.current;
       const dpr = window.devicePixelRatio || 1;
-      S.gpu = GpuTier.create(canvasRef.current, model, grid, PYRAMID, FLIP, {
-        phone: phoneClass(),
-        dpr,
-        reduced: reducedMotion(),
-        pinQuality: pinnedQuality(window.location.hash),
-        requestFrame: () => {
-          S.camMoved = true;
-        },
-      });
-      if (!S.gpu) {
-        // no WebGL2 after all: the SVG renderer takes over
+      S.gpuPending = true;
+      const fallBack = () => {
+        S.gpuPending = false;
+        S.gpu?.dispose();
+        S.gpu = null;
+        delete svg.dataset.renderer;
         setGpu(false);
-      } else {
-        svg.dataset.renderer = "webgl2";
-        S.gpu.onQuality = (q) => {
-          svg.dataset.q = String(q.level);
+      };
+      void import("./gpu/deckTier")
+        .then(({ DeckTier }) => {
+          if (!alive) return;
+          const tier = DeckTier.create(canvas, model, grid, PYRAMID, FLIP, {
+            phone: phoneClass(),
+            dpr,
+            reduced: reducedMotion(),
+            pinQuality: pinnedQuality(window.location.hash),
+            requestFrame: () => {
+              S.camMoved = true;
+            },
+            onFail: fallBack,
+          });
+          S.gpuPending = false;
+          if (!tier) {
+            // no WebGL2 after all: the SVG renderer takes over
+            fallBack();
+            return;
+          }
+          S.gpu = tier;
+          svg.dataset.renderer = "webgl2";
+          tier.onQuality = (q) => {
+            svg.dataset.q = String(q.level);
+            S.dirty = true;
+          };
           S.dirty = true;
-        };
-      }
+          S.camMoved = true;
+        })
+        .catch((e) => {
+          console.warn("[world] could not load the GPU tier, using the SVG renderer", e);
+          fallBack();
+        });
     }
     let lastLod = 0;
     let frames = 0;
@@ -1297,8 +1334,8 @@ export function WorldView({ backHref }: { backHref: string }) {
       let m = mg?.dataset.m ? model.machineByKey[mg.dataset.m] : undefined;
       const wx = S.cam.x + (e.clientX - W() / 2) / S.cam.z;
       const wy = S.cam.y + (e.clientY - H() / 2) / S.cam.z;
-      // GPU tier: no DOM per machine, so hit-test the spatial grid (frontmost body wins)
-      if (!m && S.gpu) m = grid.pick(wx, wy) ?? undefined;
+      // GPU tier: no DOM per machine, so ask deck.gl's GPU picking (frontmost body wins)
+      if (!m && S.gpu && S.lod !== "far") m = S.gpu.pick(e.clientX, e.clientY) ?? undefined;
       // far level of detail: machines are plates in one path, so pick the nearest plate
       if (!m && S.lod === "far") m = grid.nearest(wx, wy, Math.max(220, 10 / S.cam.z)) ?? undefined;
       if (m) {
@@ -1345,7 +1382,7 @@ export function WorldView({ backHref }: { backHref: string }) {
       if (S.gpu && !m && !tile && S.lod !== "far") {
         const wx = S.cam.x + (ev.clientX - W() / 2) / S.cam.z;
         const wy = S.cam.y + (ev.clientY - H() / 2) / S.cam.z;
-        m = grid.pick(wx, wy) ?? undefined;
+        m = S.gpu.pick(ev.clientX, ev.clientY) ?? undefined;
         if (!m) tile = tileAt(wx, wy);
       }
       let h = "";

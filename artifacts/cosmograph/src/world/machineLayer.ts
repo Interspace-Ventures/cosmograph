@@ -31,8 +31,8 @@ export const CAPS = {
   nodes: () => (phoneClass() ? 140 : 420),
   /** machines showing their full drawing */
   near: () => (phoneClass() ? 8 : 28),
-  /** GPU tier: close-up drawings in the DOM (the pyramid shows the rest at rest) */
-  nearGpu: () => (phoneClass() ? 3 : 6),
+  /** GPU tier: close-ups shown as static rasters on the canvas (only a tapped machine is DOM) */
+  snapGpu: () => (phoneClass() ? 6 : 16),
   /** machines whose script runs at once */
   running: () => (phoneClass() ? 1 : 3),
   /** neighbours to prefetch per update */
@@ -90,28 +90,6 @@ export class MachineGrid {
       }
     return out;
   }
-  /**
-   * GPU-tier hit test without DOM: the frontmost machine whose drawn body (its
-   * box in machine units, 40..560 x 20..370, projected) contains the point.
-   */
-  pick(x: number, y: number): WMachine | null {
-    const k = MACHINE_S0;
-    let best: WMachine | null = null;
-    let bd = -Infinity;
-    for (const i of this.query(x - 300 * k, y - 160 * k, x + 300 * k, y + 260 * k)) {
-      const m = this.machines[i]!;
-      const u = (x - m.b[0]) / k + 300;
-      const v = (y - m.b[1]) / k + 239.781;
-      if (u < 40 || u > 560 || v < 20 || v > 370) continue;
-      const dep = m.cx + m.cy;
-      if (dep > bd) {
-        bd = dep;
-        best = m;
-      }
-    }
-    return best;
-  }
-
   /** the machine whose base point is nearest (x, y), within r */
   nearest(x: number, y: number, r: number): WMachine | null {
     let best: WMachine | null = null;
