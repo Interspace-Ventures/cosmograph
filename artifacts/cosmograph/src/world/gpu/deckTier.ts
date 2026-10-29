@@ -1076,7 +1076,7 @@ export class DeckTier {
       props.layers = layers;
     }
     this.deck.setProps(props);
-    this.deck.redraw("cgw-frame");
+    // deck draws on its own animation frame (an extra redraw here drew every frame twice)
     return true;
   }
 
