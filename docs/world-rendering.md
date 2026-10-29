@@ -14,10 +14,26 @@ are looking at.** Three levels of detail, each drawn by the cheapest thing that 
  far (overview)              mid (an island)                near (a few tiles)
  ┌─────────────────────┐     ┌─────────────────────┐        ┌─────────────────────┐
  │ deep-zoom pyramid   │     │ pyramid ground      │        │ pyramid ground      │
- │ 7 levels, WebP      │     │ + flipbook sprites  │        │ + live SVG modules  │
- │ 1 draw call         │     │ 1 draw call         │        │ capped, LRU-evicted │
+ │ 7 levels, WebP      │     │ + flipbook sprites  │        │ + rest-pose rasters │
+ │ deck.gl TileLayer   │     │ deck.gl IconLayer   │        │ + 1 live SVG module │
  └─────────────────────┘     └─────────────────────┘        └─────────────────────┘
 ```
+
+## The GPU tier is deck.gl
+
+Since 3.40.1 the canvas under the world is a lazy-loaded deck.gl 9.4 `Deck` with an
+`OrthographicView` (y down) driven by the world view's own camera; deck's controller is off
+because the world view owns gestures. All of it lives in `src/world/gpu/deckTier.ts`. Only
+`/world` with a baked pyramid downloads the chunk (969 KB minified, 271 KB gzipped).
+
+| Zoom | Drawn by | deck.gl layer |
+|---|---|---|
+| far (overview) | baked deep-zoom pyramid | `TileLayer` + `BitmapLayer` (one per copy of the layout on screen); a world of copies seen whole switches to one instanced `IconLayer` per coarse tile, one instance per copy |
+| mid (an island) | pyramid + flipbook sprites | `IconLayer` per flipbook page; mask-mode `IconLayer` "erasers" paint each playing machine's rest silhouette in ground colour first so motion never ghosts over the baked copy |
+| near (a few tiles) | pyramid + one-time rasters of the closest machines' rest drawings | `BitmapLayer` per machine, rasterised only while the camera holds still |
+| live (tapped) | the machine's own SVG module on the DOM layer | none (DOM) |
+| auras | v9 island aura (pool, beam, core, iso ring, pulse), screen-blended | custom `AuraLayer` (~100 lines of GLSL) |
+| picking | GPU picking on a transparent per-machine hit layer | `SolidPolygonLayer`, picking buffer only |
 
 ## Far: a deep-zoom image pyramid
 
@@ -32,13 +48,11 @@ viewers use.
 | Size | 2.88 MB for the whole world, every level |
 | Bake | 205 s, headless Chrome, one pass |
 
-Tiles stream on demand, nearest the centre of the screen first, through a small concurrent
-queue. A tile that has not arrived yet is drawn from its nearest loaded ancestor (a sub-rect
-of a coarser tile), so the ground is never blank, only briefly soft. Decoded tiles live in a
-single `TEXTURE_2D_ARRAY` with an LRU, so GPU memory is fixed however large the world gets.
-
-The pyramid is drawn as one instanced draw call: the camera is three uniforms (centre x, y
-and zoom) and a pan re-uploads only the short list of visible tiles.
+deck.gl's `TileLayer` does the streaming the raw-WebGL tier used to hand-roll: on-demand
+fetch with a request cap (6 desktop, 4 phone) and abort, viewport culling, a tile cache, and
+`best-available` refinement (a missing tile is drawn from a loaded parent or children, so the
+ground is never blank, only briefly soft). Fetch and decode are shared across the copies'
+TileLayers, so each tile is fetched and decoded once.
 
 ## Mid: flipbook sprites
 
@@ -53,10 +67,10 @@ machine's animation is baked into a short flipbook:
 | Size | 2.28 MB total; a view fetches only the pages it shows |
 | Bake | 95 s |
 
-Sprites are one quad per visible machine in a second instanced pass. The frame is chosen in
-the vertex shader from time plus a per-instance phase, so animating 20,000 machines costs the
-CPU nothing. Island auras are a third pass: one quad per island, gradient and pulse computed
-in the shader and screen-blended to match the design's `mix-blend-mode: screen`.
+Sprites are one `IconLayer` per flipbook page; the frame is picked in `getIcon` with an
+update trigger on a quarter-frame clock, so the instance buffer is rebuilt at most a few times
+a second rather than every frame. Layers are reused across frames: a camera move only updates
+deck's view state.
 
 ## Near: live modules, capped
 
@@ -77,10 +91,11 @@ script. Those are expensive, so they are rationed:
 
 ## Picking without the DOM
 
-With the ground and sprites on a canvas there are no DOM nodes to receive clicks. Machines
-are indexed in a uniform spatial grid over their footprints (`MachineGrid`); a tap converts
-the screen point to world coordinates and asks the grid, which is O(1) per tap regardless of
-world size. The same grid answers "what is on screen" for the sprite pass and the loader.
+With the ground and sprites on a canvas there are no DOM nodes to receive clicks. deck.gl's
+GPU picking answers taps from a transparent body box per machine on screen, drawn only into
+the picking buffer, back to front so the frontmost body wins. The `MachineGrid` uniform
+spatial index still answers "what is on screen" for the sprite pass, the hit layer and the
+module loader.
 
 ## Adaptive quality
 
@@ -97,14 +112,35 @@ few seconds of fast frames:
 
 `prefers-reduced-motion` pins motion off at every level, and `#q=0..3` pins a level for review.
 
-## Why raw WebGL2 and not Pixi
+## Library assessment
 
-The whole renderer is three instanced passes and a few KB of shaders and buffers. PixiJS v8
-would add about 200 KB minified (about 60 KB gzipped) and regl about 80 KB (27 KB gzipped) for
-features this view never uses: a scene graph, text, filters. Owning the shaders also lets the
-flipbook frame selection and aura pulse run entirely on the GPU, and keeps the texture-array
-LRU under our control. If the view ever needs text or filters on the canvas, that trade
-should be revisited.
+The first GPU tier was hand-rolled raw WebGL2 (pyramid streaming, a texture-array LRU,
+instanced flipbooks, grid picking). It worked, but every generic piece was ours to maintain,
+so the tier was re-evaluated against off-the-shelf libraries.
+
+| Option | Covers | Missing for this view | Verdict |
+|---|---|---|---|
+| **deck.gl 9.4** (+ luma.gl) | tiled pyramid (`TileLayer`: fetch cap, abort, culling, parent/child fallback, cache), instanced sprites from an atlas (`IconLayer`), GPU picking, non-geographic `OrthographicView`, a custom-layer API for shaders | gestures (we own them anyway); large chunk (969 KB min / 271 KB gz, lazy) | **Picked** |
+| PixiJS v8 + pixi-viewport | fast batched sprites, text, filters, blend modes; viewport gives camera + gestures | no deep-zoom tile pyramid (tile streaming, LRU and fallback would stay hand-rolled); picking is CPU hit-testing over the scene graph; viewport gestures would fight the world view's own | Not picked: would only replace the sprite pass |
+| OpenSeadragon | best-in-class deep-zoom viewer (DZI pyramids, fallback, gestures) | overlays are DOM/canvas, not 20k animated instanced sprites; a second renderer and a second camera to keep in sync | Not picked: ground only |
+| libvips (`vips dzsave`) | build time, not runtime: cuts a DZI/Google-style pyramid from one large raster in seconds | needs one full-resolution render of the world first; our bake screenshots the app per tile | Recommended for the bake of real large worlds (render once, `dzsave` the levels); not adopted in this PR |
+
+**Why deck.gl.** It is the only option that covers the three generic jobs at once (tile
+pyramid, instanced sprites, picking) on one canvas with one camera. Its camera is a plain
+view state we set from the world's own camera, so the SVG tier, the gestures and the module
+runtime are unchanged. The cost is bundle size, paid only by `/world`.
+
+**Still hand-rolled, and why.**
+- *Island auras*: a custom `AuraLayer`. The v9 aura (pool, beam, core, iso ring, pulse,
+  screen blend) is design-specific; no stock layer draws it.
+- *Flipbook erasers*: mask-mode IconLayers that blank the baked rest pose under a playing
+  sprite. Needed because the pyramid bakes machines at rest.
+- *The world-of-copies overview*: one instanced IconLayer per coarse tile, because N
+  TileLayers (one per stress copy) each with their own sub-layers is what deck does poorly.
+- *Live modules, loader queue, byte LRU, running cap*: these run the machines' own scripts on
+  the DOM; no renderer library does that.
+- *Adaptive quality* (`gpu/quality.ts`): policy, not rendering.
+- *The bake* (`scripts/bake-world.py`): renders the app itself so baked pixels match the SVG.
 
 ## The bake pipeline
 
@@ -137,7 +173,22 @@ CPU-rendered floor, not device performance. Desktop is 1440 x 900; phone is 390 
 with touch and the CPU throttled 4x. fps is measured during scripted pans at overview, mid
 (island) and close zoom. Raw runs: `docs/world-stress-results.jsonl`.
 
-STRESS_TABLE
+fps, overview / mid / close. SVG is the v9 DOM renderer; raw WebGL is the hand-rolled WebGL2
+tier (3.40.0); deck.gl is this tier at `847b470`.
+
+| World | Profile | SVG | raw WebGL | deck.gl | Heap (raw WebGL → deck.gl) |
+|---|---|---|---|---|---|
+| 341 | desktop | n/m | 11.5 / 19.3 / 0.7 | 8 / 22.3 / 16.7 | 22 → 32 MB |
+| 5k | desktop | n/m | 13.2 / 37.1 / 0.8 | 11.2 / 26.7 / 25.1 | 21 → 40 MB |
+| 20k | desktop | 0.4 / 0.3 / 0.5 | 5.8 / 15.1 / 0.7 | 8.8 / 19.5 / 23.8 | 58 → 46 MB (SVG 127 MB) |
+| 341 | phone | n/m | 15.3 / 39.7 / 0.6 | 11.6 / 24.5 / 14.7 | 20 → 31 MB |
+| 5k | phone | n/m | 0.6 / 25.7 / 1.0 | 1 / 18.2 / 20 | 19 → 33 MB |
+| 20k | phone | not ready | not ready | not ready | |
+
+n/m: not measured in this series. Close-up went from about 1 fps to 15–25 fps (the SVG close-ups
+re-rasterising every frame were replaced by one-time bitmaps). **Remaining gaps:** overview
+fps (8–11 desktop, about 1 on phone 5k) and phone 20k, which never reaches ready within the
+harness timeout. Later runs, if any, are appended to the jsonl and summarised in PR #20.
 
 ## Running it
 
