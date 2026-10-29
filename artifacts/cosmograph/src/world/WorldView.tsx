@@ -1186,6 +1186,8 @@ export function WorldView({ backHref }: { backHref: string }) {
       },
       domainView: (i: number) => (model.domains[i] ? viewOf(i) : null),
       bounds: () => model.bounds,
+      /** review/profiling: the deck.gl instance (null on the SVG renderer) */
+      deck: () => S.gpu?.deck ?? null,
     };
     (window as unknown as Record<string, unknown>).__cgwWorld = hooks;
 
