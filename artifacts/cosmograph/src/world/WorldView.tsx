@@ -70,7 +70,23 @@ interface Cam {
 // forces a layout per candidate while the camera moves (cleared on resize / font load)
 type LabelEl = HTMLDivElement & { _x?: number; _y?: number; _wh?: Record<string, [number, number]> };
 
-const phone = () => window.innerWidth <= 560;
+// The viewport size, read once per resize. window.innerWidth / innerHeight force a
+// synchronous layout whenever styles are dirty, and the per-frame label pass writes
+// label styles between world-to-screen conversions: reading them there re-laid out the
+// page once per island per frame (about 78% of a 2,000-machine overview's main thread
+// on a throttled phone). Registered at import, so it runs before the view's own
+// resize handlers.
+const vp = { w: window.innerWidth, h: window.innerHeight };
+window.addEventListener(
+  "resize",
+  () => {
+    vp.w = window.innerWidth;
+    vp.h = window.innerHeight;
+  },
+  { passive: true },
+);
+
+const phone = () => vp.w <= 560;
 
 /** A paper tile's footprint (plan +-150 at ground level), for the GPU tier's selection outline. */
 const tileOutline = (cx: number, cy: number) =>
@@ -181,17 +197,17 @@ export function WorldView({ backHref }: { backHref: string }) {
   });
 
   const [BX0, BY0, BX1, BY1] = model.bounds;
-  const zMin = () => Math.min(window.innerWidth / (BX1 - BX0), window.innerHeight / (BY1 - BY0)) * 0.8;
+  const zMin = () => Math.min(vp.w / (BX1 - BX0), vp.h / (BY1 - BY0)) * 0.8;
   const clampZ = (z: number) => Math.max(zMin(), Math.min(1.8, z));
   const toS = ([x, y]: Vec2): Vec2 => {
     const c = st.current.cam;
-    return [(x - c.x) * c.z + window.innerWidth / 2, (y - c.y) * c.z + window.innerHeight / 2];
+    return [(x - c.x) * c.z + vp.w / 2, (y - c.y) * c.z + vp.h / 2];
   };
 
   // ---------- labels + tag placement ----------
   const place = useCallback(() => {
-    const W = window.innerWidth;
-    const H = window.innerHeight;
+    const W = vp.w;
+    const H = vp.h;
     const cam = st.current.cam;
     const D = model.domains;
     const labels = labelRefs.current;
@@ -410,8 +426,8 @@ export function WorldView({ backHref }: { backHref: string }) {
       S.cssTint = tint;
       svg.style.setProperty("--tint", tint.toFixed(3));
     }
-    const W0 = window.innerWidth;
-    const H0 = window.innerHeight;
+    const W0 = vp.w;
+    const H0 = vp.h;
     // GPU tier: re-rasterising the SVG layer (close-up drawings with their filters)
     // was the whole close-zoom frame budget, so while the camera moves the layer is
     // moved by a CSS transform on the compositor and the viewBox is committed only
@@ -461,8 +477,8 @@ export function WorldView({ backHref }: { backHref: string }) {
   const viewOf = useCallback(
     (i: number): Cam => {
       const d = model.domains[i];
-      const W = window.innerWidth;
-      const H = window.innerHeight;
+      const W = vp.w;
+      const H = vp.h;
       if (phone()) {
         const z = clampZ(W / 1720);
         return { z, x: d.c[0], y: d.c[1] + (H * 0.06) / z };
@@ -483,8 +499,8 @@ export function WorldView({ backHref }: { backHref: string }) {
   const liftGeom = useCallback(
     (m: WMachine) => {
       const ph = phone();
-      const W = window.innerWidth;
-      const H = window.innerHeight;
+      const W = vp.w;
+      const H = vp.h;
       const S0 = MACHINE_S0;
       const z0 = clampZ(
         ph ? (W * 0.3) / (S0 * MACHINE_W) : Math.min((W * 0.115) / (S0 * MACHINE_W), (H * 0.17) / (S0 * MACHINE_H)),
@@ -514,7 +530,7 @@ export function WorldView({ backHref }: { backHref: string }) {
       const a = { ...S.cam };
       const t0 = performance.now();
       const zf = Math.log(v.z / a.z);
-      const far = (Math.hypot(v.x - a.x, v.y - a.y) * Math.min(v.z, a.z)) / window.innerWidth;
+      const far = (Math.hypot(v.x - a.x, v.y - a.y) * Math.min(v.z, a.z)) / vp.w;
       ms = reducedMotion() ? 0 : ms * Math.max(0.8, Math.min(1.6, 0.8 + far * 0.25));
       const step = (t: number) => {
         const u = ms ? Math.min(1, (t - t0) / ms) : 1;
@@ -539,8 +555,8 @@ export function WorldView({ backHref }: { backHref: string }) {
   );
 
   const fitAll = useCallback(() => {
-    const W = window.innerWidth;
-    const H = window.innerHeight;
+    const W = vp.w;
+    const H = vp.h;
     const pw = W > 900 ? 290 : 0;
     const cam = st.current.cam;
     cam.z = 0.9 * Math.min((W - pw - 40) / Math.max(1, BX1 - BX0 - 700), (H - 120) / Math.max(1, BY1 - BY0 - 700));
@@ -731,8 +747,8 @@ export function WorldView({ backHref }: { backHref: string }) {
     const svg = svgRef.current;
     if (!svg || S.gpuPending) return;
     const cam = S.cam;
-    const W = window.innerWidth;
-    const H = window.innerHeight;
+    const W = vp.w;
+    const H = vp.h;
     const dpr = window.devicePixelRatio || 1;
     // baking: real drawings wherever a machine is big enough to read, pictures below that
     const bakePx = MACHINE_S0 * MACHINE_W * cam.z;
@@ -1145,7 +1161,7 @@ export function WorldView({ backHref }: { backHref: string }) {
         lodUpdate();
       }
       if (S.gpu) {
-        S.gpu.frame(t, S.cam, window.innerWidth, window.innerHeight, S.camMoved);
+        S.gpu.frame(t, S.cam, vp.w, vp.h, S.camMoved);
         S.camMoved = false;
       }
     };
@@ -1249,8 +1265,8 @@ export function WorldView({ backHref }: { backHref: string }) {
     let moved = 0;
     let start: { x: number; y: number; cx: number; cy: number } | null = null;
     let pinch: { d: number; z: number; m: Vec2; x: number; y: number } | null = null;
-    const W = () => window.innerWidth;
-    const H = () => window.innerHeight;
+    const W = () => vp.w;
+    const H = () => vp.h;
     const onDown = (e: PointerEvent) => {
       if (e.pointerType === "mouse" || e.isPrimary) ptrs.clear();
       try {
