@@ -188,7 +188,30 @@ tier (3.40.0); deck.gl is this tier at `847b470`.
 n/m: not measured in this series. Close-up went from about 1 fps to 15–25 fps (the SVG close-ups
 re-rasterising every frame were replaced by one-time bitmaps). **Remaining gaps:** overview
 fps (8–11 desktop, about 1 on phone 5k) and phone 20k, which never reaches ready within the
-harness timeout. Later runs, if any, are appended to the jsonl and summarised in PR #20.
+harness timeout. Later runs are appended to the jsonl.
+
+### Overview profile (20k desktop, `cf37bf5`)
+
+A CPU profile of the 20k overview pan (desktop, after warm-up) showed the **main thread ~90% busy
+in island-label placement**, not in deck.gl: each of up to 28 labels scored 80 candidate spots
+against every overview mark on screen (thousands in a 59-copy world) and forced two layouts per
+label per frame. `cf37bf5` scores each label only against obstacles inside its own candidate
+area (identical result) and caches label sizes per state. Main-thread JS during the pan fell to
+~30% (36% idle).
+
+That did not move the harness number (20k desktop overview 6.3 fps at `cf37bf5` vs 8.8 at
+`847b470`), because the frame is now bound outside the main thread. Isolation runs after
+warm-up (`__cgwWorld.deck()` + `layerFilter`): base ~10 fps; no auras ~10; nothing drawn by
+deck and the SVG hidden ~14. So on SwiftShader the overview sits close to the sandbox's own
+floor, and the harness's overview figure is mostly warm-up (it is measured first, while JIT and
+adaptive quality are still stepping down: the first pan reads 1.6–4.8 fps, later pans 9–11).
+Phone 5k overview stays ~1 fps (quality still at level 2 when measured). Phone 20k does not
+reach ready in 30–42 s (probe) or 240 s (harness); a follow-up page eval did not return, which
+points to a long synchronous start-up rather than a crash (not confirmed).
+
+Next candidates: measure overview after a warm-up pan in the harness; trim the ~11k DOM nodes a
+59-copy world mounts for labels and the SVG layer (the remaining non-GPU cost); profile phone
+20k start-up with a CPU profile from navigation.
 
 ## Running it
 
