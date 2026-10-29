@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
 """Stress harness for /world: first load, ready time, fps while panning, memory.
 
-  CHROME=/path/to/chrome python3 scripts/stress-world.py [--sizes 341,5000,20000]
+  CHROME=/path/to/chrome python3 scripts/stress-world.py [--sizes 341,1000,2000]
       [--profiles desktop,phone] [--renderers gpu,svg] [--dist dist/public]
 
 Per run: a fresh page and cache; navigate to /world#overview[&stress=N][&svg];
 first-load bytes (encoded, over the wire) until ready + 2 s; DCL and ready time;
-then three scripted 3.5 s pans with +-15% zoom breathing (overview = whole world,
+then three scripted 3.5 s pans (the overview pan follows an unmeasured 2 s warm-up pan,
+since the first pan of a fresh page pays shader compiles and first tile decodes) with +-15% zoom breathing (overview = whole world,
 mid = z .2 desktop / .09 phone, close = z .62 / .3, on the first island with
 machines), each after a 2.5 s settle; fps = rAF frames / time in the page.
+Sizes: 341 is a real world (the default researcher); 1,000 and 2,000 bracket the most
+prolific researchers, so 2,000 is the design ceiling. Older rows in
+docs/world-stress-results.jsonl at 5,000 and 20,000 are kept as history only.
 Phone = 390 x 844, DPR 3, touch, CPU throttled 4x through CDP.
 
 The test Chrome has no GPU: WebGL runs on SwiftShader (CPU), so every number is
@@ -100,6 +104,10 @@ async def run(chrome: Chrome, base: str, n: int, profile: str, renderer: str):
         else:
             await page.eval(f"window.__cgwWorld.setCam({dv['x']},{dv['y']},{z})")
         await asyncio.sleep(2.5)
+        if mode == "overview":  # warm-up: shader compiles and first decodes are not steady state
+            await page.eval(f"({PAN})(2)", 60)
+            await page.eval("window.__cgwWorld.fit()")
+            await asyncio.sleep(1)
         out[f"fps_{mode}"] = await page.eval(f"({PAN})(3.5)", 60)
         st = json.loads(await page.eval("JSON.stringify(window.__cgwWorld.stats())"))
         g = st.get("gpu") or {}
@@ -128,11 +136,13 @@ async def run(chrome: Chrome, base: str, n: int, profile: str, renderer: str):
 async def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dist", default=os.path.join(APP, "dist", "public"))
-    ap.add_argument("--sizes", default="341,5000,20000")
+    ap.add_argument("--sizes", default="341,1000,2000")
     ap.add_argument("--profiles", default="desktop,phone")
     ap.add_argument("--renderers", default="gpu")
     ap.add_argument("--port", type=int, default=4198)
     ap.add_argument("--out", default="stress-results.jsonl")
+    ap.add_argument("--sha", default="")
+    ap.add_argument("--note", default="")
     a = ap.parse_args()
     srv = subprocess.Popen(["node", os.path.join(APP, "scripts", "serve-world.mjs"), a.dist, str(a.port)], stdout=subprocess.DEVNULL)
     time.sleep(0.6)
@@ -147,6 +157,11 @@ async def main():
                         res = {"n": n, "profile": prof, "renderer": r, "error": str(e)[:300]}
                     finally:
                         chrome.close()
+                    res["_combo"] = f"{res.get('renderer', r)}-{prof}-{n}"
+                    if a.sha:
+                        res["_sha"] = a.sha
+                    if a.note:
+                        res["_note"] = a.note
                     print(json.dumps(res), flush=True)
                     with open(a.out, "a") as f:
                         f.write(json.dumps(res) + "\n")
