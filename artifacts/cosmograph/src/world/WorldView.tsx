@@ -66,7 +66,9 @@ interface Cam {
   z: number;
 }
 
-type LabelEl = HTMLDivElement & { _x?: number; _y?: number };
+// _wh caches the label's measured size per (far, nos) state, so placing labels never
+// forces a layout per candidate while the camera moves (cleared on resize / font load)
+type LabelEl = HTMLDivElement & { _x?: number; _y?: number; _wh?: Record<string, [number, number]> };
 
 const phone = () => window.innerWidth <= 560;
 
@@ -241,6 +243,7 @@ export function WorldView({ backHref }: { backHref: string }) {
       });
     // only obstacles on screen can collide with a label
     const obstOn = obst.filter((r) => r[2] > 0 && r[0] < W && r[3] > 0 && r[1] < H);
+    const far = cam.z < 0.3 ? "f" : "n";
     const ov2 = (r: number[], o: number[]) =>
       Math.max(0, Math.min(r[2], o[2]) - Math.max(r[0], o[0])) *
       Math.max(0, Math.min(r[3], o[3]) - Math.max(r[1], o[1]));
@@ -250,10 +253,24 @@ export function WorldView({ backHref }: { backHref: string }) {
       const ey = el._y ?? 0;
       let best: { sc: number; x: number; y: number; r: number[]; nos: boolean } | null = null;
       for (const nos of [false, true]) {
-        el.classList.toggle("nos", nos);
-        const w = el.offsetWidth;
-        const hh = el.offsetHeight;
+        const k = far + (nos ? "s" : "");
+        const wh = (el._wh ??= {});
+        let m = wh[k];
+        if (!m) {
+          el.classList.toggle("nos", nos);
+          m = [el.offsetWidth, el.offsetHeight];
+          if (m[0] > 0) wh[k] = m;
+        }
+        const [w, hh] = m;
         const A = (w + 12) * (hh + 6);
+        // only obstacles inside this label's candidate area can score (the overview of a
+        // big world has thousands of marks on screen; scoring each label against all of
+        // them was the overview's main cost)
+        const ax0 = ex - 1.1 * w - 6;
+        const ax1 = ex + 1.1 * w + 6;
+        const ay0 = ey - 3 * hh - 3;
+        const ay1 = ey + 1.5 * hh + 3;
+        const near = obstOn.filter((o) => o[2] > ax0 && o[0] < ax1 && o[3] > ay0 && o[1] < ay1);
         for (const dx of [0, -0.3, 0.3, -0.6, 0.6])
           for (const dy of [0, -0.5, 0.5, -1, 1, -1.5, -2, 1.5]) {
             const x = ex + dx * w;
@@ -261,7 +278,7 @@ export function WorldView({ backHref }: { backHref: string }) {
             const r = [x - w / 2 - 6, y - hh - 3, x + w / 2 + 6, y + 3];
             let sc = 0;
             for (const o of done) sc += (1000 * ov2(r, o)) / A;
-            for (const o of obstOn) sc += (120 * ov2(r, o)) / A;
+            for (const o of near) sc += (120 * ov2(r, o)) / A;
             sc += Math.abs(dx) * 6 + Math.abs(dy) * 2.2 + (nos ? 4 : 0);
             if (r[0] < 8 || r[2] > W - 8 || r[1] < (phone() ? 100 : 60)) sc += 500;
             if (!best || sc < best.sc) best = { sc, x, y, r, nos };
@@ -1417,7 +1434,10 @@ export function WorldView({ backHref }: { backHref: string }) {
       tipEv = null;
       if (tipRef.current) tipRef.current.style.display = "none";
     };
-    const onResize = () => apply();
+    const onResize = () => {
+      for (const el of labelRefs.current) if (el) el._wh = undefined;
+      apply();
+    };
 
     svg.addEventListener("pointerdown", onDown);
     svg.addEventListener("pointermove", onMove);
