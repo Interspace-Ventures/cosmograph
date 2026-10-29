@@ -274,10 +274,15 @@ function drawingCss(): string {
 async function rasterize(svgText: string, wPx: number): Promise<ImageBitmap> {
   const { x, y, w, h } = THUMB_BOX;
   const hPx = Math.round((wPx * h) / w);
+  // the drawings are written for innerHTML (lenient HTML parsing): round-trip them
+  // through the DOM so the standalone SVG image is well-formed XML
+  const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+  g.innerHTML = svgText;
+  const xml = Array.from(g.childNodes, (n) => new XMLSerializer().serializeToString(n)).join("");
   const doc =
     `<svg xmlns="http://www.w3.org/2000/svg" width="${wPx}" height="${hPx}" viewBox="${x} ${y} ${w} ${h}">` +
     `<style>${drawingCss().replace(/<\//g, "<\\/")}</style>` +
-    `<g class="cgw"><g class="mach rm iso built on" data-theme="dark"><g class="mpos"><g class="mcontent">${svgText}</g></g></g></g></svg>`;
+    `<g class="cgw"><g class="mach rm iso built on" data-theme="dark"><g class="mpos"><g class="mcontent">${xml}</g></g></g></g></svg>`;
   const url = URL.createObjectURL(new Blob([doc], { type: "image/svg+xml" }));
   try {
     const img = new Image(wPx, hPx);
@@ -639,8 +644,9 @@ export class DeckTier {
             this.dirty = true;
             this.o.requestFrame();
           })
-          .catch(() => {
+          .catch((e) => {
             entry.state = "failed";
+            console.warn("[world] close-up raster failed", m.slug, e);
           })
           .finally(() => {
             this.snapBusy--;
