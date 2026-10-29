@@ -434,10 +434,11 @@ export function WorldView({ backHref }: { backHref: string }) {
       `${(cam.x - w / 2).toFixed(1)} ${(cam.y - h / 2).toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)}`,
     );
     place();
-    if (!S.gpu) bowlsLater();
+    // (GPU tier, even while its chunk loads: the bowls are pyramid pixels)
+    if (!gpu && !S.gpu) bowlsLater();
     S.camMoved = true;
     st.current.dirty = true; // level of detail + loading run on the next (throttled) frame
-  }, [BX0, BX1, BY0, BY1, place, bowlsLater, bake]);
+  }, [BX0, BX1, BY0, BY1, place, bowlsLater, bake, gpu]);
 
   // ---------- camera views ----------
   const viewOf = useCallback(
@@ -1160,7 +1161,7 @@ export function WorldView({ backHref }: { backHref: string }) {
           memEstimateMB: Math.round(((ls.cachedBytes + drawBytes + S.nodes.size * 3000) / 1048576) * 10) / 10,
           heapMB: mem ? Math.round((mem.usedJSHeapSize / 1048576) * 10) / 10 : null,
           loader: ls,
-          renderer: S.gpu ? "webgl2" : "svg",
+          renderer: S.gpu ? "webgl2" : S.gpuPending ? "webgl2-loading" : "svg",
           gpu: S.gpu?.stats() ?? null,
         };
       },

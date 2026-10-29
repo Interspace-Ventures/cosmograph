@@ -460,6 +460,7 @@ export class DeckTier {
         type: "webgl",
         webgl: {
           alpha: false,
+          preserveDrawingBuffer: false,
           antialias: false,
           depth: false,
           stencil: false,
