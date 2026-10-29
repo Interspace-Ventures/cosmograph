@@ -91,10 +91,19 @@ interface Aura {
   ed: [number, number, number];
 }
 
+// luma.gl parses uniform blocks one field per line
+const AURA_BLOCK = `layout(std140) uniform auraUniforms {
+  float time;
+  float fade;
+  float pulse;
+  float zoom;
+} aura;
+`;
+
 const auraUniforms = {
   name: "aura",
-  vs: `layout(std140) uniform auraUniforms { float time; float fade; float pulse; float zoom; } aura;\n`,
-  fs: `layout(std140) uniform auraUniforms { float time; float fade; float pulse; float zoom; } aura;\n`,
+  vs: AURA_BLOCK,
+  fs: AURA_BLOCK,
   uniformTypes: { time: "f32", fade: "f32", pulse: "f32", zoom: "f32" },
 } as const;
 
