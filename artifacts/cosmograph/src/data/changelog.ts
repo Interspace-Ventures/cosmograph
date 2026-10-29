@@ -17,6 +17,17 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.40.2",
+    codename: "Deep Field Census",
+    date: "2026-10-29",
+    summary:
+      "The internal world view is tuned for real worlds, from a few hundred machines up to about two thousand, and the overview of a big world is many times smoother on phones.",
+    changes: [
+      "Island names no longer force the page to re-measure itself for every island on every frame, which was most of the work when a large world was seen whole.",
+      "The world's renderer was re-checked against lighter options at the size of real worlds; deck.gl stays.",
+    ],
+  },
+  {
     version: "3.40.1",
     codename: "Deep Field Survey",
     date: "2026-10-29",
