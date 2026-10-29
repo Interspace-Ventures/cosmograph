@@ -290,11 +290,11 @@ async function rasterize(svgText: string, wPx: number): Promise<ImageBitmap> {
     const img = new Image(wPx, hPx);
     img.src = url;
     await img.decode();
-    const c = document.createElement("canvas");
-    c.width = wPx;
-    c.height = hPx;
-    c.getContext("2d")!.drawImage(img, 0, 0, wPx, hPx);
-    return await createImageBitmap(c);
+    // decoded straight to a bitmap (no accelerated 2D canvas round trip)
+    return await createImageBitmap(img, {
+      resizeWidth: wPx,
+      resizeHeight: hPx,
+    });
   } finally {
     URL.revokeObjectURL(url);
   }
@@ -625,11 +625,35 @@ export class DeckTier {
     // close-up snapshots: rasterise what is missing (two at a time), keep an LRU
     this.frameNo++;
     this.snapOn = [];
-    const wPx = this.o.phone ? 640 : 900;
+    // raster at the size the machine is drawn on screen (no mipmaps needed), and
+    // only while the camera holds still: rasterising is the expensive part
+    const need = Math.min(
+      this.o.phone ? 768 : 1024,
+      Math.ceil((THUMB_BOX.w * MACHINE_S0 * cam.z * dpr * 1.15) / 64) * 64,
+    );
+    const still =
+      this.lastCam !== null &&
+      this.lastCam.x === cam.x &&
+      this.lastCam.y === cam.y &&
+      this.lastCam.z === cam.z;
+    this.lastCam = { ...cam };
     for (const m of snaps) {
       if (live.has(m.key)) continue;
       let s = this.snaps.get(m.key);
-      if (!s && this.snapBusy < 2 && performance.now() - this.lastMove > 220) {
+      // a raster much softer than the screen now needs is redone
+      if (
+        s &&
+        s.state === "ready" &&
+        s.bmp &&
+        still &&
+        this.snapBusy < 2 &&
+        s.bmp.width * 1.4 < need
+      ) {
+        s.bmp.close();
+        this.snaps.delete(m.key);
+        s = undefined;
+      }
+      if (!s && this.snapBusy < 2 && still) {
         const entry: Snap = {
           state: "loading",
           bmp: null,
@@ -640,7 +664,7 @@ export class DeckTier {
         this.snaps.set(m.key, entry);
         this.snapBusy++;
         loadDrawing(m.slug, 4)
-          .then((svg) => rasterize(svg, wPx))
+          .then((svg) => rasterize(svg, need))
           .then((bmp) => {
             entry.bmp = bmp;
             entry.state = "ready";
@@ -989,6 +1013,7 @@ export class DeckTier {
   private auraKey = -1;
   /** last camera move (rAF time): close-up rasters wait for the camera to settle */
   private lastMove = 0;
+  private lastCam: GLCam | null = null;
 
   /** Every animation frame. Returns false when nothing needed drawing. */
   frame(
