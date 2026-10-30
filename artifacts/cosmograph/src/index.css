@@ -1,4 +1,10 @@
-@import url("https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Outfit:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap");
+/* Fonts are self-hosted via Fontsource (bundled by Vite, served from our own
+   origin). No request goes to Google Fonts: EXO rule, no third-party assets. */
+@import "@fontsource-variable/archivo";
+@import "@fontsource-variable/bricolage-grotesque/opsz.css";
+@import "@fontsource-variable/outfit";
+@import "@fontsource/space-mono/400.css";
+@import "@fontsource/space-mono/700.css";
 
 @layer theme, base, components, utilities;
 @import "tailwindcss";
@@ -32,9 +38,9 @@
   --color-hard-shadow: var(--hard-shadow);
   --color-neg: var(--neg);
 
-  --font-sans: "Outfit", sans-serif;
-  --font-display: "Archivo", sans-serif;
-  --font-title: "Bricolage Grotesque", sans-serif;
+  --font-sans: "Outfit Variable", "Outfit", sans-serif;
+  --font-display: "Archivo Variable", "Archivo", sans-serif;
+  --font-title: "Bricolage Grotesque Variable", "Bricolage Grotesque", sans-serif;
   --font-mono: "Space Mono", monospace;
 
   --radius: var(--radius);
