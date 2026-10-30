@@ -17,6 +17,16 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.38.2",
+    codename: "Home Fonts",
+    date: "2026-10-30",
+    summary: "Every typeface now ships from Cosmograph itself, with no calls to Google Fonts.",
+    changes: [
+      "Self-hosted Outfit, Archivo, Bricolage Grotesque and Space Mono through Fontsource, so visitors' browsers no longer contact a third-party font service.",
+      "Dropped an unused Inter font request from the page shell.",
+    ],
+  },
+  {
     version: "3.38.1",
     codename: "Hull Patch",
     date: "2026-10-22",

@@ -32,7 +32,7 @@ export const clerkAppearance = {
     colorInput: "#272933",
     colorInputForeground: "#e6e6e6",
     colorNeutral: "#3c3f4b",
-    fontFamily: "'Outfit', sans-serif",
+    fontFamily: "'Outfit Variable', 'Outfit', sans-serif",
     borderRadius: "0px",
   },
   elements: {
