@@ -1,7 +1,10 @@
 import { useEffect } from "react";
-import { SignIn, SignUp, useAuth } from "@clerk/react";
+import { SignIn, SignUp } from "@clerk/react";
 import { useAppState } from "@/lib/store";
+import { useAppSession } from "@/lib/session";
+import { convexAccountEnabled } from "@/config/features";
 import { AuthHandoff } from "./AuthHandoff";
+import { ExoSignInPanel } from "./ExoAuth";
 import { Drawer } from "./Drawer";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -25,7 +28,7 @@ const drawerAppearance = {
  */
 export function AuthDrawer() {
   const { authOpen, authMode, setAuthOpen } = useAppState();
-  const { isSignedIn } = useAuth();
+  const { isSignedIn } = useAppSession();
 
   // Once the visitor is signed in, drop the panel automatically.
   useEffect(() => {
@@ -42,6 +45,9 @@ export function AuthDrawer() {
         {authMode === "sign-in" ? "Welcome back, cosmonaut" : "Become a cosmonaut"}
       </h2>
       <div className="flex justify-center">
+        {convexAccountEnabled ? (
+          <ExoSignInPanel mode={authMode} bare />
+        ) : (
         <AuthHandoff mode={authMode} bare>
           {authMode === "sign-in" ? (
             <SignIn
@@ -59,6 +65,7 @@ export function AuthDrawer() {
             />
           )}
         </AuthHandoff>
+        )}
       </div>
     </Drawer>
   );

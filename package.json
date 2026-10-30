@@ -14,7 +14,8 @@
     "railway:start": "pnpm --filter @workspace/api-server run start",
     "typecheck:libs": "tsc --build",
     "typecheck:convex": "tsc -p convex/tsconfig.json",
-    "typecheck": "pnpm run typecheck:libs && pnpm run typecheck:convex && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
+    "typecheck": "pnpm run typecheck:libs && pnpm run typecheck:convex && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
+    "test:convex": "pnpm --filter @workspace/release-flags exec tsx --test ../../tests/convex/phase2.test.ts ../../artifacts/cosmograph/src/lib/exoId.test.ts"
   },
   "private": true,
   "devDependencies": {

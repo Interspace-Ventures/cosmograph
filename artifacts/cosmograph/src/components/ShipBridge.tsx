@@ -1,13 +1,14 @@
 import { useEffect, useRef } from "react";
-import { useAuth } from "@clerk/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  useGetShip,
   useConfirmSkin,
   getGetShipQueryKey,
 } from "@workspace/api-client-react";
 import { useAppState } from "@/lib/store";
+import { useAppSession } from "@/lib/session";
+import { useShipData } from "@/lib/accountApi";
+import { convexAccountEnabled } from "@/config/features";
 
 // Bridges the signed-in account's saved cosmonaut ship into the galaxy store.
 // Renders nothing. When the account has a saved seed/type it overrides the local
@@ -15,7 +16,7 @@ import { useAppState } from "@/lib/store";
 // then broadcast to other cosmonauts by PresenceBroadcaster). Web auth is
 // cookie-based — no Bearer token is attached.
 export function ShipBridge() {
-  const { isLoaded, isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn } = useAppSession();
   const {
     setShipSeed,
     setSavedShipSeed,
@@ -31,12 +32,7 @@ export function ShipBridge() {
   // clobbering a seed/type the user is mid-edit on (and hasn't saved yet).
   const hydratedRef = useRef(false);
 
-  const { data } = useGetShip({
-    query: {
-      queryKey: getGetShipQueryKey(),
-      enabled: isLoaded && !!isSignedIn,
-    },
-  });
+  const data = useShipData(isLoaded && isSignedIn);
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -82,6 +78,8 @@ export function ShipBridge() {
   // and the ship query refetched so ownedTypes/freeSlots refresh.
   useEffect(() => {
     if (!isLoaded) return;
+    // The $1 hull checkout moves to Convex + Stripe webhook in Phase 3.
+    if (convexAccountEnabled) return;
     const params = new URLSearchParams(window.location.search);
     const stripParams = () => {
       params.delete("skin_unlocked");

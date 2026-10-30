@@ -1,30 +1,26 @@
 import { useEffect } from "react";
-import { useAuth } from "@clerk/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  useGetEntitlement,
   useConfirmCheckout,
   getGetEntitlementQueryKey,
 } from "@workspace/api-client-react";
 import { useAppState } from "@/lib/store";
+import { useAppSession } from "@/lib/session";
+import { useEntitlementData } from "@/lib/accountApi";
+import { convexAccountEnabled } from "@/config/features";
 
 // Bridges Clerk auth + the server entitlement into the galaxy store, and
 // finishes the Stripe redirect handshake. Renders nothing. Web auth is
 // cookie-based — no Bearer token is ever attached (the browser sends Clerk's
 // session cookie on same-origin /api calls).
 export function EntitlementBridge() {
-  const { isLoaded, isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn } = useAppSession();
   const { setEntitlement } = useAppState();
   const queryClient = useQueryClient();
   const confirm = useConfirmCheckout();
 
-  const { data } = useGetEntitlement({
-    query: {
-      queryKey: getGetEntitlementQueryKey(),
-      enabled: isLoaded && !!isSignedIn,
-    },
-  });
+  const data = useEntitlementData(isLoaded && isSignedIn);
 
   // Push the server answer into the store. Signed-out always means no member,
   // no unlocks.
@@ -41,6 +37,10 @@ export function EntitlementBridge() {
   // user is signed in so the confirm call carries their session cookie.
   useEffect(() => {
     if (!isLoaded) return;
+    // Membership checkout moves to Convex + a Stripe webhook in Phase 3; a
+    // Convex build never starts an Express checkout, so there's nothing to
+    // confirm here (payment state never comes from the browser).
+    if (convexAccountEnabled) return;
     const params = new URLSearchParams(window.location.search);
     const stripParams = () => {
       params.delete("unlocked");

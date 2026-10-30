@@ -1,9 +1,10 @@
-import { Show } from "@clerk/react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { Lock, Loader2, Rocket, ShieldCheck } from "lucide-react";
 import { useCreateCheckout } from "@workspace/api-client-react";
 import { useAppState } from "@/lib/store";
+import { SessionShow } from "@/lib/session";
+import { convexAccountEnabled } from "@/config/features";
 import { useUnlockFlow } from "@/lib/useUnlockFlow";
 
 const ACCENT = { background: "var(--accent)" } as const;
@@ -43,6 +44,12 @@ export function MembershipActions({ onDone }: { onDone?: () => void }) {
   };
 
   const startCheckout = () => {
+    if (convexAccountEnabled) {
+      // Membership checkout moves to a Convex action + Stripe webhook in
+      // Phase 3. Until then a Convex build offers no way to pay: fail closed.
+      toast("Memberships aren't available on this preview yet.");
+      return;
+    }
     // Carry the explored researcher through the Stripe round-trip so the success
     // redirect returns to this galaxy (encoded as ?author= in success_url).
     checkout.mutate(
@@ -79,14 +86,14 @@ export function MembershipActions({ onDone }: { onDone?: () => void }) {
 
   return (
     <>
-      <Show when="signed-out">
+      <SessionShow when="signed-out">
         <button onClick={goSignUp} style={ACCENT} className={BTN}>
           <Rocket size={14} />
           <span>Subscribe</span>
         </button>
-      </Show>
+      </SessionShow>
 
-      <Show when="signed-in">
+      <SessionShow when="signed-in">
         {entitled ? (
           <button
             onClick={startUnlock}
@@ -126,7 +133,7 @@ export function MembershipActions({ onDone }: { onDone?: () => void }) {
             </span>
           </button>
         )}
-      </Show>
+      </SessionShow>
     </>
   );
 }
@@ -137,7 +144,7 @@ export function MembershipActions({ onDone }: { onDone?: () => void }) {
 // devices, and billing stays self-serve) rather than a silent redirect.
 export function WhyAccountNote() {
   return (
-    <Show when="signed-out">
+    <SessionShow when="signed-out">
       <p className="mt-3 flex items-start gap-2 text-[12px] leading-relaxed text-ink-dim">
         <ShieldCheck size={13} className="mt-0.5 shrink-0 text-accent" />
         <span>
@@ -146,6 +153,6 @@ export function WhyAccountNote() {
           billing you can manage or cancel anytime.
         </span>
       </p>
-    </Show>
+    </SessionShow>
   );
 }

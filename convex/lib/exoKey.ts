@@ -97,7 +97,7 @@ export async function requireIdentity(ctx: {
   if (!identity || !identity.subject) {
     throw new ConvexError({
       code: "UNAUTHENTICATED",
-      message: "Sign in with Exo is required.",
+      message: "Sign in with Exo Imprint is required.",
     });
   }
   return identity;

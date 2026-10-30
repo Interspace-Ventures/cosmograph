@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Show, UserButton } from "@clerk/react";
 import {
   ShieldCheck,
   Sparkles,
@@ -10,12 +9,8 @@ import {
   Crown,
 } from "lucide-react";
 import { toast } from "sonner";
-import {
-  useSaveShip,
-  useClaimSkin,
-  getGetShipQueryKey,
-} from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useClaimShipAction, useSaveShipAction } from "@/lib/accountApi";
+import { AccountButton, SessionShow } from "@/lib/session";
 import { useAppState } from "@/lib/store";
 import { shipLookFromSeed } from "@/lib/shipLook";
 import { SHIP_TYPES } from "@/lib/shipTypes";
@@ -23,17 +18,17 @@ import { featureEnabled } from "@/config/features";
 
 // Lightweight auth state in the console: when signed-out it renders nothing
 // (Personalize is the single upgrade entry point), and when signed-in it shows
-// Clerk's UserButton (avatar + sign-out menu) plus whether the account has the
+// the account button (Clerk's UserButton, or the Exo account menu) (avatar + sign-out menu) plus whether the account has the
 // global unlock. Renders nothing about the default scientist — that experience
 // is free and account-agnostic.
 export function AccountIndicator() {
   const { entitled } = useAppState();
 
   return (
-    <Show when="signed-in">
+    <SessionShow when="signed-in">
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2 border-2 border-edge bg-white/5 px-2 py-1.5">
-          <UserButton />
+          <AccountButton />
           <span
             className={`flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest ${
               entitled ? "text-accent" : "text-ink-dim"
@@ -45,7 +40,7 @@ export function AccountIndicator() {
         </div>
         <ShipCustomizer />
       </div>
-    </Show>
+    </SessionShow>
   );
 }
 
@@ -71,31 +66,24 @@ function ShipCustomizer() {
     setFreeShipSlotsRemaining,
     activeAuthorId,
   } = useAppState();
-  const queryClient = useQueryClient();
-  const save = useSaveShip();
-  const claim = useClaimSkin();
+  const save = useSaveShipAction();
+  const claim = useClaimShipAction();
   const [claimingId, setClaimingId] = useState<string | null>(null);
 
   const look = shipLookFromSeed(shipSeed);
   const dirty = shipSeed !== savedShipSeed || shipTypeId !== savedShipType;
 
   const onSave = () => {
-    save.mutate(
-      { data: { seed: shipSeed, type: shipTypeId } },
-      {
-        onSuccess: (res) => {
-          setSavedShipSeed(res.shipSeed ?? null);
-          setSavedShipType(res.shipType ?? null);
-          setOwnedShipTypes(res.ownedTypes ?? ["scout"]);
-          setFreeShipSlotsRemaining(res.freeSlotsRemaining ?? 0);
-          void queryClient.invalidateQueries({
-            queryKey: getGetShipQueryKey(),
-          });
-          toast.success("Ship saved — other cosmonauts see it now.");
-        },
-        onError: () => {
-          toast.error("Couldn't save your ship. Please try again.");
-        },
+    save.run(shipSeed, shipTypeId).then(
+      (res) => {
+        setSavedShipSeed(res.shipSeed ?? null);
+        setSavedShipType(res.shipType ?? null);
+        setOwnedShipTypes(res.ownedTypes ?? ["scout"]);
+        setFreeShipSlotsRemaining(res.freeSlotsRemaining ?? 0);
+        toast.success("Ship saved — other cosmonauts see it now.");
+      },
+      () => {
+        toast.error("Couldn't save your ship. Please try again.");
       },
     );
   };
@@ -104,30 +92,30 @@ function ShipCustomizer() {
   // grant equips it immediately; a paid one redirects to Stripe Checkout.
   const onClaim = (typeId: string) => {
     setClaimingId(typeId);
-    claim.mutate(
-      { data: { type: typeId, author: activeAuthorId } },
-      {
-        onSuccess: (res) => {
-          if (res.url) {
-            window.location.href = res.url; // off to Stripe Checkout
-            return;
-          }
-          // Free claim (member slot) or already owned: equip + refresh state.
-          setOwnedShipTypes([...new Set([...ownedShipTypes, typeId])]);
-          if (res.granted) {
-            setFreeShipSlotsRemaining(Math.max(0, freeShipSlotsRemaining - 1));
-            toast.success("Ship type claimed — included with your membership.");
-          }
-          setShipTypeId(typeId);
-          void queryClient.invalidateQueries({
-            queryKey: getGetShipQueryKey(),
-          });
+    claim.run(typeId, activeAuthorId).then(
+      (res) => {
+        if (res.url) {
+          window.location.href = res.url; // off to Stripe Checkout
+          return;
+        }
+        if (res.checkoutRequired) {
+          // Convex build: the $1 checkout arrives with billing (Phase 3).
+          toast("Buying ship types isn't available yet.");
           setClaimingId(null);
-        },
-        onError: () => {
-          toast.error("Ship store is unavailable right now. Please try again.");
-          setClaimingId(null);
-        },
+          return;
+        }
+        // Free claim (member slot) or already owned: equip + refresh state.
+        setOwnedShipTypes([...new Set([...ownedShipTypes, typeId])]);
+        if (res.granted) {
+          setFreeShipSlotsRemaining(Math.max(0, freeShipSlotsRemaining - 1));
+          toast.success("Ship type claimed — included with your membership.");
+        }
+        setShipTypeId(typeId);
+        setClaimingId(null);
+      },
+      () => {
+        toast.error("Ship store is unavailable right now. Please try again.");
+        setClaimingId(null);
       },
     );
   };
@@ -228,10 +216,10 @@ function ShipCustomizer() {
 // Compact variant for the collapsed rail: just the avatar when signed-in.
 export function AccountIndicatorRail() {
   return (
-    <Show when="signed-in">
+    <SessionShow when="signed-in">
       <div className="flex h-9 w-9 items-center justify-center">
-        <UserButton />
+        <AccountButton />
       </div>
-    </Show>
+    </SessionShow>
   );
 }
