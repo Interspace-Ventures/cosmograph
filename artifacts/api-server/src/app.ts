@@ -7,6 +7,13 @@ import router from "./routes";
 import { logger } from "./lib/logger";
 import { stagingAccess } from "./middlewares/stagingAccess";
 import { appBasePathMiddleware } from "./lib/appPath";
+import {
+  CSP_REPORT_PATH,
+  cspHeaders,
+  cspNonce,
+  cspReportRoute,
+  spaShell,
+} from "./security/csp";
 
 const app: Express = express();
 
@@ -38,6 +45,13 @@ app.use(
     },
   }),
 );
+
+// Strict nonce-based CSP on every response (report-only until CSP_MODE=enforce).
+app.use(cspNonce, cspHeaders());
+
+// CSP violation reports. Public (browsers send no credentials) and before the
+// staging boundary so staging reviewers' violations are still recorded.
+app.post(CSP_REPORT_PATH, ...cspReportRoute());
 
 // Accounts, billing, ships, referrals and the verified Stripe webhook live on
 // Convex (convex/http.ts). This server keeps only Ask, feedback, GitHub stars,
@@ -76,19 +90,8 @@ const clientDist = process.env["CLIENT_DIST"] ?? path.resolve(
   "public",
 );
 
-app.use(express.static(clientDist));
-app.use((req, res, next) => {
-  if (
-    (req.method !== "GET" && req.method !== "HEAD") ||
-    req.path.startsWith("/api")
-  ) {
-    next();
-    return;
-  }
-
-  res.sendFile("index.html", { root: clientDist }, (err) => {
-    if (err) next(err);
-  });
-});
+// index: false so "/" falls through to spaShell, which stamps the nonce.
+app.use(express.static(clientDist, { index: false }));
+app.use(spaShell(clientDist));
 
 export default app;
