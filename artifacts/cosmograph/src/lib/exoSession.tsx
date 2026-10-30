@@ -30,7 +30,7 @@ import {
 import { api } from "@/lib/convexApi";
 
 /**
- * Exo Key sign-in for the SPA (migration Phase 2, behind `convex-account`).
+ * Exo Key sign-in for the SPA (the only sign-in; shown as "Exo Imprint").
  * Holds the Exo ID session, starts the PKCE redirect, finishes it on
  * /auth/callback, hands the access token to Convex through
  * ConvexProviderWithAuth, and calls `users.ensure` once Convex accepts it.
@@ -228,7 +228,7 @@ export function ExoConvexProvider({ children }: { children: ReactNode }) {
     const url = import.meta.env.VITE_CONVEX_URL;
     if (!url) {
       throw new Error(
-        "Missing VITE_CONVEX_URL: the convex-account flag needs a Convex deployment.",
+        "Missing VITE_CONVEX_URL: sign-in and accounts need a Convex deployment.",
       );
     }
     return new ConvexReactClient(url);

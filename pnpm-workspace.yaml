@@ -67,7 +67,6 @@ onlyBuiltDependencies:
 # Railway builds are non-interactive. Make the package build policy explicit so
 # pnpm does not stop to ask for approval during a production install.
 allowBuilds:
-  '@clerk/shared': false
   esbuild: true
 
 overrides:
@@ -163,8 +162,6 @@ overrides:
   "qs": "^6.16.0"
   # Runtime advisories (Oct 2026 audit): proxy-addr IPv4-mapped IPv6 trust bypass
   # (critical; Express trust-proxy) and ip-address parsing (express-rate-limit).
-  # braces (http-proxy-middleware) has no patched release yet; it leaves with the
-  # Clerk proxy in the Exo Key migration.
   "proxy-addr": "^2.0.8"
   "ip-address": "^10.7.4"
   # Oct 22 2026 resilience sprint: clear every remaining high/critical advisory

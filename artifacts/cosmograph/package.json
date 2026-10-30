@@ -1,6 +1,6 @@
 {
   "name": "@workspace/cosmograph",
-  "version": "3.38.1",
+  "version": "3.41.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -11,8 +11,6 @@
     "fetch:galaxy": "node scripts/fetch-galaxy.mjs"
   },
   "devDependencies": {
-    "@clerk/react": "^6.10.4",
-    "@clerk/themes": "^2.4.57",
     "@radix-ui/react-slot": "^1.2.0",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",

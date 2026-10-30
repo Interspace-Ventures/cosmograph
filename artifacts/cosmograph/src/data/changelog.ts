@@ -17,6 +17,17 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.41.0",
+    codename: "Own Keys",
+    date: "2026-10-30",
+    summary: "Sign-in is Exo Imprint only. Clerk and its hosted scripts are gone.",
+    changes: [
+      "Removed Clerk from the web app and the server, so no third-party sign-in script ever loads in your browser.",
+      "Your account, unlocks, ships, referrals and membership now live only on Convex, with sign-in through Exo Imprint.",
+      "Staging only answers requests that come through the Exo gateway with its signed token.",
+    ],
+  },
+  {
     version: "3.38.1",
     codename: "Hull Patch",
     date: "2026-10-22",

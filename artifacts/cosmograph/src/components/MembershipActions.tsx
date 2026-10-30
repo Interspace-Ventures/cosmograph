@@ -1,10 +1,8 @@
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { Lock, Loader2, Rocket, ShieldCheck } from "lucide-react";
-import { useCreateCheckout } from "@workspace/api-client-react";
 import { useAppState } from "@/lib/store";
 import { SessionShow } from "@/lib/session";
-import { convexAccountEnabled } from "@/config/features";
 import { useUnlockFlow } from "@/lib/useUnlockFlow";
 import {
   checkoutErrorMessage,
@@ -20,29 +18,21 @@ const BTN =
 // It renders one of three states:
 //   • signed-out          → "Subscribe" (routes to sign-up — new visitors need an
 //                            account first; the sign-up page links to sign-in)
-//   • signed-in non-member → "Subscribe · $7/year" (Stripe checkout). On a
-//                            Convex build (Phase 3): "Join · $9.99/year" or
-//                            "Lifetime · $29.99" through Convex checkout.
-//   • signed-in member     → "Unlock <name>" — free within the included slots, or
-//                            "+$1/year" for each researcher beyond them (Express
-//                            only; Convex includes researchers with membership).
+//   • signed-in non-member → "Join · $9.99/year" or "Lifetime · $29.99"
+//                            through Convex checkout.
+//   • signed-in member     → "Unlock <name>" (researchers are included with
+//                            membership).
 export function MembershipActions({ onDone }: { onDone?: () => void }) {
   const {
     entitled,
-    unlockedAuthors,
-    includedSlots,
     activeAuthorId,
     activeAuthorLabel,
-    setEntitlement,
   } = useAppState();
   const [, setLocation] = useLocation();
-  const checkout = useCreateCheckout();
   const billing = useBillingActions();
   const { unlock, unlocking } = useUnlockFlow();
 
-  const isPaidSlot =
-    !convexAccountEnabled && unlockedAuthors.length >= includedSlots;
-  const checkingOut = convexAccountEnabled ? billing.pending : checkout.isPending;
+  const checkingOut = billing.pending;
   const busy = checkingOut || unlocking;
 
   const goSignUp = () => {
@@ -54,8 +44,7 @@ export function MembershipActions({ onDone }: { onDone?: () => void }) {
     if (activeAuthorId) unlock(activeAuthorId, activeAuthorLabel, onDone);
   };
 
-  // Convex build (Phase 3): membership checkout through the Convex HTTP
-  // action. The researcher rides along and is unlocked by the verified
+  // Membership checkout through the Convex HTTP action. The researcher rides along and is unlocked by the verified
   // webhook once payment lands; the return URL itself grants nothing.
   const startConvexCheckout = (plan: MemberPlan) => {
     billing.startCheckout({ plan, author: activeAuthorId }).then(
@@ -70,45 +59,6 @@ export function MembershipActions({ onDone }: { onDone?: () => void }) {
       },
       (err: unknown) => {
         toast.error(checkoutErrorMessage(err));
-      },
-    );
-  };
-
-  const startCheckout = () => {
-    if (convexAccountEnabled) {
-      startConvexCheckout("annual");
-      return;
-    }
-    // Carry the explored researcher through the Stripe round-trip so the success
-    // redirect returns to this galaxy (encoded as ?author= in success_url).
-    checkout.mutate(
-      { data: { author: activeAuthorId } },
-      {
-        onSuccess: (res) => {
-          if (res.alreadyEntitled) {
-            // Already a member — this researcher just needs unlocking, not a new
-            // subscription. Fall through to the unlock flow.
-            if (activeAuthorId)
-              unlock(activeAuthorId, activeAuthorLabel, onDone);
-            else {
-              setEntitlement({
-                entitled: true,
-                unlocked: unlockedAuthors,
-                includedSlots,
-              });
-              onDone?.();
-            }
-            return;
-          }
-          if (res.url) {
-            window.location.href = res.url;
-          } else {
-            toast.error("Could not start checkout. Please try again.");
-          }
-        },
-        onError: () => {
-          toast.error("Could not start checkout. Please try again.");
-        },
       },
     );
   };
@@ -136,17 +86,13 @@ export function MembershipActions({ onDone }: { onDone?: () => void }) {
               <Lock size={14} />
             )}
             <span>
-              {unlocking
-                ? "Unlocking…"
-                : isPaidSlot
-                  ? "Unlock · +$1/year"
-                  : `Unlock ${activeAuthorLabel}`}
+              {unlocking ? "Unlocking…" : `Unlock ${activeAuthorLabel}`}
             </span>
           </button>
         ) : (
           <>
             <button
-              onClick={startCheckout}
+              onClick={() => startConvexCheckout("annual")}
               disabled={busy}
               style={ACCENT}
               className={BTN}
@@ -157,22 +103,16 @@ export function MembershipActions({ onDone }: { onDone?: () => void }) {
                 <Lock size={14} />
               )}
               <span>
-                {checkingOut
-                  ? "Starting checkout…"
-                  : convexAccountEnabled
-                    ? "Join · $9.99/year"
-                    : "Subscribe · $7/year"}
+                {checkingOut ? "Starting checkout…" : "Join · $9.99/year"}
               </span>
             </button>
-            {convexAccountEnabled && (
-              <button
-                onClick={() => startConvexCheckout("lifetime")}
-                disabled={busy}
-                className="mt-2 w-full py-1.5 font-mono text-[11px] uppercase tracking-widest text-ink-dim underline-offset-4 hover:underline disabled:opacity-60"
-              >
-                Or lifetime · $29.99 once
-              </button>
-            )}
+            <button
+              onClick={() => startConvexCheckout("lifetime")}
+              disabled={busy}
+              className="mt-2 w-full py-1.5 font-mono text-[11px] uppercase tracking-widest text-ink-dim underline-offset-4 hover:underline disabled:opacity-60"
+            >
+              Or lifetime · $29.99 once
+            </button>
           </>
         )}
       </SessionShow>
