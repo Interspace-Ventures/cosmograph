@@ -17,6 +17,16 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.38.3",
+    codename: "Shield Wall",
+    date: "2026-10-30",
+    summary: "A strict Content Security Policy now guards every page.",
+    changes: [
+      "Only scripts Cosmograph itself serves, stamped with a fresh one-time code on every page load, are allowed to run.",
+      "The policy starts in report-only mode, logging anything it would block, before it is switched to enforce.",
+    ],
+  },
+  {
     version: "3.38.2",
     codename: "Home Fonts",
     date: "2026-10-30",
