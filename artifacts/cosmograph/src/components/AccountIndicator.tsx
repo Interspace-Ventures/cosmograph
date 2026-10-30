@@ -99,8 +99,8 @@ function ShipCustomizer() {
           return;
         }
         if (res.checkoutRequired) {
-          // Convex build: the $1 checkout arrives with billing (Phase 3).
-          toast("Buying ship types isn't available yet.");
+          // Convex build: checkout couldn't start; ships come with membership.
+          toast("Ship types are included with membership. Please try again shortly.");
           setClaimingId(null);
           return;
         }

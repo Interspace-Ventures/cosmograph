@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { mutation, type MutationCtx } from "./lib/server";
 import { requireIdentity } from "./lib/exoKey";
 import {
-  INCLUDED_UNLOCK_SLOTS,
+  MEMBER_UNLOCK_LIMIT,
   badRequest,
   entitlementResult,
   listUnlockedAuthors,
@@ -13,11 +13,14 @@ import {
 import { entitlementView } from "./account";
 
 /**
- * Billing on Convex. Phase 2 ports only the researcher-unlock accounting from
- * POST /me/unlock. Checkout, the Stripe webhook and the prorated +$1/year
- * add-on charge are Phase 3 (docs/convex-migration-plan.md); until then an
- * unlock beyond the included slots fails closed: nothing is charged and
- * nothing is recorded.
+ * Researcher unlocks on Convex (port of POST /me/unlock).
+ *
+ * Phase 3 adopts PR #12's model: membership ($9.99/yr or $29.99 lifetime) is
+ * the only product, and members pin researchers with no per-researcher charge
+ * up to MEMBER_UNLOCK_LIMIT. A non-member gets NOT_A_MEMBER and the SPA starts
+ * membership checkout (http.ts POST /billing/checkout) carrying the
+ * researcher; the verified webhook records it once payment lands. Membership
+ * itself is written only by the webhook (billingInternal.applyEvent).
  */
 
 export async function unlockHandler(
@@ -45,12 +48,10 @@ export async function unlockHandler(
   const result = entitlementResult(user, unlocked);
   if (unlocked.includes(authorId)) return result; // idempotent, never charges
 
-  if (unlocked.length + 1 > INCLUDED_UNLOCK_SLOTS) {
-    // TODO(convex phase 3): charge the prorated add-on in an action, then
-    // record the unlock only after Stripe confirms. Fail closed until then.
+  if (unlocked.length >= MEMBER_UNLOCK_LIMIT) {
     throw badRequest(
-      "ADDON_UNAVAILABLE",
-      "Additional researchers can't be added right now.",
+      "UNLOCK_LIMIT",
+      "You've reached the researcher limit for one account.",
     );
   }
 
@@ -62,8 +63,8 @@ export async function unlockHandler(
 }
 
 /**
- * Port of POST /me/unlock for the included slots: a member unlocks a
- * researcher. Auth required; the cap (INCLUDED_UNLOCK_SLOTS) is enforced here.
+ * Port of POST /me/unlock: a member pins a researcher. Auth required;
+ * membership and the cap (MEMBER_UNLOCK_LIMIT) are enforced here.
  */
 export const unlock = mutation({
   args: { author: v.string() },

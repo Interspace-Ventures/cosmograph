@@ -1,9 +1,13 @@
 import {
+  httpActionGeneric,
+  internalActionGeneric,
   internalMutationGeneric,
   internalQueryGeneric,
   mutationGeneric,
   queryGeneric,
+  type ActionBuilder,
   type DataModelFromSchemaDefinition,
+  type GenericActionCtx,
   type GenericMutationCtx,
   type GenericQueryCtx,
   type MutationBuilder,
@@ -32,6 +36,7 @@ export type Id<T extends TableNames> = GenericId<T>;
 
 export type QueryCtx = GenericQueryCtx<DataModel>;
 export type MutationCtx = GenericMutationCtx<DataModel>;
+export type ActionCtx = GenericActionCtx<DataModel>;
 
 export const query: QueryBuilder<DataModel, "public"> = queryGeneric;
 export const internalQuery: QueryBuilder<DataModel, "internal"> =
@@ -39,3 +44,6 @@ export const internalQuery: QueryBuilder<DataModel, "internal"> =
 export const mutation: MutationBuilder<DataModel, "public"> = mutationGeneric;
 export const internalMutation: MutationBuilder<DataModel, "internal"> =
   internalMutationGeneric;
+export const internalAction: ActionBuilder<DataModel, "internal"> =
+  internalActionGeneric;
+export const httpAction = httpActionGeneric;

@@ -14,10 +14,17 @@ import { verifiedEmail } from "./exoKey";
 type Reader = Pick<QueryCtx, "db">;
 type Writer = Pick<MutationCtx, "db">;
 
-/** Researchers the base membership unlocks before the +$1/year add-on. */
-export const INCLUDED_UNLOCK_SLOTS = 3;
-/** Premium ship types a member gets free; one number across the product. */
-export const INCLUDED_SKIN_SLOTS = INCLUDED_UNLOCK_SLOTS;
+/**
+ * Researchers a member can pin to their account. PR #12 retired the $1/year
+ * researcher add-on ("extra scientists" are a membership perk), so membership
+ * no longer meters researchers and this is only an abuse bound (#12 used 100).
+ */
+export const MEMBER_UNLOCK_LIMIT = 100;
+/**
+ * Reported to the SPA as `includedSlots`. Equal to the member limit, so no
+ * slot ever reads as a paid add-on (the SPA's "+$1/year" label never shows).
+ */
+export const INCLUDED_UNLOCK_SLOTS = MEMBER_UNLOCK_LIMIT;
 /** The free default hull everyone flies. Stored as an unset shipType. */
 export const DEFAULT_SHIP_TYPE = "scout";
 /**
@@ -29,6 +36,8 @@ export const PREMIUM_SHIP_TYPES: ReadonlySet<string> = new Set([
   "hauler",
   "interceptor",
 ]);
+/** Members get every premium hull (#12: ships are included, no $1 sales). */
+export const INCLUDED_SKIN_SLOTS = PREMIUM_SHIP_TYPES.size;
 
 /** Upper bounds on raw string arguments, checked before any other work. */
 export const MAX_AUTHOR_ARG = 32;
@@ -138,6 +147,12 @@ export interface EntitlementResult {
   email: string | null;
   includedSlots: number;
   unlocked: string[];
+  /** Membership detail (Phase 3, same fields as #12's entitlement). */
+  plan: "annual" | "lifetime" | null;
+  status: string | null;
+  /** ISO end of the paid annual period; null for lifetime or non-members. */
+  memberUntil: string | null;
+  cancelAtPeriodEnd: boolean;
 }
 
 export function entitlementResult(
@@ -149,6 +164,13 @@ export function entitlementResult(
     email: user?.email ?? null,
     includedSlots: INCLUDED_UNLOCK_SLOTS,
     unlocked,
+    plan: user?.memberPlan ?? null,
+    status: user?.memberStatus ?? null,
+    memberUntil:
+      user?.memberUntil !== undefined
+        ? new Date(user.memberUntil).toISOString()
+        : null,
+    cancelAtPeriodEnd: user?.cancelAtPeriodEnd ?? false,
   };
 }
 

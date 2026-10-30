@@ -16,6 +16,7 @@ import {
 } from "@workspace/api-client-react";
 import { convexAccountEnabled } from "@/config/features";
 import { api } from "@/lib/convexApi";
+import { useBillingActions } from "@/lib/billingApi";
 
 /**
  * Data access for the Phase 2 features (account, researcher unlocks, ships,
@@ -30,6 +31,11 @@ export interface Entitlement {
   email?: string | null;
   includedSlots: number;
   unlocked: string[];
+  /** Convex (Phase 3): membership detail written by the Stripe webhook. */
+  plan?: "annual" | "lifetime" | null;
+  status?: string | null;
+  memberUntil?: string | null;
+  cancelAtPeriodEnd?: boolean;
 }
 
 export interface ShipState {
@@ -44,9 +50,9 @@ export interface ShipState {
 export interface ShipClaim {
   alreadyOwned: boolean;
   granted: boolean;
-  /** Stripe Checkout URL (Express only until billing moves in Phase 3). */
+  /** Stripe Checkout URL (Express $1 hull, or Convex membership checkout). */
   url?: string | null;
-  /** Payment is needed but checkout isn't on Convex yet (Phase 3). */
+  /** Payment is needed and no checkout URL could be produced. */
   checkoutRequired?: boolean;
 }
 
@@ -201,9 +207,21 @@ function useLegacyClaimShip(): Action<[string, string | null], ShipClaim> {
 
 function useConvexClaimShip(): Action<[string, string | null], ShipClaim> {
   const claim = useMutation(api.ship.claim);
-  // The author only rides along for the Stripe redirect, which is Phase 3.
+  const { startCheckout } = useBillingActions();
+  // Ships are included in membership (#12). A non-member's claim starts
+  // membership checkout carrying the hull; the verified webhook grants it.
   return usePending(
-    useCallback((type: string) => claim({ type }), [claim]),
+    useCallback(
+      async (type: string, author: string | null): Promise<ShipClaim> => {
+        const res = await claim({ type });
+        if (!res.checkoutRequired) return res;
+        const started = await startCheckout({ plan: "annual", ship: type, author });
+        return started.url
+          ? { alreadyOwned: false, granted: false, url: started.url }
+          : res;
+      },
+      [claim, startCheckout],
+    ),
   );
 }
 

@@ -33,13 +33,35 @@ export function EntitlementBridge() {
     if (data) setEntitlement(data);
   }, [isLoaded, isSignedIn, data, setEntitlement]);
 
+  // Convex build (Phase 3): the return from Stripe is only a message. The
+  // membership is granted by the signature-verified webhook and arrives
+  // through the reactive entitlement query; nothing here grants anything.
+  useEffect(() => {
+    if (!convexAccountEnabled) return;
+    const params = new URLSearchParams(window.location.search);
+    const outcome = params.get("checkout");
+    if (outcome !== "success" && outcome !== "cancelled") return;
+    params.delete("checkout");
+    const qs = params.toString();
+    window.history.replaceState(
+      {},
+      "",
+      window.location.pathname + (qs ? `?${qs}` : "") + window.location.hash,
+    );
+    if (outcome === "success") {
+      toast.success(
+        "Payment received. Your membership turns on as soon as Stripe confirms it.",
+      );
+    } else {
+      toast("Checkout cancelled — no charge was made.");
+    }
+  }, []);
+
   // Complete (or report) the Stripe Checkout return. Runs once we know the
   // user is signed in so the confirm call carries their session cookie.
   useEffect(() => {
     if (!isLoaded) return;
-    // Membership checkout moves to Convex + a Stripe webhook in Phase 3; a
-    // Convex build never starts an Express checkout, so there's nothing to
-    // confirm here (payment state never comes from the browser).
+    // A Convex build has no confirm step (handled above).
     if (convexAccountEnabled) return;
     const params = new URLSearchParams(window.location.search);
     const stripParams = () => {
