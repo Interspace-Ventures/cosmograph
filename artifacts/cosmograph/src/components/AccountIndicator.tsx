@@ -18,7 +18,7 @@ import { featureEnabled } from "@/config/features";
 
 // Lightweight auth state in the console: when signed-out it renders nothing
 // (Personalize is the single upgrade entry point), and when signed-in it shows
-// the account button (Clerk's UserButton, or the Exo account menu) (avatar + sign-out menu) plus whether the account has the
+// the Exo Imprint account button (avatar + sign-out menu) plus whether the account has the
 // global unlock. Renders nothing about the default scientist — that experience
 // is free and account-agnostic.
 export function AccountIndicator() {

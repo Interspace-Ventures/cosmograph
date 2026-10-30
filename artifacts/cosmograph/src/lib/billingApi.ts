@@ -1,10 +1,8 @@
 import { useCallback, useState } from "react";
-import { convexAccountEnabled } from "@/config/features";
 import { useExoSession } from "@/lib/exoSession";
 
 /**
- * Membership checkout and billing portal on Convex (migration Phase 3, behind
- * `convex-account`). Both are Convex HTTP actions on the deployment's
+ * Membership checkout and billing portal on Convex. Both are Convex HTTP actions on the deployment's
  * `.convex.site` host, called with the Exo Key access token as a Bearer
  * token; the server checks this page's Origin against its allowlist, rate
  * limits, and builds the Stripe return URLs itself. Payment state never comes
@@ -133,21 +131,7 @@ function useConvexBilling(): BillingActions {
   return { startCheckout, openPortal, pending };
 }
 
-function useNoConvexBilling(): BillingActions {
-  const unavailable = useCallback(
-    () =>
-      Promise.reject(
-        new BillingRequestError(404, "NOT_FOUND", "Convex billing is off in this build."),
-      ),
-    [],
-  );
-  return { startCheckout: unavailable, openPortal: unavailable, pending: false };
-}
-
-/** Picked once from the build-time flag, like the hooks in accountApi.ts. */
-export const useBillingActions: () => BillingActions = convexAccountEnabled
-  ? useConvexBilling
-  : useNoConvexBilling;
+export const useBillingActions: () => BillingActions = useConvexBilling;
 
 /** User-facing text for a failed checkout start. */
 export function checkoutErrorMessage(err: unknown): string {

@@ -11,26 +11,18 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@clerk/express": "^2.1.30",
-    "@clerk/shared": "^4.20.0",
     "@workspace/api-zod": "workspace:*",
-    "@workspace/db": "workspace:*",
     "@workspace/integrations-openai-ai-server": "workspace:*",
     "@workspace/release-flags": "workspace:*",
-    "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
-    "drizzle-orm": "catalog:",
     "express": "^5.2.1",
     "express-rate-limit": "^8.5.2",
-    "http-proxy-middleware": "^4.1.1",
+    "jose": "^6.1.0",
     "pino": "^9.14.0",
     "pino-http": "^10.5.0",
-    "stripe": "^22.2.2",
-    "stripe-replit-sync": "^1.0.0",
     "ws": "^8.21.0"
   },
   "devDependencies": {
-    "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "catalog:",

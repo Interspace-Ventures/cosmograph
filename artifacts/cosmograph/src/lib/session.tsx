@@ -1,36 +1,20 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Show, UserButton, useAuth, useClerk } from "@clerk/react";
 import { useConvexAuth } from "convex/react";
 import { LogOut } from "lucide-react";
 import { toast } from "sonner";
-import { convexAccountEnabled } from "@/config/features";
 import { useExoSession } from "@/lib/exoSession";
 
 /**
- * One sign-in surface for the UI, whichever auth stack this build uses.
- * `convex-account` off (default): Clerk + Express, exactly as before.
- * `convex-account` on: Exo Key + Convex. The flag is a build-time constant, so
- * the hook chosen below never changes between renders.
+ * One sign-in surface for the UI: Exo Imprint (Exo Key) + Convex. Clerk is gone.
  */
 export interface AppSession {
   /** Auth state is known (no flash of the wrong UI). */
   isLoaded: boolean;
   /** Signed in AND accepted by the backend this build talks to. */
   isSignedIn: boolean;
-  /** Start sign-in (Clerk's hosted flow, or the Exo PKCE redirect). */
+  /** Start sign-in (the Exo PKCE redirect). */
   openSignIn: () => void;
   signOut: () => void;
-}
-
-function useClerkSession(): AppSession {
-  const { isLoaded, isSignedIn, signOut } = useAuth();
-  const clerk = useClerk();
-  return {
-    isLoaded,
-    isSignedIn: !!isSignedIn,
-    openSignIn: () => clerk.redirectToSignIn(),
-    signOut: () => void signOut(),
-  };
 }
 
 function useExoAppSession(): AppSession {
@@ -48,9 +32,7 @@ function useExoAppSession(): AppSession {
   };
 }
 
-export const useAppSession: () => AppSession = convexAccountEnabled
-  ? useExoAppSession
-  : useClerkSession;
+export const useAppSession: () => AppSession = useExoAppSession;
 
 function ExoShow({
   when,
@@ -64,13 +46,10 @@ function ExoShow({
   return isSignedIn === (when === "signed-in") ? <>{children}</> : null;
 }
 
-/** Drop-in for Clerk's `<Show when=...>` on either stack. */
-export const SessionShow: (props: {
-  when: "signed-in" | "signed-out";
-  children: ReactNode;
-}) => ReactNode = convexAccountEnabled ? ExoShow : Show;
+/** Renders children only for the signed-in (or signed-out) state. */
+export const SessionShow = ExoShow;
 
-/** Avatar + sign-out menu for an Exo session (Clerk builds use UserButton). */
+/** Avatar + sign-out menu for an Exo Imprint session. */
 function ExoAccountButton() {
   const { user, signOut } = useExoSession();
   const [open, setOpen] = useState(false);
@@ -117,6 +96,4 @@ function ExoAccountButton() {
   );
 }
 
-export const AccountButton: () => ReactNode = convexAccountEnabled
-  ? ExoAccountButton
-  : () => <UserButton />;
+export const AccountButton = ExoAccountButton;

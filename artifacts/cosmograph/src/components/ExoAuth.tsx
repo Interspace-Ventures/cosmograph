@@ -8,7 +8,7 @@ import { AuthHandoff } from "./AuthHandoff";
 
 /**
  * Exo Key sign-in surfaces, shown to people as "Exo Imprint" (EXO ADR 0019:
- * user-facing copy says Exo Imprint; identifiers, routes and env names stay) (build flag `convex-account`). Cosmograph never
+ * user-facing copy says Exo Imprint; identifiers, routes and env names stay). Cosmograph never
  * shows its own credential form: the button sends the visitor to Exo's
  * authorize page (PKCE), and /auth/callback finishes the hand-off.
  */

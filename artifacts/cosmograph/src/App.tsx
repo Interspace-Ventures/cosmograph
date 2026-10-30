@@ -1,18 +1,14 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { X } from "lucide-react";
-import { ClerkProvider, SignIn, SignUp, useClerk } from "@clerk/react";
-import { publishableKeyFromHost } from "@clerk/react/internal";
 import { Switch, Route, useLocation, Router as WouterRouter } from "wouter";
 import { QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { Toaster as Sonner } from "sonner";
 import { queryClient } from "@/lib/queryClient";
-import { clerkAppearance } from "@/lib/clerkAppearance";
 import { AppStateProvider, useAppState } from "@/lib/store";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Scene } from "@/components/Scene";
 import { Overlay } from "@/components/Overlay";
 import { TourOverlay } from "@/components/TourOverlay";
-import { AuthHandoff } from "@/components/AuthHandoff";
 import { Dashboard } from "@/components/Dashboard";
 import { FlyCockpit } from "@/components/FlyCockpit";
 import { DatasetLoadingOverlay } from "@/components/DatasetLoadingOverlay";
@@ -25,45 +21,11 @@ import { ScreenshotGate } from "@/components/ScreenshotGate";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { WebGLFallback } from "@/components/WebGLFallback";
 import { isWebGLAvailable } from "@/lib/webgl";
-import { convexAccountEnabled, featureEnabled } from "@/config/features";
+import { featureEnabled } from "@/config/features";
 import { ExoConvexProvider, ExoSessionProvider, useExoSession } from "@/lib/exoSession";
 import { ExoAuthCallback, ExoSignInPanel } from "@/components/ExoAuth";
-import { withAppBasePath } from "@/lib/appPath";
-
-// REQUIRED — copy verbatim. Resolves the key from window.location.hostname so the
-// same build serves multiple Clerk custom domains. Do not inline the env var, leave
-// publishableKey undefined, or replace publishableKeyFromHost with anything else.
-// Resolved only on the Clerk stack: an Exo Key build (`convex-account`) never
-// needs a Clerk key.
-function clerkPublishableKey(): string {
-  const key = publishableKeyFromHost(
-    window.location.hostname,
-    import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
-  );
-  if (!key) {
-    throw new Error("Missing VITE_CLERK_PUBLISHABLE_KEY in .env file");
-  }
-  return key;
-}
-
-// Production Clerk instances can use the same-origin proxy. EXO staging shares
-// a Clerk development instance across Apps, and Clerk does not support proxying
-// development Frontend API traffic, so `direct` deliberately omits proxyUrl.
-const configuredClerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
-const clerkProxyUrl =
-  configuredClerkProxyUrl === "direct"
-    ? undefined
-    : withAppBasePath(configuredClerkProxyUrl || "/api/__clerk");
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
-
-// Clerk passes full paths to routerPush/routerReplace, but wouter's
-// setLocation prepends the base — strip it to avoid doubling.
-function stripBase(path: string): string {
-  return basePath && path.startsWith(basePath)
-    ? path.slice(basePath.length) || "/"
-    : path;
-}
 
 // Everything that reads the (swappable) dataset lives under a key={datasetVersion}
 // wrapper so loading a new scientist fully remounts the 3D scene and panels,
@@ -180,62 +142,7 @@ function AuthModal({ children }: { children: React.ReactNode }) {
   );
 }
 
-function SignInPage() {
-  return (
-    <AuthModal>
-      <AuthHandoff mode="sign-in">
-        {/* path must be the full browser path — Clerk reads window.location.pathname directly */}
-        <SignIn
-          routing="path"
-          path={`${basePath}/sign-in`}
-          signUpUrl={`${basePath}/sign-up`}
-          forceRedirectUrl={basePath || "/"}
-        />
-      </AuthHandoff>
-    </AuthModal>
-  );
-}
-
-function SignUpPage() {
-  return (
-    <AuthModal>
-      <AuthHandoff mode="sign-up">
-        <SignUp
-          routing="path"
-          path={`${basePath}/sign-up`}
-          signInUrl={`${basePath}/sign-in`}
-          forceRedirectUrl={basePath || "/"}
-        />
-      </AuthHandoff>
-    </AuthModal>
-  );
-}
-
-// Helps user's webview stay up-to-date when the signed-in user changes by invalidating the QueryClient cache.
-function ClerkQueryClientCacheInvalidator() {
-  const { addListener } = useClerk();
-  const queryClient = useQueryClient();
-  const prevUserIdRef = useRef<string | null | undefined>(undefined);
-
-  useEffect(() => {
-    const unsubscribe = addListener(({ user }) => {
-      const userId = user?.id ?? null;
-      if (
-        prevUserIdRef.current !== undefined &&
-        prevUserIdRef.current !== userId
-      ) {
-        queryClient.clear();
-      }
-      prevUserIdRef.current = userId;
-    });
-    return unsubscribe;
-  }, [addListener, queryClient]);
-
-  return null;
-}
-
-// Everything below the auth provider, shared by both auth stacks. `authRoutes`
-// are the stack's own sign-in routes; `children` mount inside the query client
+// Everything below the auth provider. `authRoutes` are the Exo sign-in routes; `children` mount inside the query client
 // (cache invalidators).
 function AppShell({
   authRoutes,
@@ -265,51 +172,8 @@ function AppShell({
   );
 }
 
-function ClerkProviderWithRoutes() {
-  const [, setLocation] = useLocation();
-  const [clerkPubKey] = useState(clerkPublishableKey);
-
-  return (
-    <ClerkProvider
-      publishableKey={clerkPubKey}
-      proxyUrl={clerkProxyUrl}
-      appearance={clerkAppearance}
-      signInUrl={`${basePath}/sign-in`}
-      signUpUrl={`${basePath}/sign-up`}
-      localization={{
-        signIn: {
-          start: {
-            title: "Welcome back, cosmonaut",
-            subtitle: "Sign in to unlock the full galaxy",
-          },
-        },
-        signUp: {
-          start: {
-            title: "Become a cosmonaut",
-            subtitle: "One account, every researcher's galaxy",
-          },
-        },
-      }}
-      routerPush={(to) => setLocation(stripBase(to))}
-      routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
-    >
-      <AppShell
-        authRoutes={[
-          /* REQUIRED — copy "/sign-in/*?" and "/sign-up/*?" verbatim. The /*? optional
-             wildcard is the only wouter syntax that matches both the bare URL and Clerk's
-             OAuth sub-paths. Not /sign-in, not /sign-in/*, not /sign-in/:rest*. */
-          <Route key="sign-in" path="/sign-in/*?" component={SignInPage} />,
-          <Route key="sign-up" path="/sign-up/*?" component={SignUpPage} />,
-        ]}
-      >
-        <ClerkQueryClientCacheInvalidator />
-      </AppShell>
-    </ClerkProvider>
-  );
-}
-
-// Exo Key stack (`convex-account`): the standalone sign-in routes hand off to
-// Exo, and /auth/callback is the redirect URI registered with Exo
+// Exo Imprint (Exo Key) is the only sign-in: the standalone sign-in routes hand
+// off to Exo, and /auth/callback is the redirect URI registered with Exo
 // (<origin><base>/auth/callback).
 function ExoSignInPage() {
   return (
@@ -327,8 +191,8 @@ function ExoSignUpPage() {
   );
 }
 
-// Same job as ClerkQueryClientCacheInvalidator for the Express-backed queries
-// that remain (Ask, stars): drop cached data when the signed-in Exo user changes.
+// Drop cached Express-backed queries (Ask, stars) when the signed-in Exo user
+// changes, so one person never sees another's cached data.
 function ExoQueryClientCacheInvalidator() {
   const { user } = useExoSession();
   const queryClient = useQueryClient();
@@ -377,7 +241,7 @@ function DocumentTitle() {
 function App() {
   return (
     <WouterRouter base={basePath}>
-      {convexAccountEnabled ? <ExoProviderWithRoutes /> : <ClerkProviderWithRoutes />}
+      <ExoProviderWithRoutes />
     </WouterRouter>
   );
 }
