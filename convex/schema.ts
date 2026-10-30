@@ -17,7 +17,12 @@ import { v } from "convex/values";
  * routes make.
  *
  * Stripe-owned data (the `stripe` schema from stripe-replit-sync) is not
- * mirrored here; Stripe stays the source of truth (Phase 3).
+ * mirrored here; Stripe stays the source of truth. Phase 3 adds only what the
+ * app needs to answer "is this account a member": the membership detail on
+ * `users` (absorbed from PR #12), processed webhook event ids, and counters
+ * for the money-costing endpoints. All of it is written only by internal
+ * functions behind the signature-verified Stripe webhook or the checkout
+ * budget; no public function can set it.
  */
 export default defineSchema({
   users: defineTable({
@@ -39,6 +44,23 @@ export default defineSchema({
     referredBy: v.optional(v.string()),
     /** When the referral was attributed, epoch milliseconds. */
     referredAt: v.optional(v.number()),
+    // Membership detail (Phase 3, from PR #12). Written only by the verified
+    // Stripe webhook (billingInternal.applyEvent). `hasPaid` stays the single
+    // "member right now" flag every feature checks.
+    /** "annual" ($9.99/yr subscription) or "lifetime" ($29.99 once). */
+    memberPlan: v.optional(v.union(v.literal("annual"), v.literal("lifetime"))),
+    /** active | past_due | canceled | refunded | disputed */
+    memberStatus: v.optional(v.string()),
+    /** Annual: end of the paid period, epoch ms. Unset for lifetime. */
+    memberUntil: v.optional(v.number()),
+    /** First time the account became a member, epoch ms. */
+    memberSince: v.optional(v.number()),
+    /** Annual set to end at period end (portal cancel or lifetime upgrade). */
+    cancelAtPeriodEnd: v.optional(v.boolean()),
+    /** The annual subscription, so refunds/disputes can cancel it. */
+    stripeSubscriptionId: v.optional(v.string()),
+    /** The lifetime payment, so a full refund of exactly it revokes. */
+    lifetimePaymentIntentId: v.optional(v.string()),
   })
     // Account lookup for every authenticated request (was the users PK).
     .index("by_exoSubject", ["exoSubject"])
@@ -70,4 +92,20 @@ export default defineSchema({
     .index("by_user_sku", ["userId", "sku"])
     // Listing every SKU a member owns.
     .index("by_user", ["userId"]),
+
+  /** Stripe event ids already applied; makes the webhook idempotent. */
+  stripeEvents: defineTable({
+    eventId: v.string(),
+    type: v.string(),
+  }).index("by_eventId", ["eventId"]),
+
+  /** Fixed-window counters for money-costing endpoints (lib/rateLimit.ts). */
+  rateCounters: defineTable({
+    key: v.string(),
+    count: v.number(),
+    /** Epoch ms after which the row is dead weight; pruned by a cron. */
+    expiresAt: v.number(),
+  })
+    .index("by_key", ["key"])
+    .index("by_expiresAt", ["expiresAt"]),
 });
