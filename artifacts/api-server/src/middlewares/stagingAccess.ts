@@ -1,6 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
-import { getAuth } from "@clerk/express";
-import { withAppBasePath } from "../lib/appPath";
+import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from "jose";
 
 const TRUE_VALUES = new Set(["1", "true", "yes", "on"]);
 
@@ -23,49 +22,78 @@ export function stagingAccessRequired(value: string | undefined): boolean {
 export function isPublicStagingPath(pathname: string): boolean {
   return (
     PUBLIC_STAGING_PATHS.has(pathname) ||
-    pathname.startsWith("/assets/") ||
-    pathname === "/sign-in" ||
-    pathname.startsWith("/sign-in/") ||
-    pathname === "/sign-up" ||
-    pathname.startsWith("/sign-up/")
+    pathname.startsWith("/assets/")
   );
 }
 
 export function stagingAccessDecision(input: {
   enabled: boolean;
-  userId?: string | null;
-  method: string;
+  /** The request carried a valid Exo gateway token minted for this App. */
+  fromGateway: boolean;
   pathname: string;
-  acceptsHtml: boolean;
-}): "allow" | "redirect" | "unauthorized" {
-  if (
-    !input.enabled ||
-    input.userId ||
-    isPublicStagingPath(input.pathname)
-  ) {
+}): "allow" | "forbidden" {
+  if (!input.enabled || input.fromGateway || isPublicStagingPath(input.pathname)) {
     return "allow";
   }
+  return "forbidden";
+}
 
-  const isNavigation =
-    !input.pathname.startsWith("/api/") &&
-    (input.method === "GET" || input.method === "HEAD") &&
-    input.acceptsHtml;
-  return isNavigation ? "redirect" : "unauthorized";
+const APP = "cosmograph";
+export const GATEWAY_TOKEN_HEADER = "x-exo-gateway-token";
+
+let remoteJwks: { url: string; set: JWTVerifyGetKey } | null = null;
+
+function issuerJwks(issuer: string): JWTVerifyGetKey {
+  const url = `${new URL(issuer).origin}/exo-key/.well-known/jwks.json`;
+  if (remoteJwks?.url !== url) {
+    remoteJwks = { url, set: createRemoteJWKSet(new URL(url)) };
+  }
+  return remoteJwks.set;
+}
+
+/**
+ * True only for a short-lived RS256 token Exo Key minted for exactly this App
+ * (aud exo-gateway:cosmograph, sub exo-gateway, token_use gateway), checked
+ * against Exo Key's PUBLIC JWKS. Mirrors EXO's reference verifyGatewayToken
+ * (src/platform/delivery/gatewayTokens.ts). Needs no secret. Never throws.
+ */
+export async function verifyGatewayToken(
+  token: string | undefined,
+  issuer: string | undefined,
+  jwks?: JWTVerifyGetKey,
+): Promise<boolean> {
+  const iss = issuer?.trim();
+  if (!iss || !token || token.split(".").length !== 3) return false;
+  try {
+    const { payload } = await jwtVerify(token, jwks ?? issuerJwks(iss), {
+      issuer: iss,
+      audience: `exo-gateway:${APP}`,
+      subject: "exo-gateway",
+      algorithms: ["RS256"],
+      maxTokenAge: "10m",
+    });
+    return payload.token_use === "gateway";
+  } catch {
+    return false;
+  }
 }
 
 /**
  * Fail-closed access boundary for non-production deployments.
  *
- * Railway enables this explicitly with STAGING_AUTH_REQUIRED=true. Health,
- * Clerk's sign-in routes, and the static files needed to render those routes
- * remain public; every application route and API otherwise requires a valid
- * Clerk session established by clerkMiddleware().
+ * Enabled explicitly with STAGING_AUTH_REQUIRED=true. Staging is reached only
+ * through the EXO gateway (https://staging.exo.now/cosmograph), which signs the
+ * reviewer in with Exo Imprint and checks their grant before forwarding. This
+ * origin then accepts a request only when it carries the gateway's token for
+ * this App, so calling the origin directly gets a 403. Health and static
+ * assets stay public. EXO_KEY_ISSUER (public, non-secret) names the issuer;
+ * without it every gated request fails closed.
  */
-export function stagingAccess(
+export async function stagingAccess(
   req: Request,
   res: Response,
   next: NextFunction,
-): void {
+): Promise<void> {
   const enabled = stagingAccessRequired(
     process.env["STAGING_AUTH_REQUIRED"],
   );
@@ -83,13 +111,15 @@ export function stagingAccess(
     "X-Robots-Tag": "noindex, nofollow, noarchive, nosnippet",
   });
 
-  const auth = getAuth(req);
+  const header = req.headers[GATEWAY_TOKEN_HEADER];
+  const token = Array.isArray(header) ? header[0] : header;
+  const public_ = isPublicStagingPath(req.path);
   const decision = stagingAccessDecision({
     enabled,
-    userId: auth?.userId,
-    method: req.method,
+    fromGateway: public_
+      ? false
+      : await verifyGatewayToken(token, process.env["EXO_KEY_ISSUER"]),
     pathname: req.path,
-    acceptsHtml: req.accepts("html") === "html",
   });
 
   if (decision === "allow") {
@@ -97,10 +127,8 @@ export function stagingAccess(
     return;
   }
 
-  if (decision === "redirect") {
-    res.redirect(302, withAppBasePath("/sign-in"));
-    return;
-  }
-
-  res.status(401).json({ error: "Unauthorized" });
+  res
+    .status(403)
+    .type("text/plain")
+    .send("Forbidden: open Cosmograph staging at https://staging.exo.now/cosmograph");
 }

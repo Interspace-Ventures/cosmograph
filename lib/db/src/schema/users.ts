@@ -2,7 +2,8 @@ import { pgTable, text, boolean, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
-// Application user record, keyed by the Clerk user id. This is the only
+// LEGACY (deleted in Phase 5; nothing reads it now). Application user record,
+// keyed by the old Clerk user id. This is the only
 // app-owned table for accounts + entitlement; everything Stripe-owned
 // (customers, prices, checkout sessions, payments) lives in the `stripe`
 // schema that stripe-replit-sync manages — we never duplicate it here.

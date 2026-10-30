@@ -26,8 +26,8 @@ export interface AuthMemory {
   sso: string | null;
 }
 
-// Clerk's ExternalAccount.provider can arrive as "google" or "oauth_google";
-// normalize to the bare provider id.
+// A provider id can arrive as "google" or "oauth_google"; normalize to the
+// bare provider id.
 export function normalizeProvider(raw: string | null | undefined): string | null {
   if (!raw) return null;
   const id = raw.replace(/^oauth_/, "").trim().toLowerCase();

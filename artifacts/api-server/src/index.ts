@@ -1,7 +1,6 @@
 import { createServer } from "node:http";
 import app from "./app";
 import { attachPresence } from "./presence/server";
-import { initStripe } from "./lib/stripeSetup";
 import { logger } from "./lib/logger";
 import { featureEnabled } from "./lib/features";
 
@@ -25,9 +24,6 @@ if (featureEnabled("live-presence")) {
 } else {
   logger.info("Live presence disabled by release plan");
 }
-
-// Best-effort, non-fatal: initializes Stripe sync + webhook when connected.
-void initStripe();
 
 server.listen(port, () => {
   logger.info({ port }, "Server listening");
