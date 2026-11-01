@@ -1,0 +1,79 @@
+# Cosmograph on Render (Blueprint spec: https://render.com/docs/blueprint-spec).
+#
+# One always-on web service runs the Express API and serves the built galaxy
+# SPA from the same origin. Presence (WebSocket) and the in-memory spend guards
+# need a long-lived single process: never scale-to-zero, never more than one
+# instance until those move to Convex / the Exo router.
+#
+# Staging only for now. Production (cosmograph.space, branch main) is added
+# here as its own service when the production cutover is approved.
+#
+# Node: Render reads .node-version (24.22.1), the single source of truth shared
+# with CI, so NODE_VERSION is deliberately not set here. pnpm: Render provides
+# pnpm for repos with pnpm-lock.yaml, and pnpm switches itself to the
+# packageManager version (pnpm@11.9.0) from package.json.
+#
+# Secrets: none in platform env. The only secret this app will ever get on the
+# host is one read-only OP_SERVICE_ACCOUNT_TOKEN scoped to Cosmograph's
+# 1Password items, added by Exo when it exists. Everything below is public,
+# non-secret configuration.
+services:
+  - type: web
+    name: cosmograph-staging
+    runtime: node
+    plan: starter
+    region: virginia
+    branch: staging
+    autoDeploy: true
+    numInstances: 1
+    buildCommand: pnpm install --frozen-lockfile && pnpm run deploy:build
+    startCommand: pnpm run deploy:start
+    healthCheckPath: /cosmograph/api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Which deployment this is (health endpoint). Not the release audience.
+      - key: DEPLOY_ENVIRONMENT
+        value: staging
+      # Release audience for feature flags: internal | friends-and-family | public.
+      # Staging reviews the friends-and-family cut (docs/staging.md).
+      - key: RELEASE_CHANNEL
+        value: friends-and-family
+      - key: VITE_RELEASE_CHANNEL
+        value: friends-and-family
+      # Render edge = Cloudflare + Render load balancer (lib/trustProxy.ts).
+      - key: TRUST_PROXY_HOPS
+        value: "3"
+      # Private review surface: only requests carrying the Exo gateway token.
+      - key: STAGING_AUTH_REQUIRED
+        value: "true"
+      - key: EXO_KEY_ISSUER
+        value: https://frugal-eel-930.convex.site/exo-id
+      # Served under the Exo gateway prefix (staging.exo.now/cosmograph).
+      # Read at build time by Vite and at runtime by the API.
+      - key: APP_BASE_PATH
+        value: /cosmograph
+      - key: BASE_PATH
+        value: /cosmograph
+      - key: ALLOWED_ORIGINS
+        value: https://staging.exo.now
+      # Cosmograph staging Convex deployment and staging Exo Imprint issuer.
+      - key: VITE_CONVEX_URL
+        value: https://shiny-magpie-750.convex.cloud
+      - key: VITE_EXO_ID_ISSUER
+        value: https://frugal-eel-930.convex.site/exo-id
+      - key: VITE_EXO_ID_CLIENT_ID
+        value: cosmograph
+      - key: CSP_MODE
+        value: report-only
+      - key: CSP_CONNECT_SRC
+        value: https://shiny-magpie-750.convex.cloud wss://shiny-magpie-750.convex.cloud https://shiny-magpie-750.convex.site https://frugal-eel-930.convex.site
+      # Daily spend ceilings (lib/spendGuard.ts); these equal the code defaults.
+      - key: ASK_DAILY_PER_CLIENT
+        value: "30"
+      - key: ASK_DAILY_GLOBAL
+        value: "10000"
+      - key: FEEDBACK_DAILY_PER_CLIENT
+        value: "10"
+      - key: FEEDBACK_DAILY_GLOBAL
+        value: "300"

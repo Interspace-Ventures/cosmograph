@@ -64,13 +64,13 @@ onlyBuiltDependencies:
   - msw
   - unrs-resolver
 
-# Railway builds are non-interactive. Make the package build policy explicit so
+# Render builds are non-interactive. Make the package build policy explicit so
 # pnpm does not stop to ask for approval during a production install.
 allowBuilds:
   esbuild: true
 
 overrides:
-  # Keep macOS arm64 for local development and linux-x64 for Railway.
+  # Keep macOS arm64 for local development and linux-x64 for Render.
   "esbuild>@esbuild/darwin-x64": "-"
   "esbuild>@esbuild/freebsd-arm64": "-"
   "esbuild>@esbuild/freebsd-x64": "-"
