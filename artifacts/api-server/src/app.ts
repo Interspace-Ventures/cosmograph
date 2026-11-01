@@ -18,8 +18,8 @@ import {
 
 const app: Express = express();
 
-// Behind Render's edge: Cloudflare plus Render's load balancer, three hops
-// (TRUST_PROXY_HOPS=3 in render.yaml; see lib/trustProxy.ts). Required so
+// Behind Render's edge: Cloudflare plus Render's load balancer, two hops
+// (TRUST_PROXY_HOPS=2 in render.yaml; measured, see lib/trustProxy.ts). Required so
 // per-IP rate limiting reads the real client IP from X-Forwarded-For instead of
 // a proxy's, and so req.protocol/host are correct when building redirect URLs.
 app.set("trust proxy", trustProxyHops());

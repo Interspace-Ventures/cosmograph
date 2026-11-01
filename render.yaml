@@ -41,9 +41,10 @@ services:
         value: friends-and-family
       - key: VITE_RELEASE_CHANNEL
         value: friends-and-family
-      # Render edge = Cloudflare + Render load balancer (lib/trustProxy.ts).
+      # Render edge = Cloudflare + Render load balancer: two hops, measured
+      # against forged X-Forwarded-For (lib/trustProxy.ts).
       - key: TRUST_PROXY_HOPS
-        value: "3"
+        value: "2"
       # Private review surface: only requests carrying the Exo gateway token.
       - key: STAGING_AUTH_REQUIRED
         value: "true"

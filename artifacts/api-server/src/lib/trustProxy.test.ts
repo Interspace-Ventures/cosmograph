@@ -13,16 +13,17 @@ test("parses TRUST_PROXY_HOPS with a fail-safe default of 1", () => {
   assert.equal(trustProxyHops("2.5"), 1);
 });
 
-test("Render chain: client is three hops back and a forged entry is ignored", () => {
-  const xff = "6.6.6.6, 203.0.113.9, 172.70.1.1, 10.0.0.1";
-  assert.equal(clientIpFromForwarded(xff, "10.0.0.2", 3), "203.0.113.9");
-  assert.equal(clientIpFromForwarded("203.0.113.9, 172.70.1.1, 10.0.0.1", "10.0.0.2", 3), "203.0.113.9");
+test("Render chain: client is two hops back and a forged entry is ignored", () => {
+  // "<forged>, <client>, <cloudflare>", socket peer = Render load balancer.
+  const xff = "6.6.6.6, 203.0.113.9, 172.70.1.1";
+  assert.equal(clientIpFromForwarded(xff, "10.0.0.2", 2), "203.0.113.9");
+  assert.equal(clientIpFromForwarded("203.0.113.9, 172.70.1.1", "10.0.0.2", 2), "203.0.113.9");
 });
 
 test("one hop takes the last entry; no header falls back to the socket", () => {
   assert.equal(clientIpFromForwarded("6.6.6.6, 203.0.113.9", "10.0.0.2", 1), "203.0.113.9");
   assert.equal(clientIpFromForwarded(undefined, "10.0.0.2", 3), "10.0.0.2");
-  assert.equal(clientIpFromForwarded("203.0.113.9", "10.0.0.2", 3), "203.0.113.9");
+  assert.equal(clientIpFromForwarded("203.0.113.9", "10.0.0.2", 2), "203.0.113.9");
 });
 
 test("matches Express req.ip for the same hop count", async () => {

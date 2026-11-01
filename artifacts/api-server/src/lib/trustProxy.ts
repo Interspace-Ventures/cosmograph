@@ -1,12 +1,16 @@
 // How many reverse-proxy hops sit between the visitor and this process.
 //
 // Render serves every web service through Cloudflare and its own load
-// balancer, so a request arrives as
-//   socket peer = Render proxy
-//   X-Forwarded-For = "<anything the client sent>, <client>, <cloudflare>, <render>"
-// which is three trusted hops (Express `trust proxy = 3`). Trusting fewer keys
-// rate limits on a shared proxy address; trusting more lets a client pick its
-// own IP by sending a forged X-Forwarded-For.
+// balancer. Cloudflare appends the visitor's address to whatever
+// X-Forwarded-For the client sent, Render's balancer appends Cloudflare's, and
+// the socket peer is the balancer:
+//   socket peer = Render load balancer
+//   X-Forwarded-For = "<anything the client sent>, <client>, <cloudflare>"
+// That is two trusted hops (Express `trust proxy = 2`), measured on the live
+// cosmograph-staging service on 2026-11-01: with 2, a forged X-Forwarded-For
+// no longer moves the rate-limit key; with 3 it did. Trusting fewer keys rate
+// limits on a shared proxy address; trusting more lets a client pick its own
+// IP by sending a forged X-Forwarded-For.
 //
 // TRUST_PROXY_HOPS is set per service (render.yaml). The code default is 1, the
 // fail-safe value: it never trusts a client-written entry, so a missing
