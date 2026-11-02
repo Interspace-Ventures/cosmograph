@@ -6,7 +6,7 @@
 // global breaker trips, the feature returns 503 until midnight UTC instead of
 // spending.
 //
-// State is in-memory: the service runs as one always-on Railway instance. A
+// State is in-memory: the service runs as one always-on Render instance. A
 // restart resets the counters, which can at most double one day's ceiling. The
 // durable, cross-instance cap is the tenant spend cap in the Exo router once
 // Ask Cosmo moves there.

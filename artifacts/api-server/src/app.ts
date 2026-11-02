@@ -7,6 +7,7 @@ import router from "./routes";
 import { logger } from "./lib/logger";
 import { stagingAccess } from "./middlewares/stagingAccess";
 import { appBasePathMiddleware } from "./lib/appPath";
+import { trustProxyHops } from "./lib/trustProxy";
 import {
   CSP_REPORT_PATH,
   cspHeaders,
@@ -17,10 +18,11 @@ import {
 
 const app: Express = express();
 
-// Behind the Railway reverse proxy (one hop). Required so per-IP rate limiting
-// reads the real client IP from X-Forwarded-For instead of the proxy's, and so
-// req.protocol/host are correct when building Stripe redirect URLs.
-app.set("trust proxy", 1);
+// Behind Render's edge: Cloudflare plus Render's load balancer, two hops
+// (TRUST_PROXY_HOPS=2 in render.yaml; measured, see lib/trustProxy.ts). Required so
+// per-IP rate limiting reads the real client IP from X-Forwarded-For instead of
+// a proxy's, and so req.protocol/host are correct when building redirect URLs.
+app.set("trust proxy", trustProxyHops());
 
 // EXO's App gateway keeps the public App prefix in the upstream request.
 // Normalize it once at the service boundary so existing routes remain stable.
@@ -63,7 +65,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Staging is a private review surface. Production remains public because this
-// boundary is enabled only by an explicit environment variable in Railway.
+// boundary is enabled only by an explicit environment variable on the host (Render).
 app.use((req, res, next) => {
   stagingAccess(req, res, next).catch(next);
 });
@@ -79,7 +81,7 @@ const apiLimiter = rateLimit({
 
 app.use("/api", apiLimiter, router);
 
-// Railway builds and runs the API and web client as a single service. This
+// Render builds and runs the API and web client as a single web service. This
 // keeps relative /api requests on one domain.
 const clientDist = process.env["CLIENT_DIST"] ?? path.resolve(
   import.meta.dirname,
