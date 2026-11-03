@@ -17,6 +17,16 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.41.3",
+    codename: "New Moorings",
+    date: "2026-11-01",
+    summary: "Cosmograph's staging station now docks on Render.",
+    changes: [
+      "The review build of Cosmograph runs on Render, with the same private Exo gateway in front of it.",
+      "Per-visitor limits now read the real visitor address behind Render's edge, so one explorer can't use up another's allowance.",
+    ],
+  },
+  {
     version: "3.41.2",
     codename: "Shield Wall",
     date: "2026-10-30",

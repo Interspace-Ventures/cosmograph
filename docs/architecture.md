@@ -47,8 +47,8 @@ Disambiguate by research cluster (institution + co-author), **not** by year alon
 
 - `api-server` hosts an ephemeral multiplayer presence layer: a WebSocket at `/api/presence` (`src/presence/server.ts`) streams each visitor's camera position so others see faint "wisps" and a live headcount ("N cosmonauts streaming now"). Nothing is persisted — anonymous, in-memory only.
 - It also serves `/api/github/stars` (`src/routes/github.ts`), a 5-min TTL in-memory cache of the repo star count, so upstream GitHub is hit at most once per TTL regardless of traffic.
-- **Abuse/DDoS guards** (tune in `src/presence/server.ts`): total + per-IP connection caps, handshake-rate limit, 256-byte `maxPayload`, per-socket token bucket, heartbeat reaping, coordinate clamping, and a 10 Hz shared-snapshot broadcast capped at 60 render peers. REST has a 120 req/min/IP limiter (`app.ts`); `trust proxy` is set to `1` for the single Railway proxy hop.
-- **Deployment:** Railway runs the API and the built galaxy as ONE always-on service (`railway.json`, `pnpm railway:build` / `railway:start`). Presence and the Stripe webhook need a long-lived process; never move this to scale-to-zero.
+- **Abuse/DDoS guards** (tune in `src/presence/server.ts`): total + per-IP connection caps, handshake-rate limit, 256-byte `maxPayload`, per-socket token bucket, heartbeat reaping, coordinate clamping, and a 10 Hz shared-snapshot broadcast capped at 60 render peers. REST has a 120 req/min/IP limiter (`app.ts`); `trust proxy` is `TRUST_PROXY_HOPS` (2 on Render: Cloudflare + Render's load balancer, measured against a forged X-Forwarded-For; code default 1 is fail-safe), shared with presence via `src/lib/trustProxy.ts`.
+- **Deployment:** Render runs the API and the built galaxy as ONE always-on web service (`render.yaml`, `pnpm deploy:build` / `deploy:start`, health `/cosmograph/api/health`). The health endpoint reports `RENDER_GIT_COMMIT` and `DEPLOY_ENVIRONMENT`. Presence and the Stripe webhook need a long-lived process; never move this to scale-to-zero.
 
 ## Ask the galaxy (chat) (api-server)
 
