@@ -125,9 +125,9 @@ services:
         value: https://marvelous-grouse-975.convex.cloud
       - key: VITE_EXO_ID_ISSUER
         value: https://befitting-bullfrog-619.convex.site/exo-id
-      # Issued by EXO for production; set in the dashboard once it exists.
+      # Issued by EXO for production (2026-11-03): apex https://cosmograph.space, redirect <origin>/auth/callback.
       - key: VITE_EXO_ID_CLIENT_ID
-        sync: false
+        value: cosmograph
       - key: CSP_MODE
         value: report-only
       - key: CSP_CONNECT_SRC
