@@ -1,3 +1,5 @@
+"use node";
+
 import { ConvexError } from "convex/values";
 import {
   forbiddenSecretEnv,
