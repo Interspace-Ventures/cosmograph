@@ -44,6 +44,7 @@ export const internalQuery: QueryBuilder<DataModel, "internal"> =
 export const mutation: MutationBuilder<DataModel, "public"> = mutationGeneric;
 export const internalMutation: MutationBuilder<DataModel, "internal"> =
   internalMutationGeneric;
+/** HTTP actions (convex/http.ts). */
 export const internalAction: ActionBuilder<DataModel, "internal"> =
   internalActionGeneric;
 export const httpAction = httpActionGeneric;

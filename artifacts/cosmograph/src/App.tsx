@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import { X } from "lucide-react";
 import { Switch, Route, useLocation, Router as WouterRouter } from "wouter";
 import { QueryClientProvider, useQueryClient } from "@tanstack/react-query";
@@ -22,8 +22,23 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { WebGLFallback } from "@/components/WebGLFallback";
 import { isWebGLAvailable } from "@/lib/webgl";
 import { featureEnabled } from "@/config/features";
+import { withAppBasePath } from "@/lib/appPath";
 import { ExoConvexProvider, ExoSessionProvider, useExoSession } from "@/lib/exoSession";
 import { ExoAuthCallback, ExoSignInPanel } from "@/components/ExoAuth";
+
+// The isometric world view (/world) ships in its own chunk, behind the
+// "isometric-world" release flag.
+const WorldPage = lazy(() => import("@/world/WorldPage"));
+
+function WorldHome() {
+  return (
+    <ErrorBoundary fallback={<WebGLFallback variant="error" />}>
+      <Suspense fallback={<div className="fixed inset-0 bg-[#15161c]" />}>
+        <WorldPage />
+      </Suspense>
+    </ErrorBoundary>
+  );
+}
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -162,6 +177,9 @@ function AppShell({
         <AuthMemoryBridge />
         <Switch>
           <Route path="/" component={GalaxyHome} />
+          {featureEnabled("isometric-world") && (
+            <Route path="/world" component={WorldHome} />
+          )}
           {authRoutes}
           <Route component={GalaxyHome} />
         </Switch>

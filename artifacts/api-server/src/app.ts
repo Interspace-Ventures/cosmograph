@@ -7,6 +7,7 @@ import router from "./routes";
 import { logger } from "./lib/logger";
 import { stagingAccess } from "./middlewares/stagingAccess";
 import { appBasePathMiddleware } from "./lib/appPath";
+import { worldAssets } from "./lib/worldAssets";
 import { trustProxyHops } from "./lib/trustProxy";
 import {
   CSP_REPORT_PATH,
@@ -92,6 +93,8 @@ const clientDist = process.env["CLIENT_DIST"] ?? path.resolve(
   "public",
 );
 
+// /world machine modules + atlases: precompressed, long-cached, 404 on a miss.
+app.use(worldAssets(clientDist));
 // index: false so "/" falls through to spaShell, which stamps the nonce.
 app.use(express.static(clientDist, { index: false }));
 app.use(spaShell(clientDist));

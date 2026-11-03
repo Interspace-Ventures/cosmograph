@@ -14,6 +14,7 @@ export const FEATURE_IDS = [
   "premium-ships",
   "referrals",
   "convex-account",
+  "isometric-world",
 ] as const;
 
 export type FeatureId = (typeof FEATURE_IDS)[number];
@@ -104,6 +105,17 @@ export const FEATURE_RELEASES: Record<FeatureId, FeatureRelease> = {
     // live. Default off everywhere.
     release: {
       internal: null,
+      "friends-and-family": null,
+      public: null,
+    },
+  },
+  "isometric-world": {
+    title: "Isometric world",
+    description:
+      "The researcher's work as an isometric world of domain islands with live paper machines (/world). Draft port of the approved v8 mockup.",
+    owner: "product",
+    release: {
+      internal: "2026-10-24",
       "friends-and-family": null,
       public: null,
     },

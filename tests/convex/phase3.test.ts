@@ -343,11 +343,16 @@ test("the browser can't set paid: grants are internal, and no public path writes
     .getRoutes()
     .map(([path, method]) => `${method} ${path}`)
     .sort();
+  // The machine-archive routes (the /world build assets, lib/machineArchive.ts)
+  // only store or redirect to pinned, content-addressed archives; neither
+  // reaches users or membership.
   assert.deepEqual(routes, [
+    "GET /machine-archive/*",
     "OPTIONS /billing/checkout",
     "OPTIONS /billing/portal",
     "POST /billing/checkout",
     "POST /billing/portal",
+    "POST /machine-archive/upload",
     "POST /stripe/webhook",
   ]);
 
