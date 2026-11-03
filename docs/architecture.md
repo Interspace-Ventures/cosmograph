@@ -57,7 +57,7 @@ Disambiguate by research cluster (institution + co-author), **not** by year alon
 - **All answers are computed deterministically in-browser** by `runAskQuery` (`artifacts/cosmograph/src/data/galaxy.ts`) over the locally-baked `galaxyData.json`. Counts and matched papers are real, never hallucinated. The spec is converted to the existing `Filters` shape and pushed through the normal `filters → matchingIds` dim/highlight path in `GalaxySystem` — no separate highlight state.
 - **Report a bug / request a feature** files a private EXO work item: `POST /api/feedback/issue` (`src/routes/feedback.ts` → `src/lib/exoIntake.ts`) through EXO's signed Convex intake boundary.
 - Both routes are public and contract-first (OpenAPI → codegen → Zod → `useTranslateAsk`/`useReportFeedback` hooks). They degrade gracefully: if the server/translator is unreachable the galaxy still works, the Ask panel just shows an error.
-- Requires the **OpenAI AI integration** (`AI_INTEGRATIONS_OPENAI_*` env, auto-provisioned) plus server-only `EXO_INTAKE_API_URL` and Cosmograph-scoped `EXO_INTAKE_SECRET` values.
+- Requires an OpenAI API key and the Cosmograph-scoped `EXO_INTAKE_SECRET`, both loaded at boot from 1Password (`OP_SERVICE_ACCOUNT_TOKEN` plus the item titles `OP_OPENAI_API_KEY_ITEM` / `OP_EXO_INTAKE_SECRET_ITEM` in `OP_VAULT`; see `artifacts/api-server/src/lib/runtimeSecrets.ts`), plus the non-secret `EXO_INTAKE_API_URL`. Raw env values are a local-dev fallback only. Missing secrets fail closed and show on `/api/health` under `integrations`.
 
 ## Maintenance pipeline (Entire + EXO)
 

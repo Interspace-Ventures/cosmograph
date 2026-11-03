@@ -1,4 +1,4 @@
-import { openai } from "@workspace/integrations-openai-ai-server";
+import { getOpenAI } from "@workspace/integrations-openai-ai-server";
 import type { AskRequest, AskSummary, AskField } from "@workspace/api-zod";
 import type { Logger } from "pino";
 
@@ -350,6 +350,7 @@ export async function streamAsk(
   log: Logger,
   emit: (e: AskEvent) => void,
 ): Promise<void> {
+  const openai = getOpenAI();
   if (!openai) {
     emit({ type: "error", error: "The assistant is unavailable right now." });
     return;

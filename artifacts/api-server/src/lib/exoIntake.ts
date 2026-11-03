@@ -1,10 +1,12 @@
 import { createHmac, randomUUID } from "node:crypto";
+import { runtimeSecret } from "./runtimeSecrets";
 
 const REQUEST_TIMEOUT_MS = 10_000;
 
 function configuration() {
   const apiUrl = process.env.EXO_INTAKE_API_URL?.trim();
-  const secret = process.env.EXO_INTAKE_SECRET?.trim();
+  // Loaded at boot from 1Password (env only in local dev); see runtimeSecrets.ts.
+  const secret = runtimeSecret("exoIntakeSecret");
   if (!apiUrl || !secret || secret.length < 32) {
     throw new Error("EXO intake is not configured securely");
   }

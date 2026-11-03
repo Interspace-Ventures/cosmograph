@@ -17,6 +17,17 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.42.0",
+    codename: "Home Port",
+    date: "2026-11-03",
+    summary: "Cosmograph is ready to move its public home to Render.",
+    changes: [
+      "A production station for cosmograph.space is defined alongside staging, so the live site can move off its old host in one clean cutover.",
+      "Cosmo's assistant key and the feedback channel's signing key now come from Cosmograph's 1Password vault when the server starts, never from the host's settings.",
+      "If either key can't be loaded, that feature switches itself off and the health check says so, instead of running half-configured.",
+    ],
+  },
+  {
     version: "3.41.3",
     codename: "New Moorings",
     date: "2026-11-01",

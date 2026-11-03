@@ -29,6 +29,10 @@ async function buildAll() {
     // - use path traversal to read files (e.g. @google-cloud/secret-manager loads sibling .proto files)
     external: [
       "*.node",
+      // The 1Password SDK core loads its WASM from its own package directory
+      // at runtime, so it must stay a real node_modules import.
+      "@1password/sdk",
+      "@1password/sdk-core",
       "sharp",
       "better-sqlite3",
       "sqlite3",
