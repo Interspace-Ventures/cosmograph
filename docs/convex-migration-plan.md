@@ -7,8 +7,8 @@ Cosmograph's two violations: (1) data on Replit Postgres behind Express, (2) Cle
 ## Target
 - Data and server logic: Convex (queries, mutations, actions, HTTP actions). No Postgres, no Drizzle, no Express.
 - Identity: Exo Key on Convex Auth. Convex validates the Exo ID JWT (issuer/audience/JWKS from the Exo registration in exo#229); `ctx.auth.getUserIdentity().subject` is the Exo subject. No Clerk, no custom auth middleware, no bypass.
-- Secrets: Exo Secure only. Stripe, OpenAI and GitHub keys live in Cosmograph's 1Password vault and are synced into Convex env by Exo Secure; the only platform secret is one read-only OP_SERVICE_ACCOUNT_TOKEN. Nothing in Railway, Replit or Vercel env.
-- Delivery: Exo delivery (Convex deployment per environment + static SPA). Railway and Replit retire.
+- Secrets: Stripe, OpenAI and GitHub keys live in Cosmograph's 1Password vault. They are NOT copied into Convex or platform env: Node-runtime actions read them at runtime with @1password/sdk, in memory only (decided for Phase 3, 2026-10-26). The only platform secret is one read-only OP_SERVICE_ACCOUNT_TOKEN. Nothing in Render, Replit or Vercel env.
+- Delivery: Exo delivery (Convex deployment per environment + static SPA). Until Phase 5 the Express API + SPA run as one Render web service (`render.yaml`); Replit retires.
 - Frontend: the Vite SPA stays; `fetch('/api/...')` calls become Convex client calls.
 
 ## Schema mapping (lib/db -> convex/schema.ts)
@@ -44,15 +44,15 @@ Notes: `createdAt` becomes Convex `_creationTime`; `referredAt` is stored as epo
 ## Phases (one draft PR each, into staging)
 1. Convex scaffold + schema + Exo Key on Convex Auth (supersedes PR #15's Express middleware; #15 closes once this lands). Needs exo#229 merged for the issuer/audience.
 2. Port account, unlocks, ship, referral to Convex; SPA switches to the Convex client.
-3. Port billing to Convex actions + Stripe webhook HTTP action (Stripe test mode); keep every money guard.
+3. Port billing to Convex actions + Stripe webhook HTTP action (Stripe test mode); keep every money guard. Absorbs PR #12 (Billing v2: $9.99/yr or $29.99 lifetime, refunds/disputes); entitlement only from the verified webhook.
 4. Port Ask Cosmo, feedback, github stars, presence; spend guard in Convex.
-5. Remove Express, Drizzle, lib/db, stripe-replit-sync, ws, railway.json; Exo delivery config. `exo-verify stack --fix-brief` must come back clean.
+5. Remove Express, Drizzle, lib/db, stripe-replit-sync, ws, the Render web service in render.yaml; Exo delivery config. `exo-verify stack --fix-brief` must come back clean.
 
 ## Cutover
 1. Exo staging deploy of Convex + SPA; smoke test sign-in, unlock, test-mode checkout, ask limits.
 2. Import (or start clean) on the prod Convex deployment.
 3. With Samir's yes: promote via Exo, point cosmograph.space DNS at the Exo delivery. Downtime is acceptable for Cosmograph.
-4. With Samir's yes: delete Replit Development and Production databases (this also retires the leaked DATABASE_URL) and the Railway services; remove the old OpenAI key once OpenAI MFA is sorted.
+4. With Samir's yes: delete Replit Development and Production databases (this also retires the leaked DATABASE_URL); remove the old OpenAI key once OpenAI MFA is sorted.
 
 ## Open items
 - exo#229 (Exo registration for cosmograph) must merge before phase 1 can sign in.

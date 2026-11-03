@@ -17,6 +17,58 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.42.0",
+    codename: "Charted Waters",
+    date: "2026-11-03",
+    summary:
+      "The internal isometric world now sails with the main release line, still switched off for everyone outside the team.",
+    changes: [
+      "The /world view, its GPU map and its machine assets now ship in the same build as the galaxy, behind the isometric-world release flag.",
+      "With the flag off, nothing changes: the galaxy, sign-in and every other page work exactly as before.",
+    ],
+  },
+  {
+    version: "3.41.3",
+    codename: "New Moorings",
+    date: "2026-11-01",
+    summary: "Cosmograph's staging station now docks on Render.",
+    changes: [
+      "The review build of Cosmograph runs on Render, with the same private Exo gateway in front of it.",
+      "Per-visitor limits now read the real visitor address behind Render's edge, so one explorer can't use up another's allowance.",
+    ],
+  },
+  {
+    version: "3.41.2",
+    codename: "Shield Wall",
+    date: "2026-10-30",
+    summary: "A strict Content Security Policy now guards every page.",
+    changes: [
+      "Only scripts Cosmograph itself serves, stamped with a fresh one-time code on every page load, are allowed to run.",
+      "The policy starts in report-only mode, logging anything it would block, before it is switched to enforce.",
+    ],
+  },
+  {
+    version: "3.41.1",
+    codename: "Home Fonts",
+    date: "2026-10-30",
+    summary: "Every typeface now ships from Cosmograph itself, with no calls to Google Fonts.",
+    changes: [
+      "Self-hosted Outfit, Archivo, Bricolage Grotesque and Space Mono through Fontsource, so visitors' browsers no longer contact a third-party font service.",
+      "Dropped an unused Inter font request from the page shell.",
+    ],
+  },
+  {
+    version: "3.41.0",
+    codename: "Own Keys",
+    date: "2026-10-30",
+    summary: "Sign-in is Exo Imprint only. Clerk and its hosted scripts are gone.",
+    changes: [
+      "Removed Clerk from the web app and the server, so no third-party sign-in script ever loads in your browser.",
+      "Your account, unlocks, ships, referrals and membership now live only on Convex, with sign-in through Exo Imprint.",
+      "Staging only answers requests that come through the Exo gateway with its signed token.",
+    ],
+  },
+  {
     version: "3.40.2",
     codename: "Deep Field Census",
     date: "2026-10-29",

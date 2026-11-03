@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { WebSocketServer, WebSocket } from "ws";
 import { logger } from "../lib/logger";
 import { stripAppBasePath } from "../lib/appPath";
+import { clientIpFromForwarded, trustProxyHops } from "../lib/trustProxy";
 
 // Lightweight, ephemeral multiplayer presence: clients stream their camera
 // position; the server fans out a shared snapshot on a fixed tick so everyone
@@ -22,6 +23,7 @@ const MSG_REFILL_PER_SEC = 20; // sustained inbound message budget per socket
 const HANDSHAKE_WINDOW_MS = 10_000;
 const HANDSHAKE_PER_WINDOW = 15; // new connections per IP per window
 const ABUSE_STRIKES = 30; // dropped messages before we close a socket
+const TRUST_PROXY_HOPS = trustProxyHops(); // same count as Express (app.ts)
 
 // --- Simulation / fan-out ----------------------------------------------------
 const TICK_MS = 100; // 10 Hz snapshot broadcast
@@ -69,18 +71,15 @@ const perIp = new Map<string, number>();
 const handshakes = new Map<string, number[]>();
 
 function clientIp(req: IncomingMessage): string {
-  // Mirror Express `trust proxy = 1`: the immediate peer is our trusted Railway
-  // proxy, which appends the real client IP as the LAST X-Forwarded-For entry.
-  // Taking the last (not first) entry prevents a client from spoofing its IP by
-  // sending its own X-Forwarded-For header to bypass per-IP caps.
-  const fwd = req.headers["x-forwarded-for"];
-  const raw = Array.isArray(fwd) ? fwd.join(",") : fwd;
-  const parts = raw
-    ?.split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  if (parts && parts.length > 0) return parts[parts.length - 1]!;
-  return req.socket.remoteAddress || "unknown";
+  // Mirror Express `trust proxy` (app.ts): the same TRUST_PROXY_HOPS count of
+  // trusted proxies (Render's Cloudflare edge + load balancer), counted from
+  // the RIGHT of X-Forwarded-For, so a client cannot spoof its IP by sending
+  // its own X-Forwarded-For header to bypass per-IP caps.
+  return clientIpFromForwarded(
+    req.headers["x-forwarded-for"],
+    req.socket.remoteAddress,
+    TRUST_PROXY_HOPS,
+  );
 }
 
 function handshakeAllowed(ip: string): boolean {

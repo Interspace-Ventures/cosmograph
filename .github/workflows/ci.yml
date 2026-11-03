@@ -46,7 +46,7 @@ jobs:
       # Builds what ships (web + API), same as managed-standards. The legacy
       # artifacts/trailer vite config needs PORT/BASE_PATH and is not deployed.
       - name: Build
-        run: pnpm railway:build
+        run: pnpm deploy:build
 
       - name: Audit (fail on high or critical)
         run: pnpm audit --audit-level=high

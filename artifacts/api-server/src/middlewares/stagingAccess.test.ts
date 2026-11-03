@@ -1,10 +1,35 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { SignJWT, exportJWK, generateKeyPair, createLocalJWKSet } from "jose";
 import {
   isPublicStagingPath,
   stagingAccessDecision,
   stagingAccessRequired,
+  verifyGatewayToken,
 } from "./stagingAccess";
+
+const ISSUER = "https://issuer.example.convex.site/exo-id";
+
+async function keys() {
+  const { publicKey, privateKey } = await generateKeyPair("RS256");
+  const jwk = { ...(await exportJWK(publicKey)), kid: "k1", alg: "RS256" };
+  return { privateKey, jwks: createLocalJWKSet({ keys: [jwk] }) };
+}
+
+function mint(
+  privateKey: CryptoKey,
+  claims: Record<string, unknown> = {},
+  opts: { aud?: string; sub?: string; iss?: string } = {},
+) {
+  return new SignJWT({ token_use: "gateway", ...claims })
+    .setProtectedHeader({ alg: "RS256", kid: "k1" })
+    .setIssuer(opts.iss ?? ISSUER)
+    .setAudience(opts.aud ?? "exo-gateway:cosmograph")
+    .setSubject(opts.sub ?? "exo-gateway")
+    .setIssuedAt()
+    .setExpirationTime("5m")
+    .sign(privateKey);
+}
 
 test("only enables the staging gate for explicit true values", () => {
   assert.equal(stagingAccessRequired(undefined), false);
@@ -13,52 +38,45 @@ test("only enables the staging gate for explicit true values", () => {
   assert.equal(stagingAccessRequired("ON"), true);
 });
 
-test("keeps health, authentication, and sign-in assets public", () => {
+test("keeps health and static assets public, nothing else", () => {
   assert.equal(isPublicStagingPath("/api/health"), true);
-  assert.equal(isPublicStagingPath("/sign-in/sso-callback"), true);
   assert.equal(isPublicStagingPath("/assets/index.js"), true);
+  assert.equal(isPublicStagingPath("/sign-in"), false);
   assert.equal(isPublicStagingPath("/api/ask"), false);
 });
 
-test("redirects anonymous browser navigation to Clerk sign-in", () => {
+test("forbids anything that did not come through the gateway", () => {
   assert.equal(
-    stagingAccessDecision({
-      enabled: true,
-      method: "GET",
-      pathname: "/",
-      acceptsHtml: true,
-    }),
-    "redirect",
+    stagingAccessDecision({ enabled: true, fromGateway: false, pathname: "/" }),
+    "forbidden",
+  );
+  assert.equal(
+    stagingAccessDecision({ enabled: true, fromGateway: true, pathname: "/" }),
+    "allow",
+  );
+  assert.equal(
+    stagingAccessDecision({ enabled: false, fromGateway: false, pathname: "/" }),
+    "allow",
   );
 });
 
-test("rejects anonymous API access and allows authenticated requests", () => {
+test("accepts only a gateway token minted for cosmograph by the issuer", async () => {
+  const { privateKey, jwks } = await keys();
+  assert.equal(await verifyGatewayToken(await mint(privateKey), ISSUER, jwks), true);
   assert.equal(
-    stagingAccessDecision({
-      enabled: true,
-      method: "POST",
-      pathname: "/api/feedback",
-      acceptsHtml: false,
-    }),
-    "unauthorized",
+    await verifyGatewayToken(await mint(privateKey, {}, { aud: "exo-gateway:moonshot" }), ISSUER, jwks),
+    false,
   );
   assert.equal(
-    stagingAccessDecision({
-      enabled: true,
-      method: "GET",
-      pathname: "/api/github-stars",
-      acceptsHtml: true,
-    }),
-    "unauthorized",
+    await verifyGatewayToken(await mint(privateKey, {}, { iss: "https://evil.example" }), ISSUER, jwks),
+    false,
   );
   assert.equal(
-    stagingAccessDecision({
-      enabled: true,
-      userId: "user_test",
-      method: "GET",
-      pathname: "/",
-      acceptsHtml: true,
-    }),
-    "allow",
+    await verifyGatewayToken(await mint(privateKey, { token_use: "access" }), ISSUER, jwks),
+    false,
   );
+  const other = await keys();
+  assert.equal(await verifyGatewayToken(await mint(other.privateKey), ISSUER, jwks), false);
+  assert.equal(await verifyGatewayToken(undefined, ISSUER, jwks), false);
+  assert.equal(await verifyGatewayToken(await mint(privateKey), undefined, jwks), false);
 });
