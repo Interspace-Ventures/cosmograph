@@ -603,6 +603,14 @@ test("secrets: Stripe keys come from the Bitwarden project by key name, never en
   assert.equal(created, 1); // cached in memory
 
   clearStripeSecretCache();
+  const [a, b] = await Promise.all([
+    loadStripeSecrets(cfg, { env: ENV, factory, now: NOW }),
+    loadStripeSecrets(cfg, { env: ENV, factory, now: NOW }),
+  ]);
+  assert.deepEqual(a, b);
+  assert.equal(created, 2); // concurrent loads share one Bitwarden read
+
+  clearStripeSecretCache();
   for (const env of [
     { ...ENV, STRIPE_SECRET_KEY: SK },
     { ...ENV, STRIPE_WEBHOOK_SECRET: WHSEC },
@@ -622,7 +630,7 @@ test("secrets: Stripe keys come from the Bitwarden project by key name, never en
   await rejectsWith(loadStripeSecrets(cfg, { env: ENV, factory: sdkError, now: NOW }), "BILLING_UNAVAILABLE");
 });
 
-test("config: billing stays off without price ids or vault item names", () => {
+test("config: billing stays off without price ids or Bitwarden config", () => {
   assert.equal(billingConfig({ ...ENV, STRIPE_PRICE_ANNUAL: "" }), null);
   assert.equal(billingConfig({ ...ENV, STRIPE_PRICE_LIFETIME: "prod_123" }), null);
   assert.equal(billingConfig({ ...ENV, STRIPE_PRICE_LIFETIME: ANNUAL }), null);

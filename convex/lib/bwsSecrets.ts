@@ -46,8 +46,6 @@ export interface BwsClientLike {
   listSecrets(organizationId: string): Promise<BwsSecretIdentifier[]>;
   /** Full secrets (with values) by id. */
   getSecrets(ids: string[]): Promise<BwsSecret[]>;
-  /** Releases the SDK client. */
-  close?(): void;
 }
 
 export interface BwsSettings {
@@ -68,32 +66,53 @@ export interface StripeSecrets {
 export const CACHE_TTL_MS = 5 * 60_000;
 
 let cache: { key: string; at: number; secrets: StripeSecrets } | null = null;
+/** Concurrent actions in one process share a single in-flight read. */
+let inflight: { key: string; promise: Promise<StripeSecrets> } | null = null;
 
 export function clearStripeSecretCache(): void {
   cache = null;
+  inflight = null;
 }
 
 class LookupError extends Error {}
 
 type SdkResponse = { success?: boolean; data?: unknown };
 
-/** Loaded lazily so the WASM core only starts inside the Node action. */
-export const defaultBwsClientFactory: BwsClientFactory = async (token, settings) => {
+type SdkCtor = new (settings?: string, logLevel?: number) => SdkClient;
+
+/**
+ * One SDK client per process. sdk-wasm 0.1.0 installs a global logger when a
+ * client is constructed and panics on a second construction in the same
+ * process, so the client is created once and reused (re-login per load).
+ */
+let sdkSingleton: { settings: string; sdk: SdkClient } | null = null;
+
+async function sharedSdk(settings: BwsSettings): Promise<SdkClient> {
+  const serialized = JSON.stringify({
+    apiUrl: settings.apiUrl,
+    identityUrl: settings.identityUrl,
+    userAgent: "Cosmograph Convex billing",
+    deviceType: "SDK",
+  });
+  if (sdkSingleton) {
+    if (sdkSingleton.settings !== serialized) throw new LookupError("sdk settings changed");
+    return sdkSingleton.sdk;
+  }
   const mod = (await import("@bitwarden/sdk-wasm")) as unknown as {
-    BitwardenClient?: new (settings?: string, logLevel?: number) => SdkClient;
-    default?: { BitwardenClient: new (settings?: string, logLevel?: number) => SdkClient };
+    BitwardenClient?: SdkCtor;
+    default?: { BitwardenClient?: SdkCtor };
   };
   const Ctor = mod.BitwardenClient ?? mod.default?.BitwardenClient;
   if (!Ctor) throw new LookupError("sdk unavailable");
-  const sdk = new Ctor(
-    JSON.stringify({
-      apiUrl: settings.apiUrl,
-      identityUrl: settings.identityUrl,
-      userAgent: "Cosmograph Convex billing",
-      deviceType: "SDK",
-    }),
-    4, // LogLevel.Error: the SDK never logs secret values at any level we enable.
-  );
+  if (sdkSingleton) return (sdkSingleton as { sdk: SdkClient }).sdk;
+  // LogLevel.Error (4): the SDK logs nothing at the levels we enable.
+  sdkSingleton = { settings: serialized, sdk: new Ctor(serialized, 4) };
+  return sdkSingleton.sdk;
+}
+
+/** Loaded lazily so the WASM core only starts inside the Node action. */
+export const defaultBwsClientFactory: BwsClientFactory = async (token, settings) => {
+  const sdk = await sharedSdk(settings);
   const run = async (command: unknown): Promise<unknown> => {
     const raw = await sdk.run_command(JSON.stringify(command));
     const parsed = (typeof raw === "string" ? JSON.parse(raw) : raw) as SdkResponse;
@@ -113,13 +132,11 @@ export const defaultBwsClientFactory: BwsClientFactory = async (token, settings)
       const data = (await run({ secrets: { getByIds: { ids } } })) as { data?: BwsSecret[] };
       return data?.data ?? [];
     },
-    close: () => sdk.free?.(),
   };
 };
 
 interface SdkClient {
   run_command(input: string): Promise<unknown>;
-  free?(): void;
 }
 
 function unavailable(): ConvexError<{ code: string; message: string }> {
@@ -203,10 +220,27 @@ export async function loadStripeSecrets(
     return cache.secrets;
   }
 
-  let secrets: StripeSecrets;
-  let client: BwsClientLike | null = null;
+  if (inflight && inflight.key === key) return await inflight.promise;
+  const promise = readStripeSecrets(cfg, token, opts.factory);
+  inflight = { key, promise };
   try {
-    client = await (opts.factory ?? defaultBwsClientFactory)(token, {
+    const secrets = await promise;
+    cache = { key, at: now, secrets };
+    return secrets;
+  } finally {
+    if (inflight?.promise === promise) inflight = null;
+  }
+}
+
+async function readStripeSecrets(
+  cfg: BillingConfig,
+  token: string,
+  factory: BwsClientFactory | undefined,
+): Promise<StripeSecrets> {
+  const { bws } = cfg;
+  let secrets: StripeSecrets;
+  try {
+    const client = await (factory ?? defaultBwsClientFactory)(token, {
       apiUrl: bws.apiUrl,
       identityUrl: bws.identityUrl,
     });
@@ -226,12 +260,6 @@ export async function loadStripeSecrets(
       })`,
     );
     throw unavailable();
-  } finally {
-    try {
-      client?.close?.();
-    } catch {
-      // ignore
-    }
   }
 
   if (
@@ -243,6 +271,5 @@ export async function loadStripeSecrets(
     );
     throw unavailable();
   }
-  cache = { key, at: now, secrets };
   return secrets;
 }

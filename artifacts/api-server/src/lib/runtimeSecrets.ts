@@ -79,7 +79,6 @@ export interface BwsSecret {
 export interface BwsClientLike {
   listSecrets(organizationId: string): Promise<BwsSecretIdentifier[]>;
   getSecrets(ids: string[]): Promise<BwsSecret[]>;
-  close?(): void;
 }
 
 export interface BwsSettings {
@@ -96,9 +95,38 @@ class LookupError extends Error {}
 
 interface SdkClient {
   run_command(input: string): Promise<unknown>;
-  free?(): void;
 }
 type SdkCtor = new (settings?: string, logLevel?: number) => SdkClient;
+
+/**
+ * One SDK client per process. sdk-wasm 0.1.0 installs a global logger when a
+ * client is constructed and panics on a second construction in the same
+ * process, so the client is created once and reused (re-login per load).
+ */
+let sdkSingleton: { settings: string; sdk: SdkClient } | null = null;
+
+async function sharedSdk(settings: BwsSettings): Promise<SdkClient> {
+  const serialized = JSON.stringify({
+    apiUrl: settings.apiUrl,
+    identityUrl: settings.identityUrl,
+    userAgent: "Cosmograph API server",
+    deviceType: "SDK",
+  });
+  if (sdkSingleton) {
+    if (sdkSingleton.settings !== serialized) throw new LookupError("sdk settings changed");
+    return sdkSingleton.sdk;
+  }
+  const mod = (await import("@bitwarden/sdk-wasm")) as unknown as {
+    BitwardenClient?: SdkCtor;
+    default?: { BitwardenClient?: SdkCtor };
+  };
+  const Ctor = mod.BitwardenClient ?? mod.default?.BitwardenClient;
+  if (!Ctor) throw new LookupError("sdk unavailable");
+  if (sdkSingleton) return (sdkSingleton as { sdk: SdkClient }).sdk;
+  // LogLevel.Error (4): the SDK logs nothing at the levels we enable.
+  sdkSingleton = { settings: serialized, sdk: new Ctor(serialized, 4) };
+  return sdkSingleton.sdk;
+}
 
 /**
  * Loaded lazily so the WASM core only starts when a token is configured.
@@ -106,21 +134,7 @@ type SdkCtor = new (settings?: string, logLevel?: number) => SdkClient;
  * build.mjs keeps it external (a real node_modules import).
  */
 export const defaultBwsClientFactory: BwsClientFactory = async (token, settings) => {
-  const mod = (await import("@bitwarden/sdk-wasm")) as unknown as {
-    BitwardenClient?: SdkCtor;
-    default?: { BitwardenClient?: SdkCtor };
-  };
-  const Ctor = mod.BitwardenClient ?? mod.default?.BitwardenClient;
-  if (!Ctor) throw new LookupError("sdk unavailable");
-  const sdk = new Ctor(
-    JSON.stringify({
-      apiUrl: settings.apiUrl,
-      identityUrl: settings.identityUrl,
-      userAgent: "Cosmograph API server",
-      deviceType: "SDK",
-    }),
-    4, // LogLevel.Error
-  );
+  const sdk = await sharedSdk(settings);
   const run = async (command: unknown): Promise<unknown> => {
     const raw = await sdk.run_command(JSON.stringify(command));
     const parsed = (typeof raw === "string" ? JSON.parse(raw) : raw) as {
@@ -138,7 +152,6 @@ export const defaultBwsClientFactory: BwsClientFactory = async (token, settings)
         ?.data ?? [],
     getSecrets: async (ids) =>
       ((await run({ secrets: { getByIds: { ids } } })) as { data?: BwsSecret[] })?.data ?? [],
-    close: () => sdk.free?.(),
   };
 };
 
@@ -298,11 +311,10 @@ export async function loadRuntimeSecrets(
   });
   if (wanted.length === 0) return snapshot();
 
-  let client: BwsClientLike | null = null;
   try {
     await withTimeout(
       (async () => {
-        client = await (opts.factory ?? defaultBwsClientFactory)(token, { apiUrl, identityUrl });
+        const client = await (opts.factory ?? defaultBwsClientFactory)(token, { apiUrl, identityUrl });
         const names = wanted.map((spec) => env[spec.nameEnv]!.trim());
         const identifiers = await client.listSecrets(organizationId);
         const ids = identifiers.filter((s) => names.includes(s.key)).map((s) => s.id);
@@ -339,12 +351,6 @@ export async function loadRuntimeSecrets(
     }
     // Only our own lookup messages are logged; SDK errors are not echoed.
     log.error(`secrets: could not load from Bitwarden (${why})`);
-  } finally {
-    try {
-      (client as BwsClientLike | null)?.close?.();
-    } catch {
-      // ignore
-    }
   }
 
   const ready = SECRET_SPECS.filter((s) => statuses.get(s.id)?.ready).map((s) => s.id);

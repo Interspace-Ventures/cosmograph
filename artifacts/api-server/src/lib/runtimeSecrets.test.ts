@@ -30,11 +30,7 @@ type Item = { key: string; value: string; projectId?: string };
 
 function fakeBws(
   items: Item[],
-  calls: { tokens: string[]; apiUrls: string[]; closed: number } = {
-    tokens: [],
-    apiUrls: [],
-    closed: 0,
-  },
+  calls: { tokens: string[]; apiUrls: string[] } = { tokens: [], apiUrls: [] },
 ): BwsClientFactory {
   const all: BwsSecret[] = items.map((s, i) => ({
     id: `s${i}`,
@@ -45,9 +41,6 @@ function fakeBws(
   const client: BwsClientLike = {
     listSecrets: async (org) => (org === ORG ? all.map(({ id, key }) => ({ id, key })) : []),
     getSecrets: async (ids) => all.filter((s) => ids.includes(s.id)),
-    close: () => {
-      calls.closed++;
-    },
   };
   return async (token, settings) => {
     calls.tokens.push(token);
@@ -77,7 +70,7 @@ function assertNoSecretsLogged(lines: string[]) {
 
 test("hosted: loads both secrets from the Bitwarden project with the access token", async () => {
   resetRuntimeSecrets();
-  const calls = { tokens: [] as string[], apiUrls: [] as string[], closed: 0 };
+  const calls = { tokens: [] as string[], apiUrls: [] as string[] };
   const { log, lines } = capture();
   const status = await loadRuntimeSecrets({
     env: HOSTED,
@@ -94,7 +87,6 @@ test("hosted: loads both secrets from the Bitwarden project with the access toke
   });
   assert.deepEqual(calls.tokens, [HOSTED.BWS_ACCESS_TOKEN]);
   assert.deepEqual(calls.apiUrls, ["https://api.bitwarden.com"]);
-  assert.equal(calls.closed, 1);
   assert.equal(runtimeSecret("openaiApiKey"), OPENAI);
   assert.equal(runtimeSecret("exoIntakeSecret"), INTAKE);
   assert.deepEqual(status.openaiApiKey, { ready: true, source: "bitwarden", reason: "ok" });
