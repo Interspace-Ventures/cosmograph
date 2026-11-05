@@ -5,36 +5,53 @@ import {
   resetRuntimeSecrets,
   runtimeSecret,
   secretStatus,
-  type OpClientFactory,
-  type OpClientLike,
+  type BwsClientFactory,
+  type BwsClientLike,
+  type BwsSecret,
 } from "./runtimeSecrets";
 
 const OPENAI = "sk-proj-test0000000000000000000000000000";
 const INTAKE = "intake-hmac-test-0123456789abcdefghijklmnopqrstuvwxyz";
 
+const ORG = "11111111-1111-4111-8111-111111111111";
+const PROJECT = "22222222-2222-4222-8222-222222222222";
+const OTHER_PROJECT = "33333333-3333-4333-8333-333333333333";
+
 const HOSTED = {
   NODE_ENV: "production",
-  OP_SERVICE_ACCOUNT_TOKEN: "ops_test_token",
-  OP_VAULT: "Interspace",
-  OP_OPENAI_API_KEY_ITEM: "Cosmograph production: OPENAI_API_KEY",
-  OP_EXO_INTAKE_SECRET_ITEM: "Cosmograph production: EXO_INTAKE_SECRET",
+  BWS_ACCESS_TOKEN: "0.test-machine-account-token",
+  BWS_ORGANIZATION_ID: ORG,
+  BWS_PROJECT_ID: PROJECT,
+  BWS_OPENAI_API_KEY_NAME: "COSMOGRAPH_PROD_OPENAI_API_KEY",
+  BWS_EXO_INTAKE_SECRET_NAME: "COSMOGRAPH_PROD_EXO_INTAKE_SECRET",
 };
 
-type Field = { id: string; title: string; value: string };
+type Item = { key: string; value: string; projectId?: string };
 
-function fakeVault(
-  items: Record<string, Field[]>,
-  calls: { tokens: string[] } = { tokens: [] },
-): OpClientFactory {
-  const client: OpClientLike = {
-    vaults: { list: async () => [{ id: "v1", title: "Interspace" }] },
-    items: {
-      list: async () => Object.keys(items).map((title) => ({ id: title, title })),
-      get: async (_vault, id) => ({ fields: items[id] ?? [] }),
+function fakeBws(
+  items: Item[],
+  calls: { tokens: string[]; apiUrls: string[]; closed: number } = {
+    tokens: [],
+    apiUrls: [],
+    closed: 0,
+  },
+): BwsClientFactory {
+  const all: BwsSecret[] = items.map((s, i) => ({
+    id: `s${i}`,
+    key: s.key,
+    value: s.value,
+    projectId: s.projectId ?? PROJECT,
+  }));
+  const client: BwsClientLike = {
+    listSecrets: async (org) => (org === ORG ? all.map(({ id, key }) => ({ id, key })) : []),
+    getSecrets: async (ids) => all.filter((s) => ids.includes(s.id)),
+    close: () => {
+      calls.closed++;
     },
   };
-  return async (token) => {
+  return async (token, settings) => {
     calls.tokens.push(token);
+    calls.apiUrls.push(settings.apiUrl);
     return client;
   };
 }
@@ -54,29 +71,34 @@ function capture() {
 function assertNoSecretsLogged(lines: string[]) {
   for (const line of lines) {
     assert.ok(!line.includes(OPENAI) && !line.includes(INTAKE), "a secret value was logged");
+    assert.ok(!line.includes(HOSTED.BWS_ACCESS_TOKEN), "the access token was logged");
   }
 }
 
-test("hosted: loads both secrets from 1Password with the service account token", async () => {
+test("hosted: loads both secrets from the Bitwarden project with the access token", async () => {
   resetRuntimeSecrets();
-  const calls = { tokens: [] as string[] };
+  const calls = { tokens: [] as string[], apiUrls: [] as string[], closed: 0 };
   const { log, lines } = capture();
   const status = await loadRuntimeSecrets({
     env: HOSTED,
     log,
-    factory: fakeVault(
-      {
-        [HOSTED.OP_OPENAI_API_KEY_ITEM]: [{ id: "credential", title: "credential", value: OPENAI }],
-        [HOSTED.OP_EXO_INTAKE_SECRET_ITEM]: [{ id: "password", title: "password", value: INTAKE }],
-      },
+    factory: fakeBws(
+      [
+        { key: HOSTED.BWS_OPENAI_API_KEY_NAME, value: OPENAI },
+        { key: HOSTED.BWS_EXO_INTAKE_SECRET_NAME, value: INTAKE },
+        // Same key in a project this app does not use: never read.
+        { key: HOSTED.BWS_OPENAI_API_KEY_NAME, value: "sk-other-project-000000000000", projectId: OTHER_PROJECT },
+      ],
       calls,
     ),
   });
-  assert.deepEqual(calls.tokens, ["ops_test_token"]);
+  assert.deepEqual(calls.tokens, [HOSTED.BWS_ACCESS_TOKEN]);
+  assert.deepEqual(calls.apiUrls, ["https://api.bitwarden.com"]);
+  assert.equal(calls.closed, 1);
   assert.equal(runtimeSecret("openaiApiKey"), OPENAI);
   assert.equal(runtimeSecret("exoIntakeSecret"), INTAKE);
-  assert.deepEqual(status.openaiApiKey, { ready: true, source: "1password", reason: "ok" });
-  assert.deepEqual(status.exoIntakeSecret, { ready: true, source: "1password", reason: "ok" });
+  assert.deepEqual(status.openaiApiKey, { ready: true, source: "bitwarden", reason: "ok" });
+  assert.deepEqual(status.exoIntakeSecret, { ready: true, source: "bitwarden", reason: "ok" });
   assertNoSecretsLogged(lines);
 });
 
@@ -92,23 +114,35 @@ test("hosted: env secrets are ignored (named, never echoed) without a token", as
   });
   assert.equal(runtimeSecret("openaiApiKey"), null);
   assert.equal(runtimeSecret("exoIntakeSecret"), null);
-  assert.equal(secretStatus("openaiApiKey").reason, "op-token-missing");
+  assert.equal(secretStatus("openaiApiKey").reason, "bws-token-missing");
+  assert.equal(secretStatus("exoIntakeSecret").reason, "bws-token-missing");
   assert.ok(lines.some((l) => l.includes("AI_INTEGRATIONS_OPENAI_API_KEY is set in the host env")));
+  assert.ok(lines.some((l) => l.includes("BWS_ACCESS_TOKEN is not set")));
   assertNoSecretsLogged(lines);
 });
 
-test("hosted: env secrets are ignored even when 1Password is configured", async () => {
+test("hosted: env secrets are ignored even when Bitwarden is configured", async () => {
   resetRuntimeSecrets();
   await loadRuntimeSecrets({
     env: { ...HOSTED, AI_INTEGRATIONS_OPENAI_API_KEY: "sk-from-env-0000000000000000000000" },
     log: capture().log,
-    factory: fakeVault({
-      [HOSTED.OP_OPENAI_API_KEY_ITEM]: [{ id: "credential", title: "credential", value: OPENAI }],
-    }),
+    factory: fakeBws([{ key: HOSTED.BWS_OPENAI_API_KEY_NAME, value: OPENAI }]),
   });
   assert.equal(runtimeSecret("openaiApiKey"), OPENAI);
   assert.equal(runtimeSecret("exoIntakeSecret"), null);
-  assert.equal(secretStatus("exoIntakeSecret").reason, "item-not-found");
+  assert.equal(secretStatus("exoIntakeSecret").reason, "secret-not-found");
+});
+
+test("a leftover 1Password token is named in a warning and never used", async () => {
+  resetRuntimeSecrets();
+  const { log, lines } = capture();
+  await loadRuntimeSecrets({
+    env: { NODE_ENV: "production", OP_SERVICE_ACCOUNT_TOKEN: "ops_leftover" },
+    log,
+  });
+  assert.equal(secretStatus("openaiApiKey").reason, "bws-token-missing");
+  assert.ok(lines.some((l) => l.includes("OP_SERVICE_ACCOUNT_TOKEN is still set")));
+  assert.ok(!lines.some((l) => l.includes("ops_leftover")));
 });
 
 test("local dev: falls back to env only when no token is set", async () => {
@@ -123,18 +157,58 @@ test("local dev: falls back to env only when no token is set", async () => {
   assert.equal(secretStatus("exoIntakeSecret").reason, "invalid-shape");
 });
 
-test("fails closed: missing item ref, wrong shape, SDK error, timeout", async () => {
+test("fails closed: config missing, key name missing, ambiguous, wrong shape, SDK error, timeout", async () => {
+  for (const env of [
+    { ...HOSTED, BWS_PROJECT_ID: "" },
+    { ...HOSTED, BWS_ORGANIZATION_ID: "my-org" },
+    { ...HOSTED, BWS_API_URL: "http://api.bitwarden.com" },
+  ]) {
+    resetRuntimeSecrets();
+    await loadRuntimeSecrets({
+      env,
+      log: capture().log,
+      factory: async () => {
+        throw new Error("must not be called");
+      },
+    });
+    assert.equal(secretStatus("openaiApiKey").reason, "bws-config-missing");
+    assert.equal(secretStatus("exoIntakeSecret").reason, "bws-config-missing");
+  }
+
   resetRuntimeSecrets();
   await loadRuntimeSecrets({
-    env: { ...HOSTED, OP_EXO_INTAKE_SECRET_ITEM: "" },
+    env: { ...HOSTED, BWS_EXO_INTAKE_SECRET_NAME: "" },
     log: capture().log,
-    factory: fakeVault({
-      [HOSTED.OP_OPENAI_API_KEY_ITEM]: [{ id: "credential", title: "credential", value: "not a key" }],
-    }),
+    factory: fakeBws([{ key: HOSTED.BWS_OPENAI_API_KEY_NAME, value: "not a key" }]),
   });
-  assert.equal(secretStatus("exoIntakeSecret").reason, "item-ref-missing");
+  assert.equal(secretStatus("exoIntakeSecret").reason, "key-name-missing");
   assert.equal(secretStatus("openaiApiKey").reason, "invalid-shape");
   assert.equal(runtimeSecret("openaiApiKey"), null);
+
+  resetRuntimeSecrets();
+  await loadRuntimeSecrets({
+    env: { ...HOSTED, BWS_EXO_INTAKE_SECRET_NAME: "Cosmograph production: EXO_INTAKE_SECRET" },
+    log: capture().log,
+    factory: fakeBws([
+      { key: HOSTED.BWS_OPENAI_API_KEY_NAME, value: OPENAI },
+      { key: HOSTED.BWS_OPENAI_API_KEY_NAME, value: "sk-proj-duplicate000000000000000000" },
+    ]),
+  });
+  assert.equal(secretStatus("exoIntakeSecret").reason, "key-name-invalid");
+  assert.equal(secretStatus("openaiApiKey").reason, "secret-ambiguous");
+  assert.equal(runtimeSecret("openaiApiKey"), null);
+
+  resetRuntimeSecrets();
+  await loadRuntimeSecrets({
+    env: HOSTED,
+    log: capture().log,
+    factory: fakeBws([
+      { key: HOSTED.BWS_OPENAI_API_KEY_NAME, value: "   " },
+      { key: HOSTED.BWS_EXO_INTAKE_SECRET_NAME, value: INTAKE },
+    ]),
+  });
+  assert.equal(secretStatus("openaiApiKey").reason, "secret-empty");
+  assert.equal(runtimeSecret("exoIntakeSecret"), INTAKE);
 
   resetRuntimeSecrets();
   const { log, lines } = capture();
