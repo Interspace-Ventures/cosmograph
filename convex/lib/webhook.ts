@@ -1,7 +1,7 @@
 import type Stripe from "stripe";
 import type { BillingConfig } from "./billingConfig";
 import type { BillingEvent, Followup } from "./entitlement";
-import type { StripeSecrets } from "./opSecrets";
+import type { StripeSecrets } from "./bwsSecrets";
 import { HANDLED_EVENTS, normalizeEvent } from "./stripeEvents";
 import type { StripeLike } from "./stripeLike";
 
@@ -32,7 +32,7 @@ export type WebhookOutcome =
 /**
  * The Stripe webhook, after the HTTP layer bounded the input. Nothing is
  * trusted until the signature verifies against the signing secret from
- * 1Password. Status codes follow Stripe's retry contract: 400 for a bad
+ * Bitwarden Secrets Manager. Status codes follow Stripe's retry contract: 400 for a bad
  * signature (never retried into success), 5xx for our own failures (Stripe
  * retries), 200 once the event is applied or known.
  */

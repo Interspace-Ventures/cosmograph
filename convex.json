@@ -1,6 +1,6 @@
 {
   "functions": "convex/",
   "node": {
-    "externalPackages": ["@1password/sdk"]
+    "externalPackages": ["@bitwarden/sdk-wasm"]
   }
 }

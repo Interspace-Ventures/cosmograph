@@ -164,9 +164,9 @@ importers:
 
   .:
     dependencies:
-      '@1password/sdk':
-        specifier: ^0.5.0
-        version: 0.5.0
+      '@bitwarden/sdk-wasm':
+        specifier: 0.1.0
+        version: 0.1.0
       convex:
         specifier: ^1.48.0
         version: 1.48.0(react@19.1.0)
@@ -186,9 +186,9 @@ importers:
 
   artifacts/api-server:
     dependencies:
-      '@1password/sdk':
-        specifier: ^0.5.0
-        version: 0.5.0
+      '@bitwarden/sdk-wasm':
+        specifier: 0.1.0
+        version: 0.1.0
       '@workspace/api-zod':
         specifier: workspace:*
         version: link:../../lib/api-zod
@@ -483,12 +483,6 @@ importers:
 
 packages:
 
-  '@1password/sdk-core@0.5.0':
-    resolution: {integrity: sha512-9g7LWOKRKdePZ85evVgE9xEom3DAg3hRIyQdOwLPvpL/F7KpDXmUHMi72rsqJxKaDbWApXmrYjDExMSPqUg7xw==}
-
-  '@1password/sdk@0.5.0':
-    resolution: {integrity: sha512-k6kov3pcA7PRg2tev9CgTfEf/3JSyAp11BPQNCEsqAD32QbqM032OXC1rfjyC8Ba0sfH+NHYZxcifUZToyGyYA==}
-
   '@babel/code-frame@7.29.7':
     resolution: {integrity: sha512-Aup7aUOfpbAUg2ROOJN6Iw5f9DMBlzu0mIkm/malLQFN/YQgO48wCj0Kxa3sEHJvPVFg7siR+qRInwXd2qhQKw==}
     engines: {node: '>=6.9.0'}
@@ -575,6 +569,9 @@ packages:
   '@babel/types@7.29.7':
     resolution: {integrity: sha512-4zBIxpPzowiZpusoFkyGVwakdRJUyuH5PxQ/PrqghfdFWWasvnCdPfQXHrenDai+gyLARulZjZowCOj6fjT4pA==}
     engines: {node: '>=6.9.0'}
+
+  '@bitwarden/sdk-wasm@0.1.0':
+    resolution: {integrity: sha512-fRtfKyGa3+tV880D5xW8gYrRUWujcrFVr1n2su/fnKmc06lo8bQcWwJdGYdiPFh2rB0+6w6xrA3aQiybxOMvNg==}
 
   '@commander-js/extra-typings@15.0.0':
     resolution: {integrity: sha512-yeJlba62xqmkgELUsn7356MEnzLLu/fw2x4lofFqGnXh6YysRdEs2BaLeLtg1+KU0AXvMeqQvTTp+3hBEBK+EA==}
@@ -2356,12 +2353,6 @@ packages:
 
 snapshots:
 
-  '@1password/sdk-core@0.5.0': {}
-
-  '@1password/sdk@0.5.0':
-    dependencies:
-      '@1password/sdk-core': 0.5.0
-
   '@babel/code-frame@7.29.7':
     dependencies:
       '@babel/helper-validator-identifier': 7.29.7
@@ -2475,6 +2466,8 @@ snapshots:
     dependencies:
       '@babel/helper-string-parser': 7.29.7
       '@babel/helper-validator-identifier': 7.29.7
+
+  '@bitwarden/sdk-wasm@0.1.0': {}
 
   '@commander-js/extra-typings@15.0.0(commander@15.0.0)':
     dependencies:

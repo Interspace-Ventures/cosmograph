@@ -21,12 +21,12 @@ export const HealthCheckResponse = zod.object({
   "integrations": zod.object({
   "openai": zod.object({
   "ready": zod.boolean(),
-  "source": zod.enum(['1password', 'env', 'none']),
+  "source": zod.enum(['bitwarden', 'env', 'none']),
   "reason": zod.string().describe('ok when ready, otherwise the reason the feature is disabled.')
 }),
   "exoIntake": zod.object({
   "ready": zod.boolean(),
-  "source": zod.enum(['1password', 'env', 'none']),
+  "source": zod.enum(['bitwarden', 'env', 'none']),
   "reason": zod.string().describe('ok when ready, otherwise the reason the feature is disabled.')
 })
 }).describe('Secret-backed integrations and whether each is live. Booleans and reason codes only, never secret values.')

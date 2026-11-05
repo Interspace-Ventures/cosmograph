@@ -21,9 +21,9 @@ if (Number.isNaN(port) || port <= 0) {
 }
 
 async function main(): Promise<void> {
-  // Secrets come from 1Password once, before the server takes traffic. A
-  // failure never stops boot: the affected feature stays disabled and
-  // /api/health says why (fail closed). Values are never logged.
+  // Secrets come from Bitwarden Secrets Manager once, before the server takes
+  // traffic. A failure never stops boot: the affected feature stays disabled
+  // and /api/health says why (fail closed). Values are never logged.
   await loadRuntimeSecrets({
     log: {
       info: (m) => logger.info(m),

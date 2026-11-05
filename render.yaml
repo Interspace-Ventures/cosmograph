@@ -14,9 +14,10 @@
 # packageManager version (pnpm@11.9.0) from package.json.
 #
 # Secrets: none in platform env. The only secret this app gets on the host is
-# one read-only OP_SERVICE_ACCOUNT_TOKEN scoped to Cosmograph's 1Password
-# items (sync: false, set by hand in the dashboard). The server reads the
-# OpenAI key and the EXO intake secret from 1Password at boot
+# one read-only Bitwarden Secrets Manager machine-account access token,
+# BWS_ACCESS_TOKEN (sync: false, set by hand in the dashboard), for a machine
+# account that can read only Cosmograph's project. The server reads the OpenAI
+# key and the EXO intake secret from that project by key name at boot
 # (artifacts/api-server/src/lib/runtimeSecrets.ts). Everything else below is
 # public, non-secret configuration.
 services:
@@ -132,15 +133,19 @@ services:
         value: report-only
       - key: CSP_CONNECT_SRC
         value: https://marvelous-grouse-975.convex.cloud wss://marvelous-grouse-975.convex.cloud https://marvelous-grouse-975.convex.site https://befitting-bullfrog-619.convex.site
-      # 1Password: the token is the only secret; vault and item titles are not.
-      - key: OP_SERVICE_ACCOUNT_TOKEN
+      # Bitwarden Secrets Manager: the access token is the only secret. The
+      # organization and project ids are not secret but are only known once
+      # the project exists, so they are set in the dashboard too.
+      - key: BWS_ACCESS_TOKEN
         sync: false
-      - key: OP_VAULT
-        value: Interspace
-      - key: OP_OPENAI_API_KEY_ITEM
-        value: "Cosmograph production: OPENAI_API_KEY"
-      - key: OP_EXO_INTAKE_SECRET_ITEM
-        value: "Cosmograph production: EXO_INTAKE_SECRET"
+      - key: BWS_ORGANIZATION_ID
+        sync: false
+      - key: BWS_PROJECT_ID
+        sync: false
+      - key: BWS_OPENAI_API_KEY_NAME
+        value: COSMOGRAPH_PROD_OPENAI_API_KEY
+      - key: BWS_EXO_INTAKE_SECRET_NAME
+        value: COSMOGRAPH_PROD_EXO_INTAKE_SECRET
       # Daily spend ceilings (lib/spendGuard.ts); these equal the code defaults.
       - key: ASK_DAILY_PER_CLIENT
         value: "30"

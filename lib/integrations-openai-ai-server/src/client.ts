@@ -4,8 +4,8 @@ import OpenAI from "openai";
 // the API online when an OpenAI connection has not been configured yet.
 //
 // This module never reads the API key from env itself: the API server loads
-// it at boot (from 1Password on hosted builds, env only in local dev) and
-// hands it over through configureOpenAI. The base URL is non-secret config;
+// it at boot (from Bitwarden Secrets Manager on hosted builds, env only in
+// local dev) and hands it over through configureOpenAI. The base URL is non-secret config;
 // unset means the OpenAI SDK default (https://api.openai.com/v1).
 let client: OpenAI | null = null;
 
