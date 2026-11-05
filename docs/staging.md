@@ -42,7 +42,8 @@ Render runs the Express API and the built SPA as one always-on web service:
 `pnpm install --frozen-lockfile && pnpm run deploy:build`, then
 `pnpm run deploy:start`. Node comes from `.node-version`. All platform env is
 public configuration listed in `render.yaml`; no secret is set on the host
-except, later, one read-only `OP_SERVICE_ACCOUNT_TOKEN`. Rollback is a previous
+except, later, one read-only Bitwarden Secrets Manager machine-account token
+(`BWS_ACCESS_TOKEN`). Rollback is a previous
 Render deploy.
 
 ## Naming
