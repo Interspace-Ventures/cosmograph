@@ -10,9 +10,35 @@ export type HealthStatusDeployment = {
   environment: string;
 };
 
+/**
+ * Secret-backed integrations and whether each is live. Booleans and reason codes only, never secret values.
+ */
+export type HealthStatusIntegrations = {
+  openai: IntegrationStatus;
+  exoIntake: IntegrationStatus;
+};
+
 export interface HealthStatus {
   status: string;
   deployment: HealthStatusDeployment;
+  /** Secret-backed integrations and whether each is live. Booleans and reason codes only, never secret values. */
+  integrations: HealthStatusIntegrations;
+}
+
+export type IntegrationStatusSource = typeof IntegrationStatusSource[keyof typeof IntegrationStatusSource];
+
+
+export const IntegrationStatusSource = {
+  '1password': '1password',
+  env: 'env',
+  none: 'none',
+} as const;
+
+export interface IntegrationStatus {
+  ready: boolean;
+  source: IntegrationStatusSource;
+  /** ok when ready, otherwise the reason the feature is disabled. */
+  reason: string;
 }
 
 export interface Entitlement {

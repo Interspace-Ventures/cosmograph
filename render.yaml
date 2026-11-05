@@ -5,18 +5,20 @@
 # need a long-lived single process: never scale-to-zero, never more than one
 # instance until those move to Convex / the Exo router.
 #
-# Staging only for now. Production (cosmograph.space, branch main) is added
-# here as its own service when the production cutover is approved.
+# Two services: cosmograph-staging (branch staging) and cosmograph-production
+# (branch main, cosmograph.space). The cutover runbook is docs/prod-cutover.md.
 #
 # Node: Render reads .node-version (24.22.1), the single source of truth shared
 # with CI, so NODE_VERSION is deliberately not set here. pnpm: Render provides
 # pnpm for repos with pnpm-lock.yaml, and pnpm switches itself to the
 # packageManager version (pnpm@11.9.0) from package.json.
 #
-# Secrets: none in platform env. The only secret this app will ever get on the
-# host is one read-only OP_SERVICE_ACCOUNT_TOKEN scoped to Cosmograph's
-# 1Password items, added by Exo when it exists. Everything below is public,
-# non-secret configuration.
+# Secrets: none in platform env. The only secret this app gets on the host is
+# one read-only OP_SERVICE_ACCOUNT_TOKEN scoped to Cosmograph's 1Password
+# items (sync: false, set by hand in the dashboard). The server reads the
+# OpenAI key and the EXO intake secret from 1Password at boot
+# (artifacts/api-server/src/lib/runtimeSecrets.ts). Everything else below is
+# public, non-secret configuration.
 services:
   - type: web
     name: cosmograph-staging
@@ -69,6 +71,76 @@ services:
         value: report-only
       - key: CSP_CONNECT_SRC
         value: https://shiny-magpie-750.convex.cloud wss://shiny-magpie-750.convex.cloud https://shiny-magpie-750.convex.site https://frugal-eel-930.convex.site
+      # Daily spend ceilings (lib/spendGuard.ts); these equal the code defaults.
+      - key: ASK_DAILY_PER_CLIENT
+        value: "30"
+      - key: ASK_DAILY_GLOBAL
+        value: "10000"
+      - key: FEEDBACK_DAILY_PER_CLIENT
+        value: "10"
+      - key: FEEDBACK_DAILY_GLOBAL
+        value: "300"
+
+  - type: web
+    name: cosmograph-production
+    runtime: node
+    plan: starter
+    region: virginia
+    branch: main
+    autoDeploy: true
+    numInstances: 1
+    buildCommand: pnpm install --frozen-lockfile && pnpm run deploy:build
+    startCommand: pnpm run deploy:start
+    # Production serves at the root of cosmograph.space (as on the old host).
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DEPLOY_ENVIRONMENT
+        value: production
+      # Production is the public audience (lib/release-flags). Features with no
+      # public date stay off until a separate, approved release change.
+      - key: RELEASE_CHANNEL
+        value: public
+      - key: VITE_RELEASE_CHANNEL
+        value: public
+      # Same Render edge as staging (two hops). Re-measure after the custom
+      # domain is live (docs/prod-cutover.md).
+      - key: TRUST_PROXY_HOPS
+        value: "2"
+      # Public site: the staging gateway boundary is off.
+      - key: STAGING_AUTH_REQUIRED
+        value: "false"
+      - key: EXO_KEY_ISSUER
+        value: https://befitting-bullfrog-619.convex.site/exo-id
+      # Root path, no Exo gateway prefix.
+      - key: APP_BASE_PATH
+        value: /
+      - key: BASE_PATH
+        value: /
+      - key: ALLOWED_ORIGINS
+        value: https://cosmograph.space,https://www.cosmograph.space
+      # Cosmograph production Convex deployment and production Exo Imprint issuer.
+      - key: VITE_CONVEX_URL
+        value: https://marvelous-grouse-975.convex.cloud
+      - key: VITE_EXO_ID_ISSUER
+        value: https://befitting-bullfrog-619.convex.site/exo-id
+      # Issued by EXO for production (2026-11-03): apex https://cosmograph.space, redirect <origin>/auth/callback.
+      - key: VITE_EXO_ID_CLIENT_ID
+        value: cosmograph
+      - key: CSP_MODE
+        value: report-only
+      - key: CSP_CONNECT_SRC
+        value: https://marvelous-grouse-975.convex.cloud wss://marvelous-grouse-975.convex.cloud https://marvelous-grouse-975.convex.site https://befitting-bullfrog-619.convex.site
+      # 1Password: the token is the only secret; vault and item titles are not.
+      - key: OP_SERVICE_ACCOUNT_TOKEN
+        sync: false
+      - key: OP_VAULT
+        value: Interspace
+      - key: OP_OPENAI_API_KEY_ITEM
+        value: "Cosmograph production: OPENAI_API_KEY"
+      - key: OP_EXO_INTAKE_SECRET_ITEM
+        value: "Cosmograph production: EXO_INTAKE_SECRET"
       # Daily spend ceilings (lib/spendGuard.ts); these equal the code defaults.
       - key: ASK_DAILY_PER_CLIENT
         value: "30"

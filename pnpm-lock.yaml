@@ -186,6 +186,9 @@ importers:
 
   artifacts/api-server:
     dependencies:
+      '@1password/sdk':
+        specifier: ^0.5.0
+        version: 0.5.0
       '@workspace/api-zod':
         specifier: workspace:*
         version: link:../../lib/api-zod

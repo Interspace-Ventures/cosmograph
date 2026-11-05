@@ -417,9 +417,36 @@ components:
           required:
             - commit
             - environment
+        integrations:
+          type: object
+          description: Secret-backed integrations and whether each is live. Booleans and reason codes only, never secret values.
+          properties:
+            openai:
+              $ref: "#/components/schemas/IntegrationStatus"
+            exoIntake:
+              $ref: "#/components/schemas/IntegrationStatus"
+          required:
+            - openai
+            - exoIntake
       required:
         - status
         - deployment
+        - integrations
+    IntegrationStatus:
+      type: object
+      properties:
+        ready:
+          type: boolean
+        source:
+          type: string
+          enum: [1password, env, none]
+        reason:
+          type: string
+          description: ok when ready, otherwise the reason the feature is disabled.
+      required:
+        - ready
+        - source
+        - reason
     Entitlement:
       type: object
       properties:
