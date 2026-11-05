@@ -439,7 +439,7 @@ components:
           type: boolean
         source:
           type: string
-          enum: [1password, env, none]
+          enum: [bitwarden, env, none]
         reason:
           type: string
           description: ok when ready, otherwise the reason the feature is disabled.
