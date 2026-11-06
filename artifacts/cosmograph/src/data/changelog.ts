@@ -17,6 +17,17 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.43.1",
+    codename: "Auto Pilot",
+    date: "2026-11-06",
+    summary: "Staging's backend now updates itself on every staging release.",
+    changes: [
+      "Each staging release pushes Cosmograph's Convex backend first, so the database functions, Ask Cosmo and its health check always match the app being reviewed, with no one running a command by hand.",
+      "The key that allows that push lives only in a locked staging vault and is read by a single read-only pass; it is never stored in the host's settings or printed in logs.",
+      "Production can't be pushed this way unless it is deliberately switched on with two separate settings.",
+    ],
+  },
+  {
     version: "3.43.0",
     codename: "Gateway Relay",
     date: "2026-11-06",
