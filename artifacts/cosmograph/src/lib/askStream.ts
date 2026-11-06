@@ -1,7 +1,10 @@
 import type { AskQuery } from "@/data/galaxy";
-import { withAppBasePath } from "@/lib/appPath";
+import { convexSiteUrl } from "@/lib/convexSite";
 
-// Client reader for the "Ask Cosmos" SSE stream (POST /api/ask/chat). The server
+// Client reader for the "Ask Cosmos" SSE stream. Ask Cosmo is a Convex HTTP
+// action on the Convex AI Gateway: POST <deployment>.convex.site/ask/chat
+// (convex/lib/httpAsk.ts). It is a plain cross-origin fetch with no
+// credentials; the action checks the page's Origin against its allowlist. It
 // streams typed frames: a single `action` (so the galaxy can react immediately),
 // then `reasoning` deltas (the collapsible "Thinking…" trace), then `answer`
 // deltas, then `done` (or `error`). We POST the conversation and read the body as
@@ -108,8 +111,16 @@ export async function streamAsk(
   body: AskStreamRequest,
   h: AskStreamHandlers,
 ): Promise<void> {
-  const res = await fetch(withAppBasePath("/api/ask/chat"), {
+  const base = convexSiteUrl();
+  if (!base) {
+    // No Convex deployment configured for this build: Ask is off, not
+    // pointed anywhere else.
+    h.onError?.("The assistant is unavailable right now.");
+    return;
+  }
+  const res = await fetch(`${base}/ask/chat`, {
     method: "POST",
+    credentials: "omit",
     headers: {
       "Content-Type": "application/json",
       Accept: "text/event-stream",
