@@ -4,17 +4,17 @@ import { secretStatus } from "../lib/runtimeSecrets";
 
 /**
  * Which secret-backed integrations are live. Booleans and reason codes only,
- * never values. A disabled integration fails closed: Ask Cosmo answers
- * "unavailable" and feedback intake returns 502.
+ * never values. A disabled integration fails closed: feedback intake returns
+ * 502. Ask Cosmo is not here anymore: it runs on Convex (POST /ask/chat on the
+ * deployment's .convex.site) and its gateway state is that deployment's
+ * GET /health.
  */
 export function integrationHealth(
   env: Record<string, string | undefined> = process.env,
 ) {
-  const openai = secretStatus("openaiApiKey");
   const intake = secretStatus("exoIntakeSecret");
   const intakeUrl = (env["EXO_INTAKE_API_URL"] ?? "").trim() !== "";
   return {
-    openai,
     exoIntake:
       intake.ready && !intakeUrl
         ? { ready: false, source: intake.source, reason: "api-url-missing" }

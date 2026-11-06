@@ -1,10 +1,9 @@
 import { createServer } from "node:http";
-import { configureOpenAI } from "@workspace/integrations-openai-ai-server";
 import app from "./app";
 import { attachPresence } from "./presence/server";
 import { logger } from "./lib/logger";
 import { featureEnabled } from "./lib/features";
-import { loadRuntimeSecrets, runtimeSecret } from "./lib/runtimeSecrets";
+import { loadRuntimeSecrets } from "./lib/runtimeSecrets";
 
 const rawPort = process.env["PORT"];
 
@@ -21,7 +20,9 @@ if (Number.isNaN(port) || port <= 0) {
 }
 
 async function main(): Promise<void> {
-  // Secrets come from 1Password once, before the server takes traffic. A
+  // Secrets come from 1Password once, before the server takes traffic (only
+  // the EXO intake key now: Ask Cosmo runs on the Convex AI Gateway and needs
+  // no model key anywhere). A
   // failure never stops boot: the affected feature stays disabled and
   // /api/health says why (fail closed). Values are never logged.
   await loadRuntimeSecrets({
@@ -31,12 +32,6 @@ async function main(): Promise<void> {
       error: (m) => logger.error(m),
     },
   });
-  const openaiKey = runtimeSecret("openaiApiKey");
-  configureOpenAI(
-    openaiKey
-      ? { apiKey: openaiKey, baseURL: process.env["AI_INTEGRATIONS_OPENAI_BASE_URL"] }
-      : null,
-  );
 
   const server = createServer(app);
   if (featureEnabled("live-presence")) {
