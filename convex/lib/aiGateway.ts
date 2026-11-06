@@ -24,10 +24,17 @@ export type TokenMinter = () => Promise<string>;
 
 export const mintGatewayToken: TokenMinter = () => getServiceToken("ai-gateway");
 
-export function gatewayClient(mint: TokenMinter = mintGatewayToken): OpenAI {
+/** The fetch the SDK uses. Injectable so tests never reach the network. */
+export type GatewayFetch = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
+
+export function gatewayClient(
+  mint: TokenMinter = mintGatewayToken,
+  fetchImpl?: GatewayFetch,
+): OpenAI {
   return new OpenAI({
     baseURL: GATEWAY_BASE_URL,
     apiKey: mint,
+    ...(fetchImpl ? { fetch: fetchImpl } : {}),
     // One retry for a dropped connection or an upstream 5xx; more would
     // multiply the worst-case cost of a turn.
     maxRetries: 1,
@@ -47,12 +54,13 @@ export async function streamCompletion(
   messages: Array<{ role: "system" | "user" | "assistant"; content: string }>,
   opts: {
     mint?: TokenMinter;
+    fetch?: GatewayFetch;
     signal?: AbortSignal;
     env?: Record<string, string | undefined>;
   } = {},
 ): Promise<AsyncIterable<string>> {
   const env = opts.env ?? process.env;
-  const openai = gatewayClient(opts.mint);
+  const openai = gatewayClient(opts.mint, opts.fetch);
   const params = {
     model: ASK_MODEL,
     // Answers are a few sentences. This caps reasoning + answer tokens, and so
