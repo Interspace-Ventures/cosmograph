@@ -42,6 +42,7 @@ jobs:
         run: |
           pnpm -r --if-present run test
           pnpm --filter @workspace/release-flags exec tsx --test src/index.test.ts
+          pnpm run test:deploy
 
       # Builds what ships (web + API), same as managed-standards. The legacy
       # artifacts/trailer vite config needs PORT/BASE_PATH and is not deployed.

@@ -51,9 +51,16 @@ the caps, not the allowlist, are the spend ceiling.
 Render runs the Express API and the built SPA as one always-on web service:
 `pnpm install --frozen-lockfile && pnpm run deploy:build`, then
 `pnpm run deploy:start`. Node comes from `.node-version`. All platform env is
-public configuration listed in `render.yaml`; no secret is set on the host
-except, later, one read-only `OP_SERVICE_ACCOUNT_TOKEN`. Rollback is a previous
-Render deploy.
+public configuration listed in `render.yaml`; the only secret on the host is
+one read-only Bitwarden `BWS_ACCESS_TOKEN`. Rollback is a previous Render
+deploy.
+
+Between build and start, Render runs the pre-deploy command
+`node scripts/convex/deploy-from-bitwarden.mjs --pre-deploy`, which reads the
+staging Convex deploy key from Bitwarden and pushes the functions to
+`shiny-magpie-750`, then checks `/health` and the Ask Cosmo preflight. If the
+push fails, the deploy fails and the previous one keeps serving. Details,
+kill switches and the production guard: `docs/runbooks/no-owner-terminal.md`.
 
 ## Naming
 
