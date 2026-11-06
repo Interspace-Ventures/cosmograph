@@ -36,6 +36,16 @@ shared `STAGING_GATEWAY_SECRET`.
 Production must not set this variable unless a separate production access
 decision is explicitly approved.
 
+**Ask Cosmo is outside this boundary.** Since 3.43.0 the SPA calls Ask Cosmo
+on the staging Convex deployment
+(`https://shiny-magpie-750.convex.site/ask/chat`), like billing, not on the
+Render origin, so the EXO gateway token does not guard it. What guards it
+there, all fail-closed: the `ask-cosmo` release flag on the Convex
+deployment's `RELEASE_CHANNEL`, the Origin allowlist (`staging.exo.now`), the
+per-visitor (12/min, 30/day, hashed edge IP) and global (10,000/day) caps,
+and the bounded request. A non-browser caller can forge an Origin header, so
+the caps, not the allowlist, are the spend ceiling.
+
 ## Host
 
 Render runs the Express API and the built SPA as one always-on web service:
@@ -62,3 +72,7 @@ Before sharing staging, verify all of the following:
 5. The deployed branch and commit match `staging`.
 6. `VITE_CONVEX_URL` points at the Cosmograph staging Convex deployment.
 7. HTML and private responses include the staging security headers.
+8. `https://shiny-magpie-750.convex.site/health` reports
+   `integrations.askCosmo.ready: true` (`gateway-disabled` means the Convex
+   team is not on a paid plan), and a POST to `/ask/chat` with a foreign
+   Origin returns `403`.
