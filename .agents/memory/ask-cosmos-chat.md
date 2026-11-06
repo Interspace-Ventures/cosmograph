@@ -6,7 +6,7 @@ description: How the streaming Ask Cosmos assistant is wired and the honesty inv
 # Ask Cosmos — streaming grounded assistant
 
 Ask Cosmos is a single model call that both **routes** and **writes**. It is a
-SSE stream from `POST /api/ask/chat`, not the old one-shot `/ask/translate`.
+SSE stream from the Convex HTTP action `POST <deployment>.convex.site/ask/chat` (Convex AI Gateway, no OpenAI key; moved off Express `/api/ask/chat` in 3.43.0), not the old one-shot `/ask/translate`.
 
 ## Wire protocol (model → server → client)
 The model emits ONE completion shaped as:
@@ -42,5 +42,5 @@ question, the record *shape* (field names+types), domain names, and the summary.
 
 ## Verifying
 WebGL can't render headless (see r3f-headless-webgl), so smoke-test the SSE
-contract with `curl -sN POST localhost:80/api/ask/chat` and assert: action frame
+contract with `curl -sN -H "Origin: <allowlisted origin>" -X POST <deployment>.convex.site/ask/chat` and assert: action frame
 first, reasoning streams with NO marker text leaked, answer streams, `done`.

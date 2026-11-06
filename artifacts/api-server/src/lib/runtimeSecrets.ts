@@ -8,7 +8,6 @@
  * convex/lib/billingConfig.ts):
  *
  *   OP_VAULT                    vault title (default "Interspace")
- *   OP_OPENAI_API_KEY_ITEM      item title holding the Ask Cosmo OpenAI key
  *   OP_EXO_INTAKE_SECRET_ITEM   item title holding the EXO intake HMAC secret
  *   OP_SECRET_FIELDS            field ids/titles to read, default "credential,password"
  *
@@ -16,7 +15,11 @@
  * than op:// references, because titles like "Cosmograph production:
  * EXO_INTAKE_SECRET" contain characters secret references don't support.
  *
- * Env fallbacks (AI_INTEGRATIONS_OPENAI_API_KEY, EXO_INTAKE_SECRET) are read
+ * Ask Cosmo no longer needs a key here: it runs as a Convex HTTP action on the
+ * Convex AI Gateway (convex/lib/aiGateway.ts), where Convex holds the provider
+ * credentials.
+ *
+ * The env fallback (EXO_INTAKE_SECRET) is read
  * only for local development (NODE_ENV !== "production") and only when no
  * service account token is set. On a hosted build they are ignored, with a
  * warning naming the variable so it gets removed.
@@ -27,7 +30,7 @@
  * our own lookup messages are logged, never SDK error text.
  */
 
-export type SecretId = "openaiApiKey" | "exoIntakeSecret";
+export type SecretId = "exoIntakeSecret";
 
 export type SecretSource = "1password" | "env" | "none";
 
@@ -49,12 +52,6 @@ type SecretSpec = {
 
 export const SECRET_SPECS: readonly SecretSpec[] = [
   {
-    id: "openaiApiKey",
-    itemEnv: "OP_OPENAI_API_KEY_ITEM",
-    devEnv: "AI_INTEGRATIONS_OPENAI_API_KEY",
-    valid: (v) => v.length >= 20 && !/\s/.test(v),
-  },
-  {
     id: "exoIntakeSecret",
     itemEnv: "OP_EXO_INTAKE_SECRET_ITEM",
     devEnv: "EXO_INTAKE_SECRET",
@@ -62,6 +59,17 @@ export const SECRET_SPECS: readonly SecretSpec[] = [
     valid: (v) => v.length >= 32 && !/\s/.test(v),
   },
 ];
+
+/**
+ * Settings from before Ask Cosmo moved to the Convex AI Gateway. Nothing reads
+ * them; a leftover one is named (never echoed) so it gets removed.
+ */
+export const RETIRED_ENV = [
+  "AI_INTEGRATIONS_OPENAI_API_KEY",
+  "AI_INTEGRATIONS_OPENAI_BASE_URL",
+  "OP_OPENAI_API_KEY_ITEM",
+  "BWS_OPENAI_API_KEY_NAME",
+] as const;
 
 export interface OpClientLike {
   vaults: { list(): Promise<Array<{ id: string; title: string }>> };
@@ -163,6 +171,14 @@ export async function loadRuntimeSecrets(
     .map((f) => f.trim())
     .filter(Boolean);
 
+  for (const name of RETIRED_ENV) {
+    if ((env[name] ?? "").trim() !== "") {
+      log.warn(
+        `secrets: ${name} is set but unused (Ask Cosmo runs on the Convex AI Gateway and needs no OpenAI key); remove it`,
+      );
+    }
+  }
+
   // Hosted builds never read secrets from env. Say so by name, never value.
   if (!localDev) {
     for (const spec of SECRET_SPECS) {
@@ -190,7 +206,7 @@ export async function loadRuntimeSecrets(
     }
     if (!localDev) {
       log.error(
-        "secrets: OP_SERVICE_ACCOUNT_TOKEN is not set; Ask Cosmo and feedback intake are disabled",
+        "secrets: OP_SERVICE_ACCOUNT_TOKEN is not set; feedback intake is disabled",
       );
     }
     return snapshot();

@@ -343,9 +343,13 @@ test("the browser can't set paid: grants are internal, and no public path writes
     .getRoutes()
     .map(([path, method]) => `${method} ${path}`)
     .sort();
+  // Ask Cosmo (/ask/chat) and /health never touch membership.
   assert.deepEqual(routes, [
+    "GET /health",
+    "OPTIONS /ask/chat",
     "OPTIONS /billing/checkout",
     "OPTIONS /billing/portal",
+    "POST /ask/chat",
     "POST /billing/checkout",
     "POST /billing/portal",
     "POST /stripe/webhook",

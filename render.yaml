@@ -16,9 +16,11 @@
 # Secrets: none in platform env. The only secret this app gets on the host is
 # one read-only OP_SERVICE_ACCOUNT_TOKEN scoped to Cosmograph's 1Password
 # items (sync: false, set by hand in the dashboard). The server reads the
-# OpenAI key and the EXO intake secret from 1Password at boot
-# (artifacts/api-server/src/lib/runtimeSecrets.ts). Everything else below is
-# public, non-secret configuration.
+# EXO intake secret from 1Password at boot
+# (artifacts/api-server/src/lib/runtimeSecrets.ts). Ask Cosmo does not run
+# here: it is a Convex HTTP action on the Convex AI Gateway (convex/http.ts),
+# so there is no model key on Render, and its caps (ASK_*) are Convex env.
+# Everything else below is public, non-secret configuration.
 services:
   - type: web
     name: cosmograph-staging
@@ -71,11 +73,8 @@ services:
         value: report-only
       - key: CSP_CONNECT_SRC
         value: https://shiny-magpie-750.convex.cloud wss://shiny-magpie-750.convex.cloud https://shiny-magpie-750.convex.site https://frugal-eel-930.convex.site
-      # Daily spend ceilings (lib/spendGuard.ts); these equal the code defaults.
-      - key: ASK_DAILY_PER_CLIENT
-        value: "30"
-      - key: ASK_DAILY_GLOBAL
-        value: "10000"
+      # Feedback intake daily ceilings (lib/spendGuard.ts); equal to the code
+      # defaults. Ask Cosmo's caps live on the Convex deployment.
       - key: FEEDBACK_DAILY_PER_CLIENT
         value: "10"
       - key: FEEDBACK_DAILY_GLOBAL
@@ -137,15 +136,10 @@ services:
         sync: false
       - key: OP_VAULT
         value: Interspace
-      - key: OP_OPENAI_API_KEY_ITEM
-        value: "Cosmograph production: OPENAI_API_KEY"
       - key: OP_EXO_INTAKE_SECRET_ITEM
         value: "Cosmograph production: EXO_INTAKE_SECRET"
-      # Daily spend ceilings (lib/spendGuard.ts); these equal the code defaults.
-      - key: ASK_DAILY_PER_CLIENT
-        value: "30"
-      - key: ASK_DAILY_GLOBAL
-        value: "10000"
+      # Feedback intake daily ceilings (lib/spendGuard.ts); equal to the code
+      # defaults. Ask Cosmo's caps live on the Convex deployment.
       - key: FEEDBACK_DAILY_PER_CLIENT
         value: "10"
       - key: FEEDBACK_DAILY_GLOBAL

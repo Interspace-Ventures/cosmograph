@@ -6,11 +6,6 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export * from './askField';
-export * from './askMessage';
-export * from './askMessageRole';
-export * from './askRequest';
-export * from './askSummary';
 export * from './checkoutRequest';
 export * from './checkoutSession';
 export * from './claimReferralRequest';

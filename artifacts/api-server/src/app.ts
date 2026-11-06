@@ -56,7 +56,8 @@ app.use(cspNonce, cspHeaders());
 app.post(CSP_REPORT_PATH, ...cspReportRoute());
 
 // Accounts, billing, ships, referrals and the verified Stripe webhook live on
-// Convex (convex/http.ts). This server keeps only Ask, feedback, GitHub stars,
+// Convex (convex/http.ts). So does Ask Cosmo, on the Convex AI Gateway. This
+// server keeps only feedback, GitHub stars,
 // health and presence until Phase 5 removes it. No Clerk, no auth proxy.
 // No cookies or cross-origin callers any more: the SPA calls /api on its own
 // origin, so send no CORS grants at all.

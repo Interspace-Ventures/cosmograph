@@ -16,7 +16,6 @@ Production contract: branch `main`, served at the root of
 - This PR is merged into `staging` and reviewed at `staging.exo.now/cosmograph`.
 - 1Password vault `Interspace` holds these items, each with the value in a
   `credential` (or `password`) field:
-  - `Cosmograph production: OPENAI_API_KEY` (Ask Cosmo)
   - `Cosmograph production: EXO_INTAKE_SECRET` (feedback intake HMAC, 32+ chars)
   - for the Convex billing actions: `Cosmograph production: STRIPE_SECRET_KEY`
     and `Cosmograph production: STRIPE_WEBHOOK_SECRET` (live mode, matching
@@ -41,8 +40,9 @@ On `cosmograph-production` set the two `sync: false` values:
 - `VITE_EXO_ID_CLIENT_ID`: the production client id from EXO (build-time;
   redeploy after setting it)
 
-Never set `AI_INTEGRATIONS_OPENAI_API_KEY`, `EXO_INTAKE_SECRET` or any Stripe
-secret as Render env. The server ignores them outside local dev and logs a
+Never set `EXO_INTAKE_SECRET` or any Stripe secret as Render env. Ask Cosmo
+needs no OpenAI key at all (it runs on the Convex AI Gateway); remove any
+leftover `OP_OPENAI_API_KEY_ITEM` / `AI_INTEGRATIONS_OPENAI_*` values. The server ignores them outside local dev and logs a
 warning naming the variable. Set `EXO_INTAKE_API_URL` (non-secret) once EXO
 gives the production intake URL; until then `/api/health` reports
 `exoIntake.reason = "api-url-missing"`.
@@ -69,8 +69,11 @@ Render auto-deploys `main` to `cosmograph-production`. Check on the
 onrender.com URL:
 
 1. `/api/health` returns 200 with `environment: "production"`, the merged
-   commit, and `integrations.openai.ready: true` (and `exoIntake` once its URL
-   is set).
+   commit, and `integrations.exoIntake` once its URL is set. Ask Cosmo's state
+   is on the Convex deployment: `https://marvelous-grouse-975.convex.site/health`
+   reports `integrations.askCosmo` (`gateway-disabled` means the Convex team is
+   not on a paid plan). `ask-cosmo` has no public release date, so it stays
+   `released: false` on production until a separate, approved release change.
 2. `/` serves the galaxy (no 403: the staging boundary is off).
 3. Response headers carry the CSP (report-only) with the
    `marvelous-grouse-975` and `befitting-bullfrog-619` origins.

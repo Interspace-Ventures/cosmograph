@@ -7,7 +7,7 @@ Cosmograph's two violations: (1) data on Replit Postgres behind Express, (2) Cle
 ## Target
 - Data and server logic: Convex (queries, mutations, actions, HTTP actions). No Postgres, no Drizzle, no Express.
 - Identity: Exo Key on Convex Auth. Convex validates the Exo ID JWT (issuer/audience/JWKS from the Exo registration in exo#229); `ctx.auth.getUserIdentity().subject` is the Exo subject. No Clerk, no custom auth middleware, no bypass.
-- Secrets: Stripe, OpenAI and GitHub keys live in Cosmograph's 1Password vault. They are NOT copied into Convex or platform env: Node-runtime actions read them at runtime with @1password/sdk, in memory only (decided for Phase 3, 2026-10-26). The only platform secret is one read-only OP_SERVICE_ACCOUNT_TOKEN. Nothing in Render, Replit or Vercel env.
+- Secrets: Stripe and GitHub keys live in Cosmograph's 1Password vault. They are NOT copied into Convex or platform env: Node-runtime actions read them at runtime with @1password/sdk, in memory only (decided for Phase 3, 2026-10-26). The only platform secret is one read-only OP_SERVICE_ACCOUNT_TOKEN. Nothing in Render, Replit or Vercel env. Ask Cosmo needs no OpenAI key: it runs on the Convex AI Gateway (deployment token via `getServiceToken("ai-gateway")`, paid Convex plan required; done 2026-11-06).
 - Delivery: Exo delivery (Convex deployment per environment + static SPA). Until Phase 5 the Express API + SPA run as one Render web service (`render.yaml`); Replit retires.
 - Frontend: the Vite SPA stays; `fetch('/api/...')` calls become Convex client calls.
 
@@ -29,7 +29,7 @@ Notes: `createdAt` becomes Convex `_creationTime`; `referredAt` is stored as epo
 | POST /billing/checkout, /billing/confirm | action `billing.checkout`; confirm replaced by Stripe webhook HTTP action (signature-verified) | auth, prices from config never created at runtime, never trust browser payment state |
 | GET/PUT /me/ship, POST /me/ship/claim, /me/ship/confirm | query/mutation `ship.*`, checkout via action + webhook | auth, ownership enforced server-side |
 | GET/POST referral | query/mutation `referral.*` | new-account-only attribution |
-| POST /ask (Ask Cosmo, OpenAI) | action `ask.ask` | Origin allowlist (HTTP action), per-minute + daily per-client limits, global daily cutoff that fails closed, bounded input, capped output; counters in a `spend` table |
+| POST /ask (Ask Cosmo) | HTTP action `POST /ask/chat` on the Convex AI Gateway (done) | Origin allowlist (HTTP action), per-minute + daily per-client limits, global daily cutoff that fails closed, bounded input, capped output; counters in `rateCounters` (scope `ask`) |
 | POST /feedback (Exo intake) | action `feedback.submit` | rate limits; intake secret via Exo Secure |
 | GET /github/stars | action with cached result table | no secret in client |
 | /health | HTTP action `/health` | |

@@ -17,6 +17,18 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.43.0",
+    codename: "Gateway Relay",
+    date: "2026-11-06",
+    summary: "Cosmo now answers through Convex's AI gateway, with no assistant key held anywhere.",
+    changes: [
+      "Ask Cosmo moved off Cosmograph's own server onto its Convex backend, which reaches the model through the Convex AI Gateway with a short-lived token instead of a stored key.",
+      "Prompts are routed only to providers that keep no copy of them and don't train on them.",
+      "Per-visitor and daily limits now live in the database, so they hold across restarts and never store a visitor's address, only a scrambled stand-in.",
+      "A health check on the Convex side says plainly whether Cosmo can answer right now, and why not when it can't.",
+    ],
+  },
+  {
     version: "3.42.0",
     codename: "Home Port",
     date: "2026-11-03",
