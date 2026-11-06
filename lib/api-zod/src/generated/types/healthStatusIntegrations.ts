@@ -8,9 +8,8 @@
 import type { IntegrationStatus } from './integrationStatus';
 
 /**
- * Secret-backed integrations and whether each is live. Booleans and reason codes only, never secret values.
+ * Secret-backed integrations and whether each is live. Booleans and reason codes only, never secret values. Ask Cosmo is not listed: it runs on Convex (POST /ask/chat on the deployment's .convex.site, on the Convex AI Gateway) and reports its state on that deployment's GET /health.
  */
 export type HealthStatusIntegrations = {
-  openai: IntegrationStatus;
   exoIntake: IntegrationStatus;
 };
