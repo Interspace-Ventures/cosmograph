@@ -170,6 +170,9 @@ importers:
       convex:
         specifier: ^1.48.0
         version: 1.48.0(react@19.1.0)
+      openai:
+        specifier: ^6.27.0
+        version: 6.44.0(ws@8.21.0)(zod@4.6.7)
       stripe:
         specifier: ^22.2.2
         version: 22.2.2(@types/node@25.6.2)
@@ -192,9 +195,6 @@ importers:
       '@workspace/api-zod':
         specifier: workspace:*
         version: link:../../lib/api-zod
-      '@workspace/integrations-openai-ai-server':
-        specifier: workspace:*
-        version: link:../../lib/integrations-openai-ai-server
       '@workspace/release-flags':
         specifier: workspace:*
         version: link:../../lib/release-flags
@@ -452,16 +452,6 @@ importers:
       drizzle-kit:
         specifier: ^0.31.10
         version: 0.31.10
-
-  lib/integrations-openai-ai-server:
-    dependencies:
-      openai:
-        specifier: ^6.27.0
-        version: 6.44.0(ws@8.21.0)(zod@3.25.76)
-    devDependencies:
-      '@types/node':
-        specifier: 'catalog:'
-        version: 25.6.2
 
   lib/release-flags:
     devDependencies:
@@ -3607,10 +3597,10 @@ snapshots:
     dependencies:
       wrappy: 1.0.2
 
-  openai@6.44.0(ws@8.21.0)(zod@3.25.76):
+  openai@6.44.0(ws@8.21.0)(zod@4.6.7):
     optionalDependencies:
       ws: 8.21.0
-      zod: 3.25.76
+      zod: 4.6.7
 
   orval@8.44.0(@tanstack/react-query@5.100.9(react@19.1.0))(prettier@3.8.3)(typescript@5.9.3)(zod@4.6.7):
     dependencies:
