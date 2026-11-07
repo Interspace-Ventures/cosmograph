@@ -47,3 +47,7 @@ Thumbs.db
 # Local caches
 .cache/
 .local/
+
+# Local env (written by `npx convex dev`); never commit
+.env.local
+.env*.local

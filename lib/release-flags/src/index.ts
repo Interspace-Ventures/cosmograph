@@ -13,6 +13,7 @@ export const FEATURE_IDS = [
   "live-presence",
   "premium-ships",
   "referrals",
+  "convex-account",
 ] as const;
 
 export type FeatureId = (typeof FEATURE_IDS)[number];
@@ -89,6 +90,21 @@ export const FEATURE_RELEASES: Record<FeatureId, FeatureRelease> = {
     release: {
       internal: "2026-07-30",
       "friends-and-family": "2026-09-03",
+      public: null,
+    },
+  },
+  "convex-account": {
+    title: "Exo Key + Convex account",
+    description:
+      "Exo Key sign-in, with account, researcher unlocks, ships and referrals served by Convex instead of Express (migration Phase 2).",
+    owner: "platform",
+    // Unscheduled on every channel: a migration switch, enabled only by an
+    // explicit override (FEATURE_FLAG_OVERRIDES / VITE_FEATURE_FLAG_OVERRIDES
+    // "convex-account=on") once the Convex deployment for that environment is
+    // live. Default off everywhere.
+    release: {
+      internal: null,
+      "friends-and-family": null,
       public: null,
     },
   },

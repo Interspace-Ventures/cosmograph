@@ -27,14 +27,16 @@ Please include:
 
 The core research visualization is generated from public
 [OpenAlex](https://openalex.org) records, but the deployed product also includes
-Clerk identity, a Postgres-backed entitlement layer, optional Stripe commerce,
+Exo Imprint sign-in (Exo Key), a Convex-backed account and entitlement layer,
+Stripe commerce with a signature-verified webhook,
 AI-assisted queries, feedback, referrals, and realtime presence. Treat the web
-client, API server, authentication proxy, database, webhook handlers, and
+client, API server, Convex functions, webhook handlers, and
 deployment configuration as security-sensitive surfaces.
 
-Staging is private by default. It uses a dedicated database branch and requires
-an authenticated Clerk session for application access while leaving only its
-health endpoint and sign-in dependencies public. See
+Staging is private by default. It is reachable only through the EXO gateway,
+which signs reviewers in with Exo Imprint; the origin rejects any request that
+does not carry the gateway's signed token for Cosmograph, leaving only its
+health endpoint and static assets public. See
 [`docs/staging.md`](docs/staging.md) for the enforced boundary and verification
 checklist.
 

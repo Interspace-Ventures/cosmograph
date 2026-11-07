@@ -2,20 +2,35 @@
   "name": "cosmograph",
   "version": "0.0.0",
   "packageManager": "pnpm@11.9.0",
+  "engines": {
+    "node": "24.22.1"
+  },
   "license": "MIT",
   "scripts": {
     "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "release:check": "pnpm --filter @workspace/release-flags exec tsx --test src/index.test.ts && pnpm --filter @workspace/scripts exec tsx src/check-release-version.ts",
-    "railway:build": "pnpm --filter @workspace/cosmograph run build && pnpm --filter @workspace/api-server run build",
-    "railway:start": "pnpm --filter @workspace/api-server run start",
+    "deploy:build": "pnpm --filter @workspace/cosmograph run build && pnpm --filter @workspace/api-server run build",
+    "deploy:start": "pnpm --filter @workspace/api-server run start",
     "typecheck:libs": "tsc --build",
-    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
+    "typecheck:convex": "tsc -p convex/tsconfig.json",
+    "typecheck": "pnpm run typecheck:libs && pnpm run typecheck:convex && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
+    "deploy:convex": "node scripts/convex/deploy-from-bitwarden.mjs --pre-deploy",
+    "test:deploy": "node --test scripts/convex/deploy-from-bitwarden.test.mjs",
+    "test:convex": "pnpm --filter @workspace/release-flags exec tsx --test ../../tests/convex/phase2.test.ts ../../tests/convex/phase3.test.ts ../../tests/convex/ask.test.ts ../../artifacts/cosmograph/src/lib/exoId.test.ts"
   },
   "private": true,
   "devDependencies": {
+    "@types/node": "catalog:",
     "prettier": "^3.8.3",
     "typescript": "~5.9.3"
   },
-  "description": "**A scientist's life's work, rendered as a galaxy you can fly through.**"
+  "description": "**A scientist's life's work, rendered as a galaxy you can fly through.**",
+  "dependencies": {
+    "@1password/sdk": "^0.5.0",
+    "@bitwarden/sdk-wasm": "0.1.0",
+    "convex": "^1.48.0",
+    "openai": "^6.27.0",
+    "stripe": "^22.2.2"
+  }
 }

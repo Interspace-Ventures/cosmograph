@@ -6,8 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { HealthStatusDeployment } from './healthStatusDeployment';
+import type { HealthStatusIntegrations } from './healthStatusIntegrations';
 
 export interface HealthStatus {
   status: string;
   deployment: HealthStatusDeployment;
+  /** Secret-backed integrations and whether each is live. Booleans and reason codes only, never secret values. */
+  integrations: HealthStatusIntegrations;
 }

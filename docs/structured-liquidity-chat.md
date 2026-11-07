@@ -26,9 +26,10 @@ politely declined and redirected back to the science.
 
 ## The wire protocol
 
-`POST /api/ask/chat` returns a **Server-Sent Events** stream (declared in the
-OpenAPI contract as `text/event-stream`; the generated hook is ignored and the
-client reads the body by hand, because `EventSource` can't POST).
+`POST <deployment>.convex.site/ask/chat` (a Convex HTTP action,
+`convex/lib/httpAsk.ts`) returns a **Server-Sent Events** stream. The client
+reads the body by hand (`EventSource` can't POST), cross-origin with no
+credentials; the action checks the page's Origin against its allowlist.
 
 The model is prompted to emit a single completion shaped like:
 
@@ -84,9 +85,10 @@ collapsed to `0px`, with `border-edge` / `ink` / `accent` tokens):
 ```
 user text
   └─ AskDrawer.submit → streamAsk() (src/lib/askStream.ts)
-       POST /api/ask/chat  { messages, fields, domains, summary }
-         └─ routes/ask.ts (rate + length caps) → lib/ask.ts streamAsk()
-              └─ OpenAI (gpt-5-mini, reasoning_effort:"low", stream)
+       POST <convex site>/ask/chat  { messages, fields, domains, summary }
+         └─ convex/lib/httpAsk.ts (flag, Origin, bounded body, rate caps)
+              └─ Convex AI Gateway (openai/gpt-5-mini, reasoning_effort:"low",
+                 900 tokens, ZDR, stream; no OpenAI key anywhere)
                    └─ StreamSplitter → SSE frames
   ◄─ onAction  → data: runAskQuery + setFilters (galaxy lights up)
                  feedback: useReportFeedback → EXO work-item identifier

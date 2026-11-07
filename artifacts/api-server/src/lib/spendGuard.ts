@@ -6,10 +6,10 @@
 // global breaker trips, the feature returns 503 until midnight UTC instead of
 // spending.
 //
-// State is in-memory: the service runs as one always-on Railway instance. A
-// restart resets the counters, which can at most double one day's ceiling. The
-// durable, cross-instance cap is the tenant spend cap in the Exo router once
-// Ask Cosmo moves there.
+// State is in-memory: the service runs as one always-on Render instance. A
+// restart resets the counters, which can at most double one day's ceiling.
+// Ask Cosmo's budget moved to Convex with Ask itself (convex/askInternal.ts,
+// durable counters in `rateCounters`); feedback intake still uses this.
 
 export interface DailyBudgetOptions {
   /** Max calls per client key per UTC day. */

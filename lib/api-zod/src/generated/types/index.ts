@@ -6,11 +6,6 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export * from './askField';
-export * from './askMessage';
-export * from './askMessageRole';
-export * from './askRequest';
-export * from './askSummary';
 export * from './checkoutRequest';
 export * from './checkoutSession';
 export * from './claimReferralRequest';
@@ -23,6 +18,9 @@ export * from './feedbackRequestKind';
 export * from './feedbackResult';
 export * from './healthStatus';
 export * from './healthStatusDeployment';
+export * from './healthStatusIntegrations';
+export * from './integrationStatus';
+export * from './integrationStatusSource';
 export * from './referralInfo';
 export * from './saveShipRequest';
 export * from './shipState';

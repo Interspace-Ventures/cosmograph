@@ -1,9 +1,9 @@
 import { createServer } from "node:http";
 import app from "./app";
 import { attachPresence } from "./presence/server";
-import { initStripe } from "./lib/stripeSetup";
 import { logger } from "./lib/logger";
 import { featureEnabled } from "./lib/features";
+import { loadRuntimeSecrets } from "./lib/runtimeSecrets";
 
 const rawPort = process.env["PORT"];
 
@@ -19,21 +19,39 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-const server = createServer(app);
-if (featureEnabled("live-presence")) {
-  attachPresence(server);
-} else {
-  logger.info("Live presence disabled by release plan");
+async function main(): Promise<void> {
+  // Secrets come from 1Password once, before the server takes traffic (only
+  // the EXO intake key now: Ask Cosmo runs on the Convex AI Gateway and needs
+  // no model key anywhere). A
+  // failure never stops boot: the affected feature stays disabled and
+  // /api/health says why (fail closed). Values are never logged.
+  await loadRuntimeSecrets({
+    log: {
+      info: (m) => logger.info(m),
+      warn: (m) => logger.warn(m),
+      error: (m) => logger.error(m),
+    },
+  });
+
+  const server = createServer(app);
+  if (featureEnabled("live-presence")) {
+    attachPresence(server);
+  } else {
+    logger.info("Live presence disabled by release plan");
+  }
+
+  server.listen(port, () => {
+    logger.info({ port }, "Server listening");
+  });
+
+  server.on("error", (err) => {
+    logger.error({ err }, "Error listening on port");
+    process.exit(1);
+  });
 }
 
-// Best-effort, non-fatal: initializes Stripe sync + webhook when connected.
-void initStripe();
-
-server.listen(port, () => {
-  logger.info({ port }, "Server listening");
-});
-
-server.on("error", (err) => {
-  logger.error({ err }, "Error listening on port");
+main().catch(() => {
+  // Never log the error object here: it could carry config details.
+  logger.error("Server failed to start");
   process.exit(1);
 });

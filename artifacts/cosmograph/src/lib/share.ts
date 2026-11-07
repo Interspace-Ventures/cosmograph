@@ -13,7 +13,7 @@ export function setGalaxyCanvas(el: HTMLCanvasElement | null): void {
 const CARD_W = 1200;
 const CARD_H = 630;
 
-const TITLE_FONT = "'Bricolage Grotesque', sans-serif";
+const TITLE_FONT = "'Bricolage Grotesque Variable', 'Bricolage Grotesque', sans-serif";
 const MONO_FONT = "'Space Mono', monospace";
 
 type CtxLS = CanvasRenderingContext2D & { letterSpacing?: string };

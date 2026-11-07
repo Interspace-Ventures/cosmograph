@@ -5,9 +5,8 @@ import { Button } from "@/components/ui/button";
 /**
  * True when the app is running inside an iframe (e.g. an embedded dev preview, or
  * anyone embedding cosmograph.space). OAuth providers refuse to render their
- * consent screens in an iframe, so Clerk pops them into a new tab while the bot
- * challenge stays in the embedded page — a confusing split. We sidestep it by
- * handing the whole auth flow off to a single top-level tab.
+ * consent screens in an iframe, so we hand the whole auth flow off to a single
+ * top-level tab.
  */
 function inIframe(): boolean {
   try {
@@ -19,9 +18,9 @@ function inIframe(): boolean {
 }
 
 /**
- * Wraps the Clerk <SignIn>/<SignUp> widget. When framed, it replaces the widget
- * with a card that opens the same auth route in a new top-level tab, so the bot
- * challenge and the OAuth redirect happen together in one window. When not
+ * Wraps the Exo Imprint sign-in panel. When framed, it replaces the panel with a
+ * card that opens the same auth route in a new top-level tab, so the redirect
+ * happens in one window. When not
  * framed (the published app, or the preview opened in its own tab), it renders
  * the real auth widget unchanged.
  */

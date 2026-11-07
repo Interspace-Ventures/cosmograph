@@ -17,6 +17,91 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.43.1",
+    codename: "Auto Pilot",
+    date: "2026-11-06",
+    summary: "Staging's backend now updates itself on every staging release.",
+    changes: [
+      "Each staging release pushes Cosmograph's Convex backend first, so the database functions, Ask Cosmo and its health check always match the app being reviewed, with no one running a command by hand.",
+      "The key that allows that push lives only in a locked staging vault and is read by a single read-only pass; it is never stored in the host's settings or printed in logs.",
+      "Production can't be pushed this way unless it is deliberately switched on with two separate settings.",
+    ],
+  },
+  {
+    version: "3.43.0",
+    codename: "Gateway Relay",
+    date: "2026-11-06",
+    summary: "Cosmo now answers through Convex's AI gateway, with no assistant key held anywhere.",
+    changes: [
+      "Ask Cosmo moved off Cosmograph's own server onto its Convex backend, which reaches the model through the Convex AI Gateway with a short-lived token instead of a stored key.",
+      "Prompts are routed only to providers that keep no copy of them and don't train on them.",
+      "Per-visitor and daily limits now live in the database, so they hold across restarts and never store a visitor's address, only a scrambled stand-in.",
+      "A health check on the Convex side says plainly whether Cosmo can answer right now, and why not when it can't.",
+    ],
+  },
+  {
+    version: "3.42.0",
+    codename: "Home Port",
+    date: "2026-11-03",
+    summary: "Cosmograph is ready to move its public home to Render.",
+    changes: [
+      "A production station for cosmograph.space is defined alongside staging, so the live site can move off its old host in one clean cutover.",
+      "Cosmo's assistant key and the feedback channel's signing key now come from Cosmograph's 1Password vault when the server starts, never from the host's settings.",
+      "If either key can't be loaded, that feature switches itself off and the health check says so, instead of running half-configured.",
+    ],
+  },
+  {
+    version: "3.41.3",
+    codename: "New Moorings",
+    date: "2026-11-01",
+    summary: "Cosmograph's staging station now docks on Render.",
+    changes: [
+      "The review build of Cosmograph runs on Render, with the same private Exo gateway in front of it.",
+      "Per-visitor limits now read the real visitor address behind Render's edge, so one explorer can't use up another's allowance.",
+    ],
+  },
+  {
+    version: "3.41.2",
+    codename: "Shield Wall",
+    date: "2026-10-30",
+    summary: "A strict Content Security Policy now guards every page.",
+    changes: [
+      "Only scripts Cosmograph itself serves, stamped with a fresh one-time code on every page load, are allowed to run.",
+      "The policy starts in report-only mode, logging anything it would block, before it is switched to enforce.",
+    ],
+  },
+  {
+    version: "3.41.1",
+    codename: "Home Fonts",
+    date: "2026-10-30",
+    summary: "Every typeface now ships from Cosmograph itself, with no calls to Google Fonts.",
+    changes: [
+      "Self-hosted Outfit, Archivo, Bricolage Grotesque and Space Mono through Fontsource, so visitors' browsers no longer contact a third-party font service.",
+      "Dropped an unused Inter font request from the page shell.",
+    ],
+  },
+  {
+    version: "3.41.0",
+    codename: "Own Keys",
+    date: "2026-10-30",
+    summary: "Sign-in is Exo Imprint only. Clerk and its hosted scripts are gone.",
+    changes: [
+      "Removed Clerk from the web app and the server, so no third-party sign-in script ever loads in your browser.",
+      "Your account, unlocks, ships, referrals and membership now live only on Convex, with sign-in through Exo Imprint.",
+      "Staging only answers requests that come through the Exo gateway with its signed token.",
+    ],
+  },
+  {
+    version: "3.38.1",
+    codename: "Hull Patch",
+    date: "2026-10-22",
+    summary: "Security maintenance: patched dependencies and a pinned Node runtime.",
+    changes: [
+      "Pinned the Node runtime to 24.22.1 and upgraded Vite and the API code generator to their patched releases.",
+      "Cleared every known critical and high-severity dependency advisory except one with no upstream fix yet.",
+    ],
+  },
+  {
     version: "3.38.0",
     codename: "Mission Clock",
     date: "2026-07-30",

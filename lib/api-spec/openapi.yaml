@@ -12,8 +12,6 @@ tags:
     description: Health operations
   - name: billing
     description: Accounts, entitlement and membership subscription
-  - name: ask
-    description: Grounded streaming assistant about the scientist's work
   - name: feedback
     description: Bug reports and feature requests
   - name: ship
@@ -328,44 +326,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-  /ask/chat:
-    post:
-      operationId: chatAsk
-      tags: [ask]
-      summary: Ask the grounded streaming assistant a question
-      description: >
-        A grounded "router + writer": the model classifies the turn (data /
-        explain / chat / feedback), emits a structured action on the first
-        streamed line, then streams a short reasoning trace and the answer. The
-        model never computes filtered counts or lists — for "data" turns it only
-        fills a query spec the browser runs deterministically over the
-        locally-baked data; it may only repeat the exact summary stats it is
-        given. Only the question, the data shape, the domain names, and the
-        public corpus summary are sent; no actual paper data leaves the browser.
-        The response is a Server-Sent-Events stream, read manually on the client.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AskRequest"
-      responses:
-        "200":
-          description: An SSE stream of action, reasoning and answer events
-          content:
-            text/event-stream: {}
-        "400":
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "502":
-          description: The assistant model is unreachable
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
   /feedback/issue:
     post:
       operationId: reportFeedback
@@ -417,9 +377,38 @@ components:
           required:
             - commit
             - environment
+        integrations:
+          type: object
+          description: >
+            Secret-backed integrations and whether each is live. Booleans and
+            reason codes only, never secret values. Ask Cosmo is not listed: it
+            runs on Convex (POST /ask/chat on the deployment's .convex.site, on
+            the Convex AI Gateway) and reports its state on that deployment's
+            GET /health.
+          properties:
+            exoIntake:
+              $ref: "#/components/schemas/IntegrationStatus"
+          required:
+            - exoIntake
       required:
         - status
         - deployment
+        - integrations
+    IntegrationStatus:
+      type: object
+      properties:
+        ready:
+          type: boolean
+        source:
+          type: string
+          enum: [1password, env, none]
+        reason:
+          type: string
+          description: ok when ready, otherwise the reason the feature is disabled.
+      required:
+        - ready
+        - source
+        - reason
     Entitlement:
       type: object
       properties:
@@ -557,104 +546,6 @@ components:
       required:
         - alreadyOwned
         - granted
-    AskField:
-      type: object
-      description: A single field of the data shape (name + type), no actual data.
-      properties:
-        name:
-          type: string
-        type:
-          type: string
-        description:
-          type: string
-      required:
-        - name
-        - type
-    AskMessage:
-      type: object
-      description: One turn of the ephemeral, in-browser conversation.
-      properties:
-        role:
-          type: string
-          enum: [user, assistant]
-        content:
-          type: string
-      required:
-        - role
-        - content
-    AskSummary:
-      type: object
-      description: >
-        The public, headline corpus summary the model may quote verbatim. These
-        are the ONLY numbers the model is allowed to state; any filtered/derived
-        count must route to a "data" action for deterministic in-browser compute.
-      properties:
-        authorName:
-          type: string
-        institution:
-          type: string
-          nullable: true
-        totalPapers:
-          type: integer
-        totalCitations:
-          type: integer
-        hIndex:
-          type: integer
-          nullable: true
-        i10Index:
-          type: integer
-          nullable: true
-        uniqueCoAuthors:
-          type: integer
-        firstYear:
-          type: integer
-        lastYear:
-          type: integer
-        avgCitations:
-          type: integer
-        topDomains:
-          type: array
-          description: The largest research domains, biggest first.
-          items:
-            type: string
-        mostCitedTitle:
-          type: string
-          nullable: true
-        mostCitedCount:
-          type: integer
-          nullable: true
-      required:
-        - authorName
-        - totalPapers
-        - totalCitations
-        - uniqueCoAuthors
-        - firstYear
-        - lastYear
-        - avgCitations
-        - topDomains
-    AskRequest:
-      type: object
-      properties:
-        messages:
-          type: array
-          description: The ephemeral conversation so far (oldest first).
-          items:
-            $ref: "#/components/schemas/AskMessage"
-        fields:
-          type: array
-          description: The shape of a paper record (field names and types only).
-          items:
-            $ref: "#/components/schemas/AskField"
-        domains:
-          type: array
-          description: The research-domain (category) names present in this galaxy.
-          items:
-            type: string
-        summary:
-          $ref: "#/components/schemas/AskSummary"
-      required:
-        - messages
-        - summary
     FeedbackRequest:
       type: object
       properties:
