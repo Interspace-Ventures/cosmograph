@@ -17,7 +17,6 @@ Production contract: branch `main`, served at the root of
 - Secrets live in Bitwarden Secrets Manager (moved from 1Password,
   2026-11-05). Cosmograph's production project holds these secrets, looked
   up by key name; each key name must be unique within the project:
-  - `COSMOGRAPH_PROD_OPENAI_API_KEY` (Ask Cosmo)
   - `COSMOGRAPH_PROD_EXO_INTAKE_SECRET` (feedback intake HMAC, 32+ chars)
   - for the Convex billing actions: `COSMOGRAPH_PROD_STRIPE_SECRET_KEY` and
     `COSMOGRAPH_PROD_STRIPE_WEBHOOK_SECRET` (live mode, matching
@@ -49,14 +48,15 @@ On `cosmograph-production` set the `sync: false` values:
 
 - `BWS_ACCESS_TOKEN`: the Render machine account's read-only access token
 - `BWS_ORGANIZATION_ID` and `BWS_PROJECT_ID`: the UUIDs noted above
-  (`BWS_OPENAI_API_KEY_NAME` / `BWS_EXO_INTAKE_SECRET_NAME` come from
-  `render.yaml`)
+  (`BWS_EXO_INTAKE_SECRET_NAME` comes from `render.yaml`)
 - `VITE_EXO_ID_CLIENT_ID`: the production client id from EXO (build-time;
   redeploy after setting it)
 
-Never set `AI_INTEGRATIONS_OPENAI_API_KEY`, `EXO_INTAKE_SECRET` or any Stripe
-secret as Render env, and remove any leftover `OP_SERVICE_ACCOUNT_TOKEN`
-(the server logs a warning while it is set). The server ignores them outside local dev and logs a
+Never set `EXO_INTAKE_SECRET` or any Stripe secret as Render env, and remove
+any leftover `OP_SERVICE_ACCOUNT_TOKEN` (the server logs a warning while it is
+set). Ask Cosmo needs no OpenAI key at all (it runs on the Convex AI Gateway);
+remove any leftover `OP_OPENAI_API_KEY_ITEM` / `BWS_OPENAI_API_KEY_NAME` /
+`AI_INTEGRATIONS_OPENAI_*` values. The server ignores them outside local dev and logs a
 warning naming the variable. Set `EXO_INTAKE_API_URL` (non-secret) once EXO
 gives the production intake URL; until then `/api/health` reports
 `exoIntake.reason = "api-url-missing"`.
@@ -86,10 +86,14 @@ Render auto-deploys `main` to `cosmograph-production`. Check on the
 onrender.com URL:
 
 1. `/api/health` returns 200 with `environment: "production"`, the merged
-   commit, and `integrations.openai.ready: true` with `source: "bitwarden"`
-   (and `exoIntake` once its URL is set). A `reason` of `bws-token-missing`,
+   commit, and `integrations.exoIntake.ready: true` with `source: "bitwarden"`
+   once its URL is set. A `reason` of `bws-token-missing`,
    `bws-config-missing`, `key-name-missing`, `secret-not-found`,
-   `secret-ambiguous` or `lookup-failed` names what to fix.
+   `secret-ambiguous` or `lookup-failed` names what to fix. Ask Cosmo's state
+   is on the Convex deployment: `https://marvelous-grouse-975.convex.site/health`
+   reports `integrations.askCosmo` (`gateway-disabled` means the Convex team is
+   not on a paid plan). `ask-cosmo` has no public release date, so it stays
+   `released: false` on production until a separate, approved release change.
 2. `/` serves the galaxy (no 403: the staging boundary is off).
 3. Response headers carry the CSP (report-only) with the
    `marvelous-grouse-975` and `befitting-bullfrog-619` origins.

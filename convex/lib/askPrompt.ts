@@ -1,7 +1,6 @@
-import { getOpenAI } from "@workspace/integrations-openai-ai-server";
-import type { AskRequest, AskSummary, AskField } from "@workspace/api-zod";
-import type { Logger } from "pino";
-
+// Ported from artifacts/api-server/src/lib/ask.ts (Express) when Ask Cosmo
+// moved onto the Convex AI Gateway. Pure code: no I/O, no secrets.
+//
 // "Ask Cosmo" is a grounded, streaming assistant — a router + writer in ONE
 // model call. The model:
 //   1. classifies the turn (data / explain / chat / feedback) and emits a single
@@ -14,12 +13,52 @@ import type { Logger } from "pino";
 // over its local, baked corpus. The only numbers the model may state are the
 // exact summary stats it is given. We never send actual paper data.
 
-const MODEL = "gpt-5-mini";
+// Convex AI Gateway model id ("provider/model", see
+// https://docs.convex.dev/ai-gateway/models). Same model the Express route used.
+export const ASK_MODEL = "openai/gpt-5-mini";
 
 // On-the-wire markers the model emits between sections. The server splits the
 // single completion stream on these into typed SSE events for the client.
 const THINK_MARKER = "===THINK===";
 const ANSWER_MARKER = "===ANSWER===";
+
+// ---------------------------------------------------------------------------
+// Request shape (was the ChatAskBody zod schema on the Express route). Parsed
+// and bounded in lib/askRequest.ts before anything here sees it.
+// ---------------------------------------------------------------------------
+export interface AskMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface AskField {
+  name: string;
+  type: string;
+  description?: string;
+}
+
+export interface AskSummary {
+  authorName: string;
+  institution?: string | null;
+  totalPapers: number;
+  totalCitations: number;
+  hIndex?: number | null;
+  i10Index?: number | null;
+  uniqueCoAuthors: number;
+  firstYear: number;
+  lastYear: number;
+  avgCitations: number;
+  topDomains: string[];
+  mostCitedTitle?: string | null;
+  mostCitedCount?: number | null;
+}
+
+export interface AskRequest {
+  messages: AskMessage[];
+  fields?: AskField[];
+  domains?: string[];
+  summary: AskSummary;
+}
 
 // ---------------------------------------------------------------------------
 // The structured query spec for "data" turns. Mirrors the browser's AskQuery
@@ -48,7 +87,7 @@ export type AskAction =
   | { action: "explain" }
   | { action: "chat" };
 
-// Events the route forwards to the client as SSE frames.
+// Events the HTTP action forwards to the client as SSE frames.
 export type AskEvent =
   | { type: "action"; payload: AskAction }
   | { type: "reasoning"; text: string }
@@ -96,7 +135,7 @@ function fieldsBlock(fields: AskField[] | undefined): string {
     .join("\n");
 }
 
-function buildSystemPrompt(req: AskRequest): string {
+export function buildSystemPrompt(req: AskRequest): string {
   const domains =
     req.domains && req.domains.length
       ? req.domains.map((d) => `"${d}"`).join(", ")
@@ -181,7 +220,7 @@ function normalizeQuery(raw: unknown): AskQuery {
 // Parse the model's first line into a typed action; fall back to a safe "chat"
 // action if the JSON is missing or malformed so a sloppy response never breaks
 // the turn.
-function normalizeAction(line: string): AskAction {
+export function normalizeAction(line: string): AskAction {
   let raw: unknown;
   try {
     raw = JSON.parse(line.trim());
@@ -225,7 +264,7 @@ function couldBePrefixOf(s: string, marker: string): boolean {
 // ===ANSWER=== \n <answer>. Because chunks arrive mid-token, every marker is
 // matched across chunk boundaries by holding back any tail that could still be
 // the start of a marker.
-class StreamSplitter {
+export class StreamSplitter {
   private buf = "";
   private phase: "head" | "preamble" | "reasoning" | "answer" = "head";
   private sawAnswer = false;
@@ -344,49 +383,13 @@ class StreamSplitter {
   }
 }
 
-// Run one streaming turn. Calls `emit` for each typed event in order.
-export async function streamAsk(
-  req: AskRequest,
-  log: Logger,
-  emit: (e: AskEvent) => void,
-): Promise<void> {
-  const openai = getOpenAI();
-  if (!openai) {
-    emit({ type: "error", error: "The assistant is unavailable right now." });
-    return;
-  }
-
-  const history = (req.messages ?? [])
+/** The model-facing history: only visitor and assistant turns, in order. */
+export function chatMessages(req: AskRequest) {
+  const history = req.messages
     .filter((m) => m.role === "user" || m.role === "assistant")
-    .map((m) => ({
-      role: m.role as "user" | "assistant",
-      content: m.content,
-    }));
-
-  const splitter = new StreamSplitter(emit);
-
-  try {
-    const stream = await openai.chat.completions.create({
-      model: MODEL,
-      // Answers are a few sentences. This caps reasoning + answer tokens, and so
-      // the worst-case cost of one turn (~$0.003 at gpt-5-mini list prices).
-      max_completion_tokens: 900,
-      // gpt-5-mini is a reasoning model; keep effort low so first paint is fast.
-      reasoning_effort: "low",
-      stream: true,
-      messages: [
-        { role: "system", content: buildSystemPrompt(req) },
-        ...history,
-      ],
-    });
-    for await (const chunk of stream) {
-      const delta = chunk.choices[0]?.delta?.content;
-      if (delta) splitter.push(delta);
-    }
-    splitter.end();
-    emit({ type: "done" });
-  } catch (err) {
-    log.error({ err }, "ask: streaming completion failed");
-    emit({ type: "error", error: "The assistant is unavailable right now." });
-  }
+    .map((m) => ({ role: m.role, content: m.content }));
+  return [
+    { role: "system" as const, content: buildSystemPrompt(req) },
+    ...history,
+  ];
 }

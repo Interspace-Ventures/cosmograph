@@ -11,10 +11,9 @@ export type HealthStatusDeployment = {
 };
 
 /**
- * Secret-backed integrations and whether each is live. Booleans and reason codes only, never secret values.
+ * Secret-backed integrations and whether each is live. Booleans and reason codes only, never secret values. Ask Cosmo is not listed: it runs on Convex (POST /ask/chat on the deployment's .convex.site, on the Convex AI Gateway) and reports its state on that deployment's GET /health.
  */
 export type HealthStatusIntegrations = {
-  openai: IntegrationStatus;
   exoIntake: IntegrationStatus;
 };
 
@@ -115,62 +114,6 @@ export interface SkinCheckout {
   granted: boolean;
   /** Hosted Stripe Checkout URL to redirect to, when payment is required. */
   url?: string | null;
-}
-
-/**
- * A single field of the data shape (name + type), no actual data.
- */
-export interface AskField {
-  name: string;
-  type: string;
-  description?: string;
-}
-
-export type AskMessageRole = typeof AskMessageRole[keyof typeof AskMessageRole];
-
-
-export const AskMessageRole = {
-  user: 'user',
-  assistant: 'assistant',
-} as const;
-
-/**
- * One turn of the ephemeral, in-browser conversation.
- */
-export interface AskMessage {
-  role: AskMessageRole;
-  content: string;
-}
-
-/**
- * The public, headline corpus summary the model may quote verbatim. These are the ONLY numbers the model is allowed to state; any filtered/derived count must route to a "data" action for deterministic in-browser compute.
-
- */
-export interface AskSummary {
-  authorName: string;
-  institution?: string | null;
-  totalPapers: number;
-  totalCitations: number;
-  hIndex?: number | null;
-  i10Index?: number | null;
-  uniqueCoAuthors: number;
-  firstYear: number;
-  lastYear: number;
-  avgCitations: number;
-  /** The largest research domains, biggest first. */
-  topDomains: string[];
-  mostCitedTitle?: string | null;
-  mostCitedCount?: number | null;
-}
-
-export interface AskRequest {
-  /** The ephemeral conversation so far (oldest first). */
-  messages: AskMessage[];
-  /** The shape of a paper record (field names and types only). */
-  fields?: AskField[];
-  /** The research-domain (category) names present in this galaxy. */
-  domains?: string[];
-  summary: AskSummary;
 }
 
 /**

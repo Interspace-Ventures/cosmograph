@@ -3,7 +3,7 @@ import { refs } from "./lib/refs";
 
 const crons = cronJobs();
 
-// Expired checkout/portal rate counters (lib/rateLimit.ts).
+// Expired rate counters for checkout/portal and Ask Cosmo (lib/rateLimit.ts).
 crons.daily(
   "prune billing rate counters",
   { hourUTC: 4, minuteUTC: 17 },

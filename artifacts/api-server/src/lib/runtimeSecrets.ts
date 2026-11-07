@@ -9,16 +9,18 @@
  *
  *   BWS_ORGANIZATION_ID          Bitwarden organization id (UUID)
  *   BWS_PROJECT_ID               Secrets Manager project id (UUID)
- *   BWS_OPENAI_API_KEY_NAME      secret key name, e.g. COSMOGRAPH_PROD_OPENAI_API_KEY
  *   BWS_EXO_INTAKE_SECRET_NAME   secret key name, e.g. COSMOGRAPH_PROD_EXO_INTAKE_SECRET
  *   BWS_API_URL / BWS_IDENTITY_URL  optional; default Bitwarden US cloud
  *
  * Secrets are found by key name within BWS_PROJECT_ID. A name that matches no
  * secret, or more than one, in that project leaves its feature disabled.
  *
- * Env fallbacks (AI_INTEGRATIONS_OPENAI_API_KEY, EXO_INTAKE_SECRET) are read
- * only for local development (NODE_ENV !== "production") and only when no
- * access token is set. On a hosted build they are ignored, with a warning
+ * Ask Cosmo no longer needs a key here: it runs as a Convex HTTP action on the
+ * Convex AI Gateway (convex/lib/aiGateway.ts), where Convex holds the provider
+ * credentials.
+ *
+ * The env fallback (EXO_INTAKE_SECRET) is read only for local development
+ * (NODE_ENV !== "production") and only when no access token is set. On a hosted build they are ignored, with a warning
  * naming the variable so it gets removed.
  *
  * Fail closed: a secret that cannot be loaded leaves its feature disabled and
@@ -27,7 +29,7 @@
  * our own lookup messages are logged, never SDK or server error text.
  */
 
-export type SecretId = "openaiApiKey" | "exoIntakeSecret";
+export type SecretId = "exoIntakeSecret";
 
 export type SecretSource = "bitwarden" | "env" | "none";
 
@@ -49,12 +51,6 @@ type SecretSpec = {
 
 export const SECRET_SPECS: readonly SecretSpec[] = [
   {
-    id: "openaiApiKey",
-    nameEnv: "BWS_OPENAI_API_KEY_NAME",
-    devEnv: "AI_INTEGRATIONS_OPENAI_API_KEY",
-    valid: (v) => v.length >= 20 && !/\s/.test(v),
-  },
-  {
     id: "exoIntakeSecret",
     nameEnv: "BWS_EXO_INTAKE_SECRET_NAME",
     devEnv: "EXO_INTAKE_SECRET",
@@ -62,6 +58,17 @@ export const SECRET_SPECS: readonly SecretSpec[] = [
     valid: (v) => v.length >= 32 && !/\s/.test(v),
   },
 ];
+
+/**
+ * Settings from before Ask Cosmo moved to the Convex AI Gateway. Nothing reads
+ * them; a leftover one is named (never echoed) so it gets removed.
+ */
+export const RETIRED_ENV = [
+  "AI_INTEGRATIONS_OPENAI_API_KEY",
+  "AI_INTEGRATIONS_OPENAI_BASE_URL",
+  "OP_OPENAI_API_KEY_ITEM",
+  "BWS_OPENAI_API_KEY_NAME",
+] as const;
 
 export interface BwsSecretIdentifier {
   id: string;
@@ -243,6 +250,14 @@ export async function loadRuntimeSecrets(
   const localDev = (env["NODE_ENV"] ?? "").trim() !== "production";
   const token = env["BWS_ACCESS_TOKEN"]?.trim() ?? "";
 
+  for (const name of RETIRED_ENV) {
+    if ((env[name] ?? "").trim() !== "") {
+      log.warn(
+        `secrets: ${name} is set but unused (Ask Cosmo runs on the Convex AI Gateway and needs no OpenAI key); remove it`,
+      );
+    }
+  }
+
   // Hosted builds never read secrets from env. Say so by name, never value.
   if (!localDev) {
     for (const spec of SECRET_SPECS) {
@@ -275,7 +290,7 @@ export async function loadRuntimeSecrets(
     }
     if (!localDev) {
       log.error(
-        "secrets: BWS_ACCESS_TOKEN is not set; Ask Cosmo and feedback intake are disabled",
+        "secrets: BWS_ACCESS_TOKEN is not set; feedback intake is disabled",
       );
     }
     return snapshot();
@@ -290,7 +305,7 @@ export async function loadRuntimeSecrets(
       set(spec.id, null, { ready: false, source: "bitwarden", reason: "bws-config-missing" });
     }
     log.error(
-      "secrets: BWS_ORGANIZATION_ID / BWS_PROJECT_ID (UUIDs) or BWS_API_URL / BWS_IDENTITY_URL (https) are missing or malformed; Ask Cosmo and feedback intake are disabled",
+      "secrets: BWS_ORGANIZATION_ID / BWS_PROJECT_ID (UUIDs) or BWS_API_URL / BWS_IDENTITY_URL (https) are missing or malformed; feedback intake is disabled",
     );
     return snapshot();
   }

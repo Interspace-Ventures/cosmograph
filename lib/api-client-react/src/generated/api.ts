@@ -20,7 +20,6 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
-  AskRequest,
   CheckoutRequest,
   CheckoutSession,
   ClaimReferralRequest,
@@ -874,79 +873,6 @@ export const useClaimReferral = <TError = ErrorType<Error>,
         TContext
       > => {
       return useMutation(getClaimReferralMutationOptions(options));
-    }
-
-export const getChatAskUrl = () => {
-
-
-
-
-  return `/api/ask/chat`
-}
-
-/**
- * A grounded "router + writer": the model classifies the turn (data / explain / chat / feedback), emits a structured action on the first streamed line, then streams a short reasoning trace and the answer. The model never computes filtered counts or lists — for "data" turns it only fills a query spec the browser runs deterministically over the locally-baked data; it may only repeat the exact summary stats it is given. Only the question, the data shape, the domain names, and the public corpus summary are sent; no actual paper data leaves the browser. The response is a Server-Sent-Events stream, read manually on the client.
-
- * @summary Ask the grounded streaming assistant a question
- */
-export const chatAsk = async (askRequest: AskRequest, options?: RequestInit): Promise<unknown> => {
-
-  return customFetch<unknown>(getChatAskUrl(),
-  {
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(
-      askRequest,)
-  }
-);}
-
-
-
-
-export const getChatAskMutationOptions = <TError = ErrorType<Error>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof chatAsk>>, TError,{data: BodyType<AskRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof chatAsk>>, TError,{data: BodyType<AskRequest>}, TContext> => {
-
-const mutationKey = ['chatAsk'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof chatAsk>>, {data: BodyType<AskRequest>}> = (props) => {
-          const {data} = props ?? {};
-
-          return  chatAsk(data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type ChatAskMutationResult = NonNullable<Awaited<ReturnType<typeof chatAsk>>>
-    export type ChatAskMutationBody = BodyType<AskRequest>
-    export type ChatAskMutationError = ErrorType<Error>
-
-    /**
- * @summary Ask the grounded streaming assistant a question
- */
-export const useChatAsk = <TError = ErrorType<Error>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof chatAsk>>, TError,{data: BodyType<AskRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
- ): UseMutationResult<
-        Awaited<ReturnType<typeof chatAsk>>,
-        TError,
-        {data: BodyType<AskRequest>},
-        TContext
-      > => {
-      return useMutation(getChatAskMutationOptions(options));
     }
 
 export const getReportFeedbackUrl = () => {

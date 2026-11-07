@@ -173,6 +173,21 @@ export function parseOrigins(list: string | undefined): string[] {
   return [...new Set(out)];
 }
 
+/**
+ * The browser origins allowed to call Cosmograph's HTTP actions (billing and
+ * Ask Cosmo): PUBLIC_APP_ORIGINS (or DEFAULT_ORIGINS when unset) plus
+ * ALLOWED_ORIGINS, e.g. a local dev port.
+ */
+export function appOrigins(env: Env = process.env): string[] {
+  const configured = parseOrigins(env.PUBLIC_APP_ORIGINS);
+  return [
+    ...new Set([
+      ...(configured.length ? configured : DEFAULT_ORIGINS),
+      ...parseOrigins(env.ALLOWED_ORIGINS),
+    ]),
+  ];
+}
+
 const PRICE_ID = /^price_[A-Za-z0-9]{6,64}$/;
 
 /**
@@ -192,13 +207,7 @@ export function billingConfig(env: Env = process.env): BillingConfig | null {
   if (!bws) return null;
   const mode = env.STRIPE_MODE?.trim() || "test";
   if (mode !== "test" && mode !== "live") return null;
-  const configured = parseOrigins(env.PUBLIC_APP_ORIGINS);
-  const origins = [
-    ...new Set([
-      ...(configured.length ? configured : DEFAULT_ORIGINS),
-      ...parseOrigins(env.ALLOWED_ORIGINS),
-    ]),
-  ];
+  const origins = appOrigins(env);
   return {
     priceIds: { annual, lifetime },
     origins,

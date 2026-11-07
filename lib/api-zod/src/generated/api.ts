@@ -19,17 +19,12 @@ export const HealthCheckResponse = zod.object({
   "environment": zod.string()
 }),
   "integrations": zod.object({
-  "openai": zod.object({
-  "ready": zod.boolean(),
-  "source": zod.enum(['bitwarden', 'env', 'none']),
-  "reason": zod.string().describe('ok when ready, otherwise the reason the feature is disabled.')
-}),
   "exoIntake": zod.object({
   "ready": zod.boolean(),
   "source": zod.enum(['bitwarden', 'env', 'none']),
   "reason": zod.string().describe('ok when ready, otherwise the reason the feature is disabled.')
 })
-}).describe('Secret-backed integrations and whether each is live. Booleans and reason codes only, never secret values.')
+}).describe('Secret-backed integrations and whether each is live. Booleans and reason codes only, never secret values. Ask Cosmo is not listed: it runs on Convex (POST /ask/chat on the deployment\'s .convex.site, on the Convex AI Gateway) and reports its state on that deployment\'s GET /health.\n')
 })
 
 
@@ -189,40 +184,6 @@ export const ClaimReferralBody = zod.object({
 export const ClaimReferralResponse = zod.object({
   "code": zod.string().describe('The account\'s stable referral code, used as `?ref=<code>`.'),
   "referredCount": zod.number().describe('How many accounts have signed up through this account\'s link.')
-})
-
-
-/**
- * A grounded "router + writer": the model classifies the turn (data / explain / chat / feedback), emits a structured action on the first streamed line, then streams a short reasoning trace and the answer. The model never computes filtered counts or lists — for "data" turns it only fills a query spec the browser runs deterministically over the locally-baked data; it may only repeat the exact summary stats it is given. Only the question, the data shape, the domain names, and the public corpus summary are sent; no actual paper data leaves the browser. The response is a Server-Sent-Events stream, read manually on the client.
-
- * @summary Ask the grounded streaming assistant a question
- */
-export const ChatAskBody = zod.object({
-  "messages": zod.array(zod.object({
-  "role": zod.enum(['user', 'assistant']),
-  "content": zod.string()
-}).describe('One turn of the ephemeral, in-browser conversation.')).describe('The ephemeral conversation so far (oldest first).'),
-  "fields": zod.array(zod.object({
-  "name": zod.string(),
-  "type": zod.string(),
-  "description": zod.string().optional()
-}).describe('A single field of the data shape (name + type), no actual data.')).optional().describe('The shape of a paper record (field names and types only).'),
-  "domains": zod.array(zod.string()).optional().describe('The research-domain (category) names present in this galaxy.'),
-  "summary": zod.object({
-  "authorName": zod.string(),
-  "institution": zod.string().nullish(),
-  "totalPapers": zod.number(),
-  "totalCitations": zod.number(),
-  "hIndex": zod.number().nullish(),
-  "i10Index": zod.number().nullish(),
-  "uniqueCoAuthors": zod.number(),
-  "firstYear": zod.number(),
-  "lastYear": zod.number(),
-  "avgCitations": zod.number(),
-  "topDomains": zod.array(zod.string()).describe('The largest research domains, biggest first.'),
-  "mostCitedTitle": zod.string().nullish(),
-  "mostCitedCount": zod.number().nullish()
-}).describe('The public, headline corpus summary the model may quote verbatim. These are the ONLY numbers the model is allowed to state; any filtered\/derived count must route to a \"data\" action for deterministic in-browser compute.\n')
 })
 
 

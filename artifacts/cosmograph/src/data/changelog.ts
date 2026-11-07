@@ -17,13 +17,37 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
-    version: "3.42.1",
+    version: "3.43.2",
     codename: "New Keyring",
-    date: "2026-11-05",
+    date: "2026-11-07",
     summary: "Cosmograph's keys now live in Bitwarden Secrets Manager.",
     changes: [
-      "Cosmo's assistant key, the feedback channel's signing key and the membership checkout keys now come from Cosmograph's Bitwarden Secrets Manager project, replacing 1Password.",
+      "The feedback channel's signing key and the membership checkout keys now come from Cosmograph's Bitwarden Secrets Manager project, replacing 1Password.",
       "Each host holds a single read-only access token and nothing else secret; if a key can't be loaded, that feature switches itself off and the health check says why.",
+      "Cosmo still needs no assistant key anywhere: it keeps answering through the Convex AI Gateway.",
+    ],
+  },
+  {
+    version: "3.43.1",
+    codename: "Auto Pilot",
+    date: "2026-11-06",
+    summary: "Staging's backend now updates itself on every staging release.",
+    changes: [
+      "Each staging release pushes Cosmograph's Convex backend first, so the database functions, Ask Cosmo and its health check always match the app being reviewed, with no one running a command by hand.",
+      "The key that allows that push lives only in a locked staging vault and is read by a single read-only pass; it is never stored in the host's settings or printed in logs.",
+      "Production can't be pushed this way unless it is deliberately switched on with two separate settings.",
+    ],
+  },
+  {
+    version: "3.43.0",
+    codename: "Gateway Relay",
+    date: "2026-11-06",
+    summary: "Cosmo now answers through Convex's AI gateway, with no assistant key held anywhere.",
+    changes: [
+      "Ask Cosmo moved off Cosmograph's own server onto its Convex backend, which reaches the model through the Convex AI Gateway with a short-lived token instead of a stored key.",
+      "Prompts are routed only to providers that keep no copy of them and don't train on them.",
+      "Per-visitor and daily limits now live in the database, so they hold across restarts and never store a visitor's address, only a scrambled stand-in.",
+      "A health check on the Convex side says plainly whether Cosmo can answer right now, and why not when it can't.",
     ],
   },
   {

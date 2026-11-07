@@ -2,6 +2,7 @@ import { makeFunctionReference } from "convex/server";
 import type { MemberPlan } from "./billingConfig";
 import type { CheckoutArgs, PrepareResult } from "./checkout";
 import type { BillingEvent, Followup } from "./entitlement";
+import type { BudgetDenial } from "./rateLimit";
 
 /**
  * Typed references to the internal billing functions (what `convex codegen`
@@ -35,6 +36,11 @@ export const refs = {
   pruneRateCounters: makeFunctionReference<"mutation", Record<string, never>, number>(
     "billingInternal:pruneRateCounters",
   ),
+  askTake: makeFunctionReference<
+    "mutation",
+    { clientKey: string },
+    { ok: true } | { ok: false; reason: BudgetDenial }
+  >("askInternal:take"),
   createCheckout: makeFunctionReference<
     "action",
     CheckoutArgs,

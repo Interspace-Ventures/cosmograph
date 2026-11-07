@@ -16,10 +16,14 @@
 # Secrets: none in platform env. The only secret this app gets on the host is
 # one read-only Bitwarden Secrets Manager machine-account access token,
 # BWS_ACCESS_TOKEN (sync: false, set by hand in the dashboard), for a machine
-# account that can read only Cosmograph's project. The server reads the OpenAI
-# key and the EXO intake secret from that project by key name at boot
-# (artifacts/api-server/src/lib/runtimeSecrets.ts). Everything else below is
-# public, non-secret configuration.
+# account that can read only that service's Cosmograph project. The server
+# reads the EXO intake secret from that project by key name at boot
+# (artifacts/api-server/src/lib/runtimeSecrets.ts). Ask Cosmo does not run
+# here: it is a Convex HTTP action on the Convex AI Gateway (convex/http.ts),
+# so there is no model key on Render, and its caps (ASK_*) are Convex env.
+# On staging the same token also feeds the Convex pre-deploy; see
+# preDeployCommand below. Everything else below is public, non-secret
+# configuration.
 services:
   - type: web
     name: cosmograph-staging
@@ -30,6 +34,12 @@ services:
     autoDeploy: true
     numInstances: 1
     buildCommand: pnpm install --frozen-lockfile && pnpm run deploy:build
+    # Every staging deploy pushes the Convex functions to shiny-magpie-750 first,
+    # with the deploy key read from Bitwarden Secrets Manager (project
+    # "Cosmograph Staging"). Nobody runs `npx convex deploy` by hand
+    # (docs/runbooks/no-owner-terminal.md). A failed push fails the deploy and
+    # the previous one keeps serving. Kill switch: COSMOGRAPH_CONVEX_PREDEPLOY=off.
+    preDeployCommand: node scripts/convex/deploy-from-bitwarden.mjs --pre-deploy
     startCommand: pnpm run deploy:start
     healthCheckPath: /cosmograph/api/health
     envVars:
@@ -72,15 +82,25 @@ services:
         value: report-only
       - key: CSP_CONNECT_SRC
         value: https://shiny-magpie-750.convex.cloud wss://shiny-magpie-750.convex.cloud https://shiny-magpie-750.convex.site https://frugal-eel-930.convex.site
-      # Daily spend ceilings (lib/spendGuard.ts); these equal the code defaults.
-      - key: ASK_DAILY_PER_CLIENT
-        value: "30"
-      - key: ASK_DAILY_GLOBAL
-        value: "10000"
+      # Feedback intake daily ceilings (lib/spendGuard.ts); equal to the code
+      # defaults. Ask Cosmo's caps live on the Convex deployment.
       - key: FEEDBACK_DAILY_PER_CLIENT
         value: "10"
       - key: FEEDBACK_DAILY_GLOBAL
         value: "300"
+      # Convex pre-deploy (scripts/convex/deploy-from-bitwarden.mjs). The token
+      # is the only secret: a read-only Bitwarden machine account
+      # (cosmograph-staging) that can see only the "Cosmograph Staging" project,
+      # which holds CONVEX_DEPLOY_KEY (prod:shiny-magpie-750|...) and any
+      # CONVEX_ENV_<NAME> values synced to Convex env. Set in the dashboard.
+      - key: BWS_ACCESS_TOKEN
+        sync: false
+      - key: BWS_ORGANIZATION_ID
+        value: 26d8cde4-6650-4416-b799-b4f90104b84c
+      # Bitwarden project "Cosmograph Staging" (set in the dashboard once the
+      # project exists; the id is not secret).
+      - key: BWS_PROJECT_ID
+        sync: false
 
   - type: web
     name: cosmograph-production
@@ -94,6 +114,12 @@ services:
     startCommand: pnpm run deploy:start
     # Production serves at the root of cosmograph.space (as on the old host).
     healthCheckPath: /api/health
+    # No Convex pre-deploy on production yet. Wiring it needs Samir's yes, a
+    # separate read-only Bitwarden token for "Cosmograph Production", and both
+    # COSMOGRAPH_DEPLOYMENT_ENVIRONMENT=production and
+    # COSMOGRAPH_ALLOW_PROD_CONVEX_DEPLOY=1; without them the script refuses
+    # marvelous-grouse-975 before it reads any secret.
+    # preDeployCommand: node scripts/convex/deploy-from-bitwarden.mjs --pre-deploy
     envVars:
       - key: NODE_ENV
         value: production
@@ -142,15 +168,10 @@ services:
         sync: false
       - key: BWS_PROJECT_ID
         sync: false
-      - key: BWS_OPENAI_API_KEY_NAME
-        value: COSMOGRAPH_PROD_OPENAI_API_KEY
       - key: BWS_EXO_INTAKE_SECRET_NAME
         value: COSMOGRAPH_PROD_EXO_INTAKE_SECRET
-      # Daily spend ceilings (lib/spendGuard.ts); these equal the code defaults.
-      - key: ASK_DAILY_PER_CLIENT
-        value: "30"
-      - key: ASK_DAILY_GLOBAL
-        value: "10000"
+      # Feedback intake daily ceilings (lib/spendGuard.ts); equal to the code
+      # defaults. Ask Cosmo's caps live on the Convex deployment.
       - key: FEEDBACK_DAILY_PER_CLIENT
         value: "10"
       - key: FEEDBACK_DAILY_GLOBAL
