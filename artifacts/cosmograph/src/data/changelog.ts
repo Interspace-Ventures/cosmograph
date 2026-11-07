@@ -17,6 +17,17 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.43.3",
+    codename: "Hull Patch",
+    date: "2026-11-07",
+    summary: "Cosmograph's request checks move to a newer, patched validation library.",
+    changes: [
+      "The library that checks every request reaching Cosmograph's server was upgraded a full version, closing the last high-severity security advisory in the app's dependencies.",
+      "The server's request and response rules were regenerated from the API's own definition rather than edited by hand, so they stay in step with what the app sends.",
+      "Counts in account responses, such as included unlocks and free ship slots, are now checked as whole numbers.",
+    ],
+  },
+  {
     version: "3.43.1",
     codename: "Auto Pilot",
     date: "2026-11-06",
