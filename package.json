@@ -23,7 +23,7 @@
   "devDependencies": {
     "@types/node": "catalog:",
     "prettier": "^3.8.3",
-    "typescript": "~5.9.3"
+    "typescript": "~7.0.2"
   },
   "description": "**A scientist's life's work, rendered as a galaxy you can fly through.**",
   "dependencies": {
