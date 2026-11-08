@@ -5,7 +5,8 @@ const REQUEST_TIMEOUT_MS = 10_000;
 
 function configuration() {
   const apiUrl = process.env.EXO_INTAKE_API_URL?.trim();
-  // Loaded at boot from 1Password (env only in local dev); see runtimeSecrets.ts.
+  // Loaded at boot from Bitwarden Secrets Manager (env only in local dev);
+  // see runtimeSecrets.ts.
   const secret = runtimeSecret("exoIntakeSecret");
   if (!apiUrl || !secret || secret.length < 32) {
     throw new Error("EXO intake is not configured securely");

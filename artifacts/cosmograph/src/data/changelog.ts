@@ -17,6 +17,17 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.43.4",
+    codename: "New Keyring",
+    date: "2026-11-07",
+    summary: "Cosmograph's keys now live in Bitwarden Secrets Manager.",
+    changes: [
+      "The feedback channel's signing key and the membership checkout keys now come from Cosmograph's Bitwarden Secrets Manager project, replacing 1Password.",
+      "Each host holds a single read-only access token and nothing else secret; if a key can't be loaded, that feature switches itself off and the health check says why.",
+      "Cosmo still needs no assistant key anywhere: it keeps answering through the Convex AI Gateway.",
+    ],
+  },
+  {
     version: "3.43.3",
     codename: "Hull Patch",
     date: "2026-11-07",

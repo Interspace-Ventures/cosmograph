@@ -1,7 +1,7 @@
 /**
  * Phase 3 (billing) against the in-memory ctx: verified Stripe webhook,
  * idempotency, refunds/disputes, the checkout HTTP edge and its budgets, and
- * the 1Password secret loader. No network: Stripe signatures are made and
+ * the Bitwarden Secrets Manager loader. No network: Stripe signatures are made and
  * checked locally with the SDK's test helper, Stripe API calls hit a fake.
  */
 import assert from "node:assert/strict";
@@ -28,8 +28,9 @@ import { runWebhook } from "../../convex/lib/webhook";
 import {
   clearStripeSecretCache,
   loadStripeSecrets,
-  type OpClientLike,
-} from "../../convex/lib/opSecrets";
+  type BwsClientLike,
+  type BwsSecret,
+} from "../../convex/lib/bwsSecrets";
 import {
   handleCheckout,
   handlePreflight,
@@ -50,15 +51,21 @@ const LIFETIME = "price_lifetime0001";
 const ORIGIN = "https://staging.exo.now";
 const NOW = Date.UTC(2026, 9, 26, 12, 0, 0);
 
+const ORG_ID = "11111111-1111-4111-8111-111111111111";
+const PROJECT_ID = "22222222-2222-4222-8222-222222222222";
+const OTHER_PROJECT_ID = "33333333-3333-4333-8333-333333333333";
+
 const ENV: Record<string, string> = {
   RELEASE_CHANNEL: "internal",
   FEATURE_FLAG_OVERRIDES: "convex-account=on",
   STRIPE_PRICE_ANNUAL: ANNUAL,
   STRIPE_PRICE_LIFETIME: LIFETIME,
-  OP_STRIPE_SECRET_KEY_ITEM: "Cosmograph staging: STRIPE_SECRET_KEY",
-  OP_STRIPE_WEBHOOK_SECRET_ITEM: "Cosmograph staging: STRIPE_WEBHOOK_SECRET",
+  BWS_ORGANIZATION_ID: ORG_ID,
+  BWS_PROJECT_ID: PROJECT_ID,
+  BWS_STRIPE_SECRET_KEY_NAME: "COSMOGRAPH_STAGING_STRIPE_SECRET_KEY",
+  BWS_STRIPE_WEBHOOK_SECRET_NAME: "COSMOGRAPH_STAGING_STRIPE_WEBHOOK_SECRET",
   PUBLIC_APP_ORIGINS: ORIGIN,
-  OP_SERVICE_ACCOUNT_TOKEN: "ops_dummy_token_for_tests",
+  BWS_ACCESS_TOKEN: "0.dummy-machine-account-token-for-tests",
 };
 
 const ALICE = identity("exo|alice", { email: "a@x.io", email_verified: true });
@@ -565,54 +572,80 @@ test("webhook HTTP: signature header required, body bounded, flag enforced", asy
 
 // ---------------------------------------------------------------- secrets
 
-function fakeOp(values: Record<string, string>, onCreate?: () => void) {
-  return async (token: string): Promise<OpClientLike> => {
+function fakeBws(
+  secrets: Array<{ key: string; value: string; projectId?: string }>,
+  onCreate?: () => void,
+) {
+  return async (token: string): Promise<BwsClientLike> => {
     onCreate?.();
-    assert.equal(token, ENV.OP_SERVICE_ACCOUNT_TOKEN);
-    const titles = Object.keys(values);
+    assert.equal(token, ENV.BWS_ACCESS_TOKEN);
+    const all: BwsSecret[] = secrets.map((s, i) => ({
+      id: `s${i}`,
+      key: s.key,
+      value: s.value,
+      projectId: s.projectId ?? PROJECT_ID,
+    }));
     return {
-      vaults: { list: async () => [{ id: "v1", title: "Interspace" }, { id: "v2", title: "Private" }] },
-      items: {
-        list: async (vaultId) => (vaultId === "v1" ? titles.map((title, i) => ({ id: `i${i}`, title })) : []),
-        get: async (_v, itemId) => ({
-          fields: [{ id: "credential", title: "credential", value: values[titles[Number(itemId.slice(1))]!]! }],
-        }),
-      },
+      listSecrets: async (org) => (org === ORG_ID ? all.map(({ id, key }) => ({ id, key })) : []),
+      getSecrets: async (ids) => all.filter((s) => ids.includes(s.id)),
     };
   };
 }
 
-test("secrets: Stripe keys come from the 1Password vault by item name, never env", async () => {
-  const items = {
-    "Cosmograph staging: STRIPE_SECRET_KEY": SK,
-    "Cosmograph staging: STRIPE_WEBHOOK_SECRET": WHSEC,
-  };
+test("secrets: Stripe keys come from the Bitwarden project by key name, never env", async () => {
+  const items = [
+    { key: "COSMOGRAPH_STAGING_STRIPE_SECRET_KEY", value: SK },
+    { key: "COSMOGRAPH_STAGING_STRIPE_WEBHOOK_SECRET", value: WHSEC },
+    // Same key name in another project the token can see: never used.
+    { key: "COSMOGRAPH_STAGING_STRIPE_SECRET_KEY", value: ["sk", "test", "otherprojectother"].join("_"), projectId: OTHER_PROJECT_ID },
+  ];
   let created = 0;
-  const factory = fakeOp(items, () => created++);
+  const factory = fakeBws(items, () => created++);
   const got = await loadStripeSecrets(cfg, { env: ENV, factory, now: NOW });
   assert.deepEqual(got, { secretKey: SK, webhookSecret: WHSEC });
   await loadStripeSecrets(cfg, { env: ENV, factory, now: NOW + 1000 });
   assert.equal(created, 1); // cached in memory
 
   clearStripeSecretCache();
+  const [a, b] = await Promise.all([
+    loadStripeSecrets(cfg, { env: ENV, factory, now: NOW }),
+    loadStripeSecrets(cfg, { env: ENV, factory, now: NOW }),
+  ]);
+  assert.deepEqual(a, b);
+  assert.equal(created, 2); // concurrent loads share one Bitwarden read
+
+  clearStripeSecretCache();
   for (const env of [
     { ...ENV, STRIPE_SECRET_KEY: SK },
     { ...ENV, STRIPE_WEBHOOK_SECRET: WHSEC },
-    { ...ENV, OP_SERVICE_ACCOUNT_TOKEN: "" },
+    { ...ENV, BWS_ACCESS_TOKEN: "" },
   ]) {
-    await rejectsWith(loadStripeSecrets(cfg, { env, factory: fakeOp(items, () => assert.fail("no vault read")), now: NOW }), "BILLING_UNAVAILABLE");
+    await rejectsWith(loadStripeSecrets(cfg, { env, factory: fakeBws(items, () => assert.fail("no Bitwarden read")), now: NOW }), "BILLING_UNAVAILABLE");
   }
-  const live = { ...items, "Cosmograph staging: STRIPE_SECRET_KEY": ["sk", "live", "fakefakefakefakefake"].join("_") };
-  await rejectsWith(loadStripeSecrets(cfg, { env: ENV, factory: fakeOp(live), now: NOW }), "BILLING_UNAVAILABLE");
-  const missing = { "Cosmograph staging: STRIPE_SECRET_KEY": SK };
-  await rejectsWith(loadStripeSecrets(cfg, { env: ENV, factory: fakeOp(missing), now: NOW }), "BILLING_UNAVAILABLE");
+  const live = items.map((s, i) => (i === 0 ? { ...s, value: ["sk", "live", "fakefakefakefakefake"].join("_") } : s));
+  await rejectsWith(loadStripeSecrets(cfg, { env: ENV, factory: fakeBws(live), now: NOW }), "BILLING_UNAVAILABLE");
+  const missing = [items[0]!];
+  await rejectsWith(loadStripeSecrets(cfg, { env: ENV, factory: fakeBws(missing), now: NOW }), "BILLING_UNAVAILABLE");
+  const ambiguous = [...items.slice(0, 2), { key: "COSMOGRAPH_STAGING_STRIPE_WEBHOOK_SECRET", value: OTHER_WHSEC }];
+  await rejectsWith(loadStripeSecrets(cfg, { env: ENV, factory: fakeBws(ambiguous), now: NOW }), "BILLING_UNAVAILABLE");
+  const sdkError = async (): Promise<BwsClientLike> => {
+    throw new Error(`boom ${SK}`);
+  };
+  await rejectsWith(loadStripeSecrets(cfg, { env: ENV, factory: sdkError, now: NOW }), "BILLING_UNAVAILABLE");
 });
 
-test("config: billing stays off without price ids or vault item names", () => {
+test("config: billing stays off without price ids or Bitwarden config", () => {
   assert.equal(billingConfig({ ...ENV, STRIPE_PRICE_ANNUAL: "" }), null);
   assert.equal(billingConfig({ ...ENV, STRIPE_PRICE_LIFETIME: "prod_123" }), null);
   assert.equal(billingConfig({ ...ENV, STRIPE_PRICE_LIFETIME: ANNUAL }), null);
-  assert.equal(billingConfig({ ...ENV, OP_STRIPE_WEBHOOK_SECRET_ITEM: "" }), null);
+  assert.equal(billingConfig({ ...ENV, BWS_STRIPE_WEBHOOK_SECRET_NAME: "" }), null);
+  assert.equal(billingConfig({ ...ENV, BWS_STRIPE_WEBHOOK_SECRET_NAME: "Cosmograph staging: x" }), null);
+  assert.equal(billingConfig({ ...ENV, BWS_STRIPE_WEBHOOK_SECRET_NAME: ENV.BWS_STRIPE_SECRET_KEY_NAME }), null);
+  assert.equal(billingConfig({ ...ENV, BWS_PROJECT_ID: "" }), null);
+  assert.equal(billingConfig({ ...ENV, BWS_ORGANIZATION_ID: "not-a-uuid" }), null);
+  assert.equal(billingConfig({ ...ENV, BWS_API_URL: "http://api.bitwarden.com" }), null);
+  assert.equal(billingConfig(ENV)!.bws.apiUrl, "https://api.bitwarden.com");
+  assert.equal(billingConfig({ ...ENV, BWS_API_URL: "https://api.bitwarden.eu/", BWS_IDENTITY_URL: "https://identity.bitwarden.eu" })!.bws.apiUrl, "https://api.bitwarden.eu");
   assert.equal(billingConfig({ ...ENV, STRIPE_MODE: "prod" }), null);
   const c = billingConfig({ ...ENV, ALLOWED_ORIGINS: "http://localhost:5173,http://evil.example,https://x.example/path" })!;
   assert.deepEqual(c.origins, [ORIGIN, "http://localhost:5173"]);

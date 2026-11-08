@@ -21,7 +21,7 @@ export const HealthCheckResponse = zod.object({
   "integrations": zod.object({
   "exoIntake": zod.object({
   "ready": zod.boolean(),
-  "source": zod.enum(['1password', 'env', 'none']),
+  "source": zod.enum(['bitwarden', 'env', 'none']),
   "reason": zod.string().describe('ok when ready, otherwise the reason the feature is disabled.')
 })
 }).describe('Secret-backed integrations and whether each is live. Booleans and reason codes only, never secret values. Ask Cosmo is not listed: it runs on Convex (POST /ask/chat on the deployment\'s .convex.site, on the Convex AI Gateway) and reports its state on that deployment\'s GET /health.\n')
