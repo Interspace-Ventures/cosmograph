@@ -21,10 +21,10 @@ flag off, and stays until Phase 5.
 | `ship.ts` | `ship.get` / `ship.save` / `ship.claim`: ports of GET/PUT /me/ship and POST /me/ship/claim (`premium-ships` gated). Ships are included in membership (#12); a non-member's claim returns `checkoutRequired` and the SPA starts membership checkout carrying the hull. |
 | `http.ts` | HTTP routes: `POST/OPTIONS /billing/checkout`, `POST/OPTIONS /billing/portal`, `POST /stripe/webhook`. All 404 while `convex-account` is off. |
 | `billingInternal.ts` | Internal only: `prepareCheckout` (entitlement check + budget), `setStripeCustomer`, `preparePortal`, `eventSeen`, `applyEvent` (the only writer of membership), `pruneRateCounters`. |
-| `stripeNode.ts` | `"use node"` internal actions: `createCheckout`, `createPortal`, `processWebhook`. Load Stripe secrets from 1Password, call Stripe. |
+| `stripeNode.ts` | `"use node"` internal actions: `createCheckout`, `createPortal`, `processWebhook`. Load Stripe secrets from Bitwarden Secrets Manager, call Stripe. |
 | `crons.ts` | Daily prune of expired rate counters. |
-| `lib/billingConfig.ts` | Non-secret billing config from env (price ids, origins, limits, vault item names, `STRIPE_MODE`). |
-| `lib/opSecrets.ts` | Reads `STRIPE_SECRET_KEY` and the webhook signing secret from the 1Password vault via `@1password/sdk`, in memory only. Refuses to run if a Stripe secret is set as env. |
+| `lib/billingConfig.ts` | Non-secret billing config from env (price ids, origins, limits, Bitwarden org/project ids and secret key names, `STRIPE_MODE`). |
+| `lib/bwsSecrets.ts` | Reads the Stripe secret key and the webhook signing secret from the Bitwarden Secrets Manager project via `@bitwarden/sdk-wasm`, by key name, in memory only. Refuses to run if a Stripe secret is set as env. |
 | `lib/checkout.ts` / `lib/webhook.ts` / `lib/entitlement.ts` / `lib/stripeEvents.ts` | Checkout + portal sessions, webhook verification, event normalization, and the entitlement writes (grant, sync, revoke on refund/dispute). |
 | `lib/httpBilling.ts` / `lib/rateLimit.ts` | HTTP edge (flag, Origin allowlist, Exo Key auth, bounded input) and the per-minute / daily per-client / global daily budget. |
 | `referral.ts` | `referral.mine` / `referral.ensure` / `referral.claim`: ports of GET /me/referral and POST /me/referral/claim (`referrals` gated, new-account-only attribution). |
@@ -32,7 +32,7 @@ flag off, and stays until Phase 5.
 | `lib/features.ts` | Release gates for Convex functions (RELEASE_CHANNEL / FEATURE_FLAG_OVERRIDES on the deployment), same contract as Express `requireFeature`. |
 
 Rules (exo#232): Convex only, Exo Key only, secrets only from the app's
-1Password vault, delivery through Exo. No auth bypass; the
+Bitwarden Secrets Manager project, delivery through Exo. No auth bypass; the
 account key always comes from `ctx.auth.getUserIdentity().subject`, never from
 arguments. Clean start: no data is imported from Replit.
 
@@ -65,16 +65,20 @@ Trust model, carried over from #12 and tightened:
   (20), `CHECKOUT_DAILY_GLOBAL` (5000) failing closed; sessions expire in 30 min.
 
 Secrets: no Stripe secret is Convex or platform env. The only secret is a
-read-only `OP_SERVICE_ACCOUNT_TOKEN`; the Node actions read the Stripe secret
-key and webhook signing secret from the vault items named by
-`OP_STRIPE_SECRET_KEY_ITEM` / `OP_STRIPE_WEBHOOK_SECRET_ITEM` in `OP_VAULT`
-(e.g. "Cosmograph staging: STRIPE_SECRET_KEY" in "Interspace"), keep them in
-memory for up to 5 minutes, and refuse a key whose mode doesn't match
-`STRIPE_MODE` (default `test`). `convex.json` marks `@1password/sdk` as an
-external Node package (it ships a WASM core).
+read-only Bitwarden Secrets Manager machine-account token, `BWS_ACCESS_TOKEN`;
+the Node actions read the Stripe secret key and webhook signing secret from
+the secrets whose key names are `BWS_STRIPE_SECRET_KEY_NAME` /
+`BWS_STRIPE_WEBHOOK_SECRET_NAME` (e.g. `COSMOGRAPH_PROD_STRIPE_SECRET_KEY`)
+inside project `BWS_PROJECT_ID` of organization `BWS_ORGANIZATION_ID`, keep
+them in memory for up to 5 minutes, and refuse a key whose mode doesn't match
+`STRIPE_MODE` (default `test`). A key name that matches zero or several
+secrets in the project fails closed. `convex.json` marks `@bitwarden/sdk-wasm`
+as an external Node package (it loads its WASM from its package directory).
+The WASM build is used because Convex runs Node actions on linux-arm64, which
+`@bitwarden/sdk-napi` 1.0.0 has no binary for.
 
 Before enabling on staging: create the test-mode prices once (outside the
-app), set the non-secret env above, add the two vault items, register
+app), set the non-secret env above, add the two secrets to the Bitwarden project, register
 `<deployment>.convex.site/stripe/webhook` in Stripe test mode for the events in
 `lib/stripeEvents.ts`, and set `VITE_CONVEX_SITE_URL` if the site URL isn't the
 `.convex.cloud` -> `.convex.site` default.
