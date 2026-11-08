@@ -33,6 +33,21 @@ services:
     branch: staging
     autoDeploy: true
     numInstances: 1
+    # Build filter (2026-11-08, Render build minutes capped at $50/month for
+    # the workspace): commits that only touch docs, Markdown, CI config, agent
+    # notes or tests do not build or deploy. Anything else still does.
+    buildFilter:
+      ignoredPaths:
+        - docs/**
+        - "**/*.md"
+        - .github/**
+        - .agents/**
+        - tests/**
+        - "**/*.test.ts"
+        - "**/*.test.tsx"
+        - "**/*.test.mjs"
+        - LICENSE
+        - .env.example
     buildCommand: pnpm install --frozen-lockfile && pnpm run deploy:build
     # Every staging deploy pushes the Convex functions to shiny-magpie-750 first,
     # with the deploy key read from Bitwarden Secrets Manager (project
@@ -110,6 +125,21 @@ services:
     branch: main
     autoDeploy: true
     numInstances: 1
+    # Build filter (2026-11-08, Render build minutes capped at $50/month for
+    # the workspace): commits that only touch docs, Markdown, CI config, agent
+    # notes or tests do not build or deploy. Anything else still does.
+    buildFilter:
+      ignoredPaths:
+        - docs/**
+        - "**/*.md"
+        - .github/**
+        - .agents/**
+        - tests/**
+        - "**/*.test.ts"
+        - "**/*.test.tsx"
+        - "**/*.test.mjs"
+        - LICENSE
+        - .env.example
     buildCommand: pnpm install --frozen-lockfile && pnpm run deploy:build
     startCommand: pnpm run deploy:start
     # Production serves at the root of cosmograph.space (as on the old host).
