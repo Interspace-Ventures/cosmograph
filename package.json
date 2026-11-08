@@ -29,7 +29,7 @@
   "dependencies": {
     "@bitwarden/sdk-wasm": "0.1.0",
     "convex": "^1.49.0",
-    "openai": "^6.27.0",
+    "openai": "^7.52.0",
     "stripe": "^22.2.2"
   }
 }
