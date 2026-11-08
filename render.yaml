@@ -114,12 +114,14 @@ services:
     startCommand: pnpm run deploy:start
     # Production serves at the root of cosmograph.space (as on the old host).
     healthCheckPath: /api/health
-    # No Convex pre-deploy on production yet. Wiring it needs Samir's yes, a
-    # separate read-only Bitwarden token for "Cosmograph Production", and both
+    # Every production deploy pushes the Convex functions to marvelous-grouse-975
+    # first (Samir approved, 2026-11-07), with CONVEX_DEPLOY_KEY read from the
+    # Bitwarden project "Cosmograph Production" through its own read-only token.
+    # The script refuses production unless both
     # COSMOGRAPH_DEPLOYMENT_ENVIRONMENT=production and
-    # COSMOGRAPH_ALLOW_PROD_CONVEX_DEPLOY=1; without them the script refuses
-    # marvelous-grouse-975 before it reads any secret.
-    # preDeployCommand: node scripts/convex/deploy-from-bitwarden.mjs --pre-deploy
+    # COSMOGRAPH_ALLOW_PROD_CONVEX_DEPLOY=1 are set. A failed push fails the
+    # deploy and the previous one keeps serving.
+    preDeployCommand: node scripts/convex/deploy-from-bitwarden.mjs --pre-deploy
     envVars:
       - key: NODE_ENV
         value: production
@@ -170,6 +172,11 @@ services:
         sync: false
       - key: BWS_EXO_INTAKE_SECRET_NAME
         value: COSMOGRAPH_PROD_EXO_INTAKE_SECRET
+      # Convex pre-deploy guards (scripts/convex/deploy-from-bitwarden.mjs).
+      - key: COSMOGRAPH_DEPLOYMENT_ENVIRONMENT
+        value: production
+      - key: COSMOGRAPH_ALLOW_PROD_CONVEX_DEPLOY
+        value: "1"
       # Feedback intake daily ceilings (lib/spendGuard.ts); equal to the code
       # defaults. Ask Cosmo's caps live on the Convex deployment.
       - key: FEEDBACK_DAILY_PER_CLIENT
