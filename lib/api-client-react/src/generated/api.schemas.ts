@@ -28,7 +28,7 @@ export type IntegrationStatusSource = typeof IntegrationStatusSource[keyof typeo
 
 
 export const IntegrationStatusSource = {
-  '1password': '1password',
+  bitwarden: 'bitwarden',
   env: 'env',
   none: 'none',
 } as const;

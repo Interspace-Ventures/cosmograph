@@ -14,14 +14,24 @@ Production contract: branch `main`, served at the root of
 ## 0. Before you start
 
 - This PR is merged into `staging` and reviewed at `staging.exo.now/cosmograph`.
-- 1Password vault `Interspace` holds these items, each with the value in a
-  `credential` (or `password`) field:
-  - `Cosmograph production: EXO_INTAKE_SECRET` (feedback intake HMAC, 32+ chars)
-  - for the Convex billing actions: `Cosmograph production: STRIPE_SECRET_KEY`
-    and `Cosmograph production: STRIPE_WEBHOOK_SECRET` (live mode, matching
+- Secrets live in Bitwarden Secrets Manager (moved from 1Password,
+  2026-11-05). Cosmograph's production project holds these secrets, looked
+  up by key name; each key name must be unique within the project:
+  - `COSMOGRAPH_PROD_EXO_INTAKE_SECRET` (feedback intake HMAC, 32+ chars)
+  - for the Convex billing actions: `COSMOGRAPH_PROD_STRIPE_SECRET_KEY` and
+    `COSMOGRAPH_PROD_STRIPE_WEBHOOK_SECRET` (live mode, matching
     `STRIPE_MODE=live` on the Convex production deployment)
-- A read-only 1Password service account scoped to those items exists (issued
-  by Exo). Its token is the only secret either host ever holds.
+- Two machine accounts exist, each with **Can read** on that project only, and
+  each with one access token: one for the Render service, one for the Convex
+  production deployment. A token is the only secret either host ever holds.
+  Access is per project, so the Render token can also read the Stripe
+  secrets in the same project; for least privilege put the Stripe secrets in
+  a separate project that only the Convex machine account can read, and set
+  that project's id as the Convex deployment's `BWS_PROJECT_ID`.
+- Note the organization id and the project id(s) (UUIDs, not secret). The
+  code defaults to Bitwarden's US cloud; for the EU cloud also set
+  `BWS_API_URL=https://api.bitwarden.eu` and
+  `BWS_IDENTITY_URL=https://identity.bitwarden.eu` on both hosts.
 - EXO has issued the production Exo Imprint client id for Cosmograph, with
   `https://cosmograph.space/auth/callback` registered.
 
@@ -34,15 +44,19 @@ presence and the spend guards need a single long-lived process.
 
 ## 2. Set the dashboard-only values
 
-On `cosmograph-production` set the two `sync: false` values:
+On `cosmograph-production` set the `sync: false` values:
 
-- `OP_SERVICE_ACCOUNT_TOKEN`: the read-only service account token
+- `BWS_ACCESS_TOKEN`: the Render machine account's read-only access token
+- `BWS_ORGANIZATION_ID` and `BWS_PROJECT_ID`: the UUIDs noted above
+  (`BWS_EXO_INTAKE_SECRET_NAME` comes from `render.yaml`)
 - `VITE_EXO_ID_CLIENT_ID`: the production client id from EXO (build-time;
   redeploy after setting it)
 
-Never set `EXO_INTAKE_SECRET` or any Stripe secret as Render env. Ask Cosmo
-needs no OpenAI key at all (it runs on the Convex AI Gateway); remove any
-leftover `OP_OPENAI_API_KEY_ITEM` / `AI_INTEGRATIONS_OPENAI_*` values. The server ignores them outside local dev and logs a
+Never set `EXO_INTAKE_SECRET` or any Stripe secret as Render env, and remove
+any leftover `OP_SERVICE_ACCOUNT_TOKEN` (the server logs a warning while it is
+set). Ask Cosmo needs no OpenAI key at all (it runs on the Convex AI Gateway);
+remove any leftover `OP_OPENAI_API_KEY_ITEM` / `BWS_OPENAI_API_KEY_NAME` /
+`AI_INTEGRATIONS_OPENAI_*` values. The server ignores them outside local dev and logs a
 warning naming the variable. Set `EXO_INTAKE_API_URL` (non-secret) once EXO
 gives the production intake URL; until then `/api/health` reports
 `exoIntake.reason = "api-url-missing"`.
@@ -58,8 +72,11 @@ npx convex deploy --deployment production   # marvelous-grouse-975
 ```
 
 Before that, confirm the production deployment's env (non-secret billing
-config, `OP_SERVICE_ACCOUNT_TOKEN`, `OP_VAULT`, the `OP_STRIPE_*_ITEM` titles
-above, `STRIPE_MODE=live`, price ids, `PUBLIC_APP_ORIGINS`) and the Exo Key
+config, `BWS_ACCESS_TOKEN` (the Convex machine account's token),
+`BWS_ORGANIZATION_ID`, `BWS_PROJECT_ID`,
+`BWS_STRIPE_SECRET_KEY_NAME=COSMOGRAPH_PROD_STRIPE_SECRET_KEY`,
+`BWS_STRIPE_WEBHOOK_SECRET_NAME=COSMOGRAPH_PROD_STRIPE_WEBHOOK_SECRET`, no
+`OP_*` variables, `STRIPE_MODE=live`, price ids, `PUBLIC_APP_ORIGINS`) and the Exo Key
 issuer in `convex/auth.config.ts` for production.
 
 ## 4. Promote staging to main
@@ -69,7 +86,10 @@ Render auto-deploys `main` to `cosmograph-production`. Check on the
 onrender.com URL:
 
 1. `/api/health` returns 200 with `environment: "production"`, the merged
-   commit, and `integrations.exoIntake` once its URL is set. Ask Cosmo's state
+   commit, and `integrations.exoIntake.ready: true` with `source: "bitwarden"`
+   once its URL is set. A `reason` of `bws-token-missing`,
+   `bws-config-missing`, `key-name-missing`, `secret-not-found`,
+   `secret-ambiguous` or `lookup-failed` names what to fix. Ask Cosmo's state
    is on the Convex deployment: `https://marvelous-grouse-975.convex.site/health`
    reports `integrations.askCosmo` (`gateway-disabled` means the Convex team is
    not on a paid plan). `ask-cosmo` has no public release date, so it stays
@@ -105,6 +125,9 @@ Only after production on Render has been healthy and DNS has fully moved:
 remove the custom domains from the Railway service, then stop and delete the
 Railway production service and its variables (this also retires any secrets
 that lived there). Nothing in the repo references Railway any more.
+
+Once both hosts report `source: "bitwarden"`, revoke the old 1Password
+service account token (`OP_SERVICE_ACCOUNT_TOKEN`); nothing reads it.
 
 ## Rollback
 

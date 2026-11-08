@@ -6,17 +6,19 @@ import { ConvexError } from "convex/values";
  *
  * Everything read here is plain, non-secret env on the Convex deployment, set
  * by Exo delivery. Stripe secrets are deliberately NOT here: the Node action
- * reads STRIPE_SECRET_KEY and the webhook signing secret from Cosmograph's
- * 1Password vault at runtime (lib/opSecrets.ts), in memory only. The only
- * secret on the deployment is the read-only OP_SERVICE_ACCOUNT_TOKEN.
+ * reads the Stripe secret key and the webhook signing secret from Cosmograph's
+ * Bitwarden Secrets Manager project at runtime (lib/bwsSecrets.ts), in memory
+ * only. The only secret on the deployment is the read-only machine-account
+ * access token BWS_ACCESS_TOKEN.
  *
  *   STRIPE_PRICE_ANNUAL / STRIPE_PRICE_LIFETIME  pre-existing Price ids
  *     (created once, outside the app; the app never creates or edits prices)
  *   STRIPE_MODE            "test" (default) or "live"; the vault key must match
- *   OP_VAULT               1Password vault name (default "Interspace")
- *   OP_STRIPE_SECRET_KEY_ITEM      e.g. "Cosmograph staging: STRIPE_SECRET_KEY"
- *   OP_STRIPE_WEBHOOK_SECRET_ITEM  e.g. "Cosmograph staging: STRIPE_WEBHOOK_SECRET"
- *   OP_SECRET_FIELDS       field ids/titles to read, default "credential,password"
+ *   BWS_ORGANIZATION_ID    Bitwarden organization id (UUID, not secret)
+ *   BWS_PROJECT_ID         Secrets Manager project id (UUID, not secret)
+ *   BWS_STRIPE_SECRET_KEY_NAME      secret key name, e.g. COSMOGRAPH_PROD_STRIPE_SECRET_KEY
+ *   BWS_STRIPE_WEBHOOK_SECRET_NAME  e.g. COSMOGRAPH_PROD_STRIPE_WEBHOOK_SECRET
+ *   BWS_API_URL / BWS_IDENTITY_URL  optional; default Bitwarden US cloud
  *   PUBLIC_APP_ORIGINS / ALLOWED_ORIGINS  Origin + return-URL allowlist
  *   CHECKOUT_PER_MINUTE / CHECKOUT_DAILY_PER_CLIENT / CHECKOUT_DAILY_GLOBAL
  *   STRIPE_AUTOMATIC_TAX   "true" to enable Stripe Tax on checkout
@@ -61,18 +63,60 @@ export const DEFAULT_LIMITS: CheckoutLimits = {
 
 export type StripeMode = "test" | "live";
 
-export interface VaultConfig {
-  vault: string;
-  secretKeyItem: string;
-  webhookSecretItem: string;
-  fields: string[];
+export interface BwsConfig {
+  organizationId: string;
+  projectId: string;
+  secretKeyName: string;
+  webhookSecretName: string;
+  apiUrl: string;
+  identityUrl: string;
+}
+
+export const DEFAULT_BWS_API_URL = "https://api.bitwarden.com";
+export const DEFAULT_BWS_IDENTITY_URL = "https://identity.bitwarden.com";
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/** Secrets Manager key names as Cosmograph uses them (upper snake case). */
+const SECRET_NAME = /^[A-Z][A-Z0-9_]{0,127}$/;
+
+/** https only, no path beyond "/", no credentials; null when malformed. */
+export function bwsUrl(raw: string | undefined, fallback: string): string | null {
+  const value = raw?.trim();
+  if (!value) return fallback;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash) {
+      return null;
+    }
+    return url.toString().replace(/\/$/, "");
+  } catch {
+    return null;
+  }
+}
+
+/** Where the Stripe secrets live in Bitwarden, or null when unconfigured. */
+export function bwsConfigFromEnv(
+  env: Env,
+  names: { secretKeyEnv: string; webhookSecretEnv: string },
+): BwsConfig | null {
+  const organizationId = env.BWS_ORGANIZATION_ID?.trim() ?? "";
+  const projectId = env.BWS_PROJECT_ID?.trim() ?? "";
+  const secretKeyName = env[names.secretKeyEnv]?.trim() ?? "";
+  const webhookSecretName = env[names.webhookSecretEnv]?.trim() ?? "";
+  if (!UUID.test(organizationId) || !UUID.test(projectId)) return null;
+  if (!SECRET_NAME.test(secretKeyName) || !SECRET_NAME.test(webhookSecretName)) return null;
+  if (secretKeyName === webhookSecretName) return null;
+  const apiUrl = bwsUrl(env.BWS_API_URL, DEFAULT_BWS_API_URL);
+  const identityUrl = bwsUrl(env.BWS_IDENTITY_URL, DEFAULT_BWS_IDENTITY_URL);
+  if (!apiUrl || !identityUrl) return null;
+  return { organizationId, projectId, secretKeyName, webhookSecretName, apiUrl, identityUrl };
 }
 
 export interface BillingConfig {
   priceIds: Record<MemberPlan, string>;
   origins: string[];
   limits: CheckoutLimits;
-  vault: VaultConfig;
+  bws: BwsConfig;
   stripeMode: StripeMode;
   automaticTax: boolean;
 }
@@ -156,15 +200,13 @@ export function billingConfig(env: Env = process.env): BillingConfig | null {
   if (!PRICE_ID.test(annual) || !PRICE_ID.test(lifetime) || annual === lifetime) {
     return null;
   }
-  const secretKeyItem = env.OP_STRIPE_SECRET_KEY_ITEM?.trim() ?? "";
-  const webhookSecretItem = env.OP_STRIPE_WEBHOOK_SECRET_ITEM?.trim() ?? "";
-  if (!secretKeyItem || !webhookSecretItem) return null;
+  const bws = bwsConfigFromEnv(env, {
+    secretKeyEnv: "BWS_STRIPE_SECRET_KEY_NAME",
+    webhookSecretEnv: "BWS_STRIPE_WEBHOOK_SECRET_NAME",
+  });
+  if (!bws) return null;
   const mode = env.STRIPE_MODE?.trim() || "test";
   if (mode !== "test" && mode !== "live") return null;
-  const fields = (env.OP_SECRET_FIELDS ?? "credential,password")
-    .split(",")
-    .map((f) => f.trim())
-    .filter(Boolean);
   const origins = appOrigins(env);
   return {
     priceIds: { annual, lifetime },
@@ -180,12 +222,7 @@ export function billingConfig(env: Env = process.env): BillingConfig | null {
         DEFAULT_LIMITS.dailyGlobal,
       ),
     },
-    vault: {
-      vault: env.OP_VAULT?.trim() || "Interspace",
-      secretKeyItem,
-      webhookSecretItem,
-      fields: fields.length ? fields : ["credential", "password"],
-    },
+    bws,
     stripeMode: mode,
     automaticTax: env.STRIPE_AUTOMATIC_TAX === "true",
   };

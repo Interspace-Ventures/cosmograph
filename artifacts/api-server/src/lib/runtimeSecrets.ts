@@ -1,38 +1,37 @@
 /**
  * Server secrets for the Express API, loaded once at boot from Cosmograph's
- * 1Password vault with @1password/sdk.
+ * Bitwarden Secrets Manager project with @bitwarden/sdk-wasm.
  *
  * The only secret on a hosted deployment (Render) is the read-only
- * OP_SERVICE_ACCOUNT_TOKEN. Everything else here is non-secret config naming
- * where each secret lives, matching the Convex side (convex/lib/opSecrets.ts,
- * convex/lib/billingConfig.ts):
+ * machine-account access token BWS_ACCESS_TOKEN. Everything else here is
+ * non-secret config naming where each secret lives, matching the Convex side
+ * (convex/lib/bwsSecrets.ts, convex/lib/billingConfig.ts):
  *
- *   OP_VAULT                    vault title (default "Interspace")
- *   OP_EXO_INTAKE_SECRET_ITEM   item title holding the EXO intake HMAC secret
- *   OP_SECRET_FIELDS            field ids/titles to read, default "credential,password"
+ *   BWS_ORGANIZATION_ID          Bitwarden organization id (UUID)
+ *   BWS_PROJECT_ID               Secrets Manager project id (UUID)
+ *   BWS_EXO_INTAKE_SECRET_NAME   secret key name, e.g. COSMOGRAPH_PROD_EXO_INTAKE_SECRET
+ *   BWS_API_URL / BWS_IDENTITY_URL  optional; default Bitwarden US cloud
  *
- * Items are found by vault and item title through the SDK's list APIs rather
- * than op:// references, because titles like "Cosmograph production:
- * EXO_INTAKE_SECRET" contain characters secret references don't support.
+ * Secrets are found by key name within BWS_PROJECT_ID. A name that matches no
+ * secret, or more than one, in that project leaves its feature disabled.
  *
  * Ask Cosmo no longer needs a key here: it runs as a Convex HTTP action on the
  * Convex AI Gateway (convex/lib/aiGateway.ts), where Convex holds the provider
  * credentials.
  *
- * The env fallback (EXO_INTAKE_SECRET) is read
- * only for local development (NODE_ENV !== "production") and only when no
- * service account token is set. On a hosted build they are ignored, with a
- * warning naming the variable so it gets removed.
+ * The env fallback (EXO_INTAKE_SECRET) is read only for local development
+ * (NODE_ENV !== "production") and only when no access token is set. On a hosted build they are ignored, with a warning
+ * naming the variable so it gets removed.
  *
  * Fail closed: a secret that cannot be loaded leaves its feature disabled and
  * reported on /api/health (`integrations`). Secret values are held in this
  * module's memory only, never logged, and never returned by any route; only
- * our own lookup messages are logged, never SDK error text.
+ * our own lookup messages are logged, never SDK or server error text.
  */
 
 export type SecretId = "exoIntakeSecret";
 
-export type SecretSource = "1password" | "env" | "none";
+export type SecretSource = "bitwarden" | "env" | "none";
 
 export type SecretStatus = {
   ready: boolean;
@@ -43,8 +42,8 @@ export type SecretStatus = {
 
 type SecretSpec = {
   id: SecretId;
-  /** Non-secret env naming the 1Password item. */
-  itemEnv: string;
+  /** Non-secret env naming the Bitwarden secret's key. */
+  nameEnv: string;
   /** Local-dev-only env fallback. */
   devEnv: string;
   valid: (value: string) => boolean;
@@ -53,7 +52,7 @@ type SecretSpec = {
 export const SECRET_SPECS: readonly SecretSpec[] = [
   {
     id: "exoIntakeSecret",
-    itemEnv: "OP_EXO_INTAKE_SECRET_ITEM",
+    nameEnv: "BWS_EXO_INTAKE_SECRET_NAME",
     devEnv: "EXO_INTAKE_SECRET",
     // Same floor exoIntake.ts has always enforced for the HMAC key.
     valid: (v) => v.length >= 32 && !/\s/.test(v),
@@ -71,28 +70,96 @@ export const RETIRED_ENV = [
   "BWS_OPENAI_API_KEY_NAME",
 ] as const;
 
-export interface OpClientLike {
-  vaults: { list(): Promise<Array<{ id: string; title: string }>> };
-  items: {
-    list(vaultId: string): Promise<Array<{ id: string; title: string }>>;
-    get(
-      vaultId: string,
-      itemId: string,
-    ): Promise<{ fields: Array<{ id: string; title: string; value: string }> }>;
-  };
+export interface BwsSecretIdentifier {
+  id: string;
+  key: string;
 }
 
-export type OpClientFactory = (token: string) => Promise<OpClientLike>;
+export interface BwsSecret {
+  id: string;
+  key: string;
+  value: string;
+  projectId: string | null;
+}
 
-/** Loaded lazily so the WASM core only starts when a token is configured. */
-export const defaultOpClientFactory: OpClientFactory = async (token) => {
-  const { createClient } = await import("@1password/sdk");
-  const client = await createClient({
-    auth: token,
-    integrationName: "Cosmograph API server",
-    integrationVersion: "1",
+/** The narrow slice of the Bitwarden SDK this module uses (fakeable in tests). */
+export interface BwsClientLike {
+  listSecrets(organizationId: string): Promise<BwsSecretIdentifier[]>;
+  getSecrets(ids: string[]): Promise<BwsSecret[]>;
+}
+
+export interface BwsSettings {
+  apiUrl: string;
+  identityUrl: string;
+}
+
+export type BwsClientFactory = (
+  token: string,
+  settings: BwsSettings,
+) => Promise<BwsClientLike>;
+
+class LookupError extends Error {}
+
+interface SdkClient {
+  run_command(input: string): Promise<unknown>;
+}
+type SdkCtor = new (settings?: string, logLevel?: number) => SdkClient;
+
+/**
+ * One SDK client per process. sdk-wasm 0.1.0 installs a global logger when a
+ * client is constructed and panics on a second construction in the same
+ * process, so the client is created once and reused (re-login per load).
+ */
+let sdkSingleton: { settings: string; sdk: SdkClient } | null = null;
+
+async function sharedSdk(settings: BwsSettings): Promise<SdkClient> {
+  const serialized = JSON.stringify({
+    apiUrl: settings.apiUrl,
+    identityUrl: settings.identityUrl,
+    userAgent: "Cosmograph API server",
+    deviceType: "SDK",
   });
-  return client as unknown as OpClientLike;
+  if (sdkSingleton) {
+    if (sdkSingleton.settings !== serialized) throw new LookupError("sdk settings changed");
+    return sdkSingleton.sdk;
+  }
+  const mod = (await import("@bitwarden/sdk-wasm")) as unknown as {
+    BitwardenClient?: SdkCtor;
+    default?: { BitwardenClient?: SdkCtor };
+  };
+  const Ctor = mod.BitwardenClient ?? mod.default?.BitwardenClient;
+  if (!Ctor) throw new LookupError("sdk unavailable");
+  if (sdkSingleton) return (sdkSingleton as { sdk: SdkClient }).sdk;
+  // LogLevel.Error (4): the SDK logs nothing at the levels we enable.
+  sdkSingleton = { settings: serialized, sdk: new Ctor(serialized, 4) };
+  return sdkSingleton.sdk;
+}
+
+/**
+ * Loaded lazily so the WASM core only starts when a token is configured.
+ * @bitwarden/sdk-wasm reads its .wasm file from its own package directory, so
+ * build.mjs keeps it external (a real node_modules import).
+ */
+export const defaultBwsClientFactory: BwsClientFactory = async (token, settings) => {
+  const sdk = await sharedSdk(settings);
+  const run = async (command: unknown): Promise<unknown> => {
+    const raw = await sdk.run_command(JSON.stringify(command));
+    const parsed = (typeof raw === "string" ? JSON.parse(raw) : raw) as {
+      success?: boolean;
+      data?: unknown;
+    };
+    // errorMessage is deliberately dropped: it can carry server text.
+    if (!parsed?.success) throw new LookupError("sdk command failed");
+    return parsed.data;
+  };
+  await run({ accessTokenLogin: { accessToken: token } });
+  return {
+    listSecrets: async (organizationId) =>
+      ((await run({ secrets: { list: { organizationId } } })) as { data?: BwsSecretIdentifier[] })
+        ?.data ?? [],
+    getSecrets: async (ids) =>
+      ((await run({ secrets: { getByIds: { ids } } })) as { data?: BwsSecret[] })?.data ?? [],
+  };
 };
 
 export type LoadLogger = {
@@ -104,8 +171,25 @@ export type LoadLogger = {
 type Env = Record<string, string | undefined>;
 
 export const LOAD_TIMEOUT_MS = 15_000;
+export const DEFAULT_BWS_API_URL = "https://api.bitwarden.com";
+export const DEFAULT_BWS_IDENTITY_URL = "https://identity.bitwarden.com";
 
-class LookupError extends Error {}
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const SECRET_NAME = /^[A-Z][A-Z0-9_]{0,127}$/;
+
+function bwsUrl(raw: string | undefined, fallback: string): string | null {
+  const value = raw?.trim();
+  if (!value) return fallback;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash) {
+      return null;
+    }
+    return url.toString().replace(/\/$/, "");
+  } catch {
+    return null;
+  }
+}
 
 const values = new Map<SecretId, string>();
 const statuses = new Map<SecretId, SecretStatus>();
@@ -152,7 +236,7 @@ function snapshot(): Record<SecretId, SecretStatus> {
 export async function loadRuntimeSecrets(
   opts: {
     env?: Env;
-    factory?: OpClientFactory;
+    factory?: BwsClientFactory;
     log?: LoadLogger;
     timeoutMs?: number;
   } = {},
@@ -164,12 +248,7 @@ export async function loadRuntimeSecrets(
     error: (m) => console.error(m),
   };
   const localDev = (env["NODE_ENV"] ?? "").trim() !== "production";
-  const token = env["OP_SERVICE_ACCOUNT_TOKEN"]?.trim() ?? "";
-  const vaultTitle = env["OP_VAULT"]?.trim() || "Interspace";
-  const fields = (env["OP_SECRET_FIELDS"] ?? "credential,password")
-    .split(",")
-    .map((f) => f.trim())
-    .filter(Boolean);
+  const token = env["BWS_ACCESS_TOKEN"]?.trim() ?? "";
 
   for (const name of RETIRED_ENV) {
     if ((env[name] ?? "").trim() !== "") {
@@ -184,10 +263,15 @@ export async function loadRuntimeSecrets(
     for (const spec of SECRET_SPECS) {
       if ((env[spec.devEnv] ?? "").trim() !== "") {
         log.warn(
-          `secrets: ${spec.devEnv} is set in the host env and is ignored outside local dev; remove it (secrets come from 1Password only)`,
+          `secrets: ${spec.devEnv} is set in the host env and is ignored outside local dev; remove it (secrets come from Bitwarden Secrets Manager only)`,
         );
       }
     }
+  }
+  if ((env["OP_SERVICE_ACCOUNT_TOKEN"] ?? "").trim() !== "") {
+    log.warn(
+      "secrets: OP_SERVICE_ACCOUNT_TOKEN is still set but 1Password is no longer read; remove it",
+    );
   }
 
   if (!token) {
@@ -201,21 +285,41 @@ export async function loadRuntimeSecrets(
           log.error(`secrets: ${spec.devEnv} has the wrong shape; ${spec.id} disabled`);
         }
       } else {
-        set(spec.id, null, { ready: false, source: "none", reason: "op-token-missing" });
+        set(spec.id, null, { ready: false, source: "none", reason: "bws-token-missing" });
       }
     }
     if (!localDev) {
       log.error(
-        "secrets: OP_SERVICE_ACCOUNT_TOKEN is not set; feedback intake is disabled",
+        "secrets: BWS_ACCESS_TOKEN is not set; feedback intake is disabled",
       );
     }
     return snapshot();
   }
 
+  const organizationId = env["BWS_ORGANIZATION_ID"]?.trim() ?? "";
+  const projectId = env["BWS_PROJECT_ID"]?.trim() ?? "";
+  const apiUrl = bwsUrl(env["BWS_API_URL"], DEFAULT_BWS_API_URL);
+  const identityUrl = bwsUrl(env["BWS_IDENTITY_URL"], DEFAULT_BWS_IDENTITY_URL);
+  if (!UUID.test(organizationId) || !UUID.test(projectId) || !apiUrl || !identityUrl) {
+    for (const spec of SECRET_SPECS) {
+      set(spec.id, null, { ready: false, source: "bitwarden", reason: "bws-config-missing" });
+    }
+    log.error(
+      "secrets: BWS_ORGANIZATION_ID / BWS_PROJECT_ID (UUIDs) or BWS_API_URL / BWS_IDENTITY_URL (https) are missing or malformed; feedback intake is disabled",
+    );
+    return snapshot();
+  }
+
   const wanted = SECRET_SPECS.filter((spec) => {
-    if (!(env[spec.itemEnv]?.trim() ?? "")) {
-      set(spec.id, null, { ready: false, source: "1password", reason: "item-ref-missing" });
-      log.error(`secrets: ${spec.itemEnv} is not set; ${spec.id} disabled`);
+    const name = env[spec.nameEnv]?.trim() ?? "";
+    if (!name) {
+      set(spec.id, null, { ready: false, source: "bitwarden", reason: "key-name-missing" });
+      log.error(`secrets: ${spec.nameEnv} is not set; ${spec.id} disabled`);
+      return false;
+    }
+    if (!SECRET_NAME.test(name)) {
+      set(spec.id, null, { ready: false, source: "bitwarden", reason: "key-name-invalid" });
+      log.error(`secrets: ${spec.nameEnv} is not an UPPER_SNAKE key name; ${spec.id} disabled`);
       return false;
     }
     return true;
@@ -225,37 +329,29 @@ export async function loadRuntimeSecrets(
   try {
     await withTimeout(
       (async () => {
-        const client = await (opts.factory ?? defaultOpClientFactory)(token);
-        const vault = (await client.vaults.list()).find((v) => v.title === vaultTitle);
-        if (!vault) throw new LookupError("vault not found");
-        const items = await client.items.list(vault.id);
+        const client = await (opts.factory ?? defaultBwsClientFactory)(token, { apiUrl, identityUrl });
+        const names = wanted.map((spec) => env[spec.nameEnv]!.trim());
+        const identifiers = await client.listSecrets(organizationId);
+        const ids = identifiers.filter((s) => names.includes(s.key)).map((s) => s.id);
+        const secrets = ids.length ? await client.getSecrets(ids) : [];
         for (const spec of wanted) {
-          const title = env[spec.itemEnv]!.trim();
-          const overview = items.find((item) => item.title === title);
-          if (!overview) {
-            set(spec.id, null, { ready: false, source: "1password", reason: "item-not-found" });
-            log.error(`secrets: 1Password item for ${spec.itemEnv} not found; ${spec.id} disabled`);
-            continue;
-          }
-          const item = await client.items.get(vault.id, overview.id);
-          let value = "";
-          for (const name of fields) {
-            const field = item.fields.find((f) => f.id === name || f.title === name);
-            if (field?.value?.trim()) {
-              value = field.value.trim();
-              break;
-            }
-          }
-          if (!value) {
-            set(spec.id, null, { ready: false, source: "1password", reason: "field-not-found" });
-            log.error(
-              `secrets: 1Password item for ${spec.itemEnv} has no ${fields.join("/")} field; ${spec.id} disabled`,
-            );
+          const name = env[spec.nameEnv]!.trim();
+          const matches = secrets.filter((s) => s.key === name && s.projectId === projectId);
+          const value = matches.length === 1 ? (matches[0]!.value?.trim() ?? "") : "";
+          if (matches.length === 0) {
+            set(spec.id, null, { ready: false, source: "bitwarden", reason: "secret-not-found" });
+            log.error(`secrets: no secret named by ${spec.nameEnv} in the project; ${spec.id} disabled`);
+          } else if (matches.length > 1) {
+            set(spec.id, null, { ready: false, source: "bitwarden", reason: "secret-ambiguous" });
+            log.error(`secrets: more than one secret named by ${spec.nameEnv} in the project; ${spec.id} disabled`);
+          } else if (!value) {
+            set(spec.id, null, { ready: false, source: "bitwarden", reason: "secret-empty" });
+            log.error(`secrets: the secret named by ${spec.nameEnv} is empty; ${spec.id} disabled`);
           } else if (!spec.valid(value)) {
-            set(spec.id, null, { ready: false, source: "1password", reason: "invalid-shape" });
-            log.error(`secrets: 1Password value for ${spec.itemEnv} has the wrong shape; ${spec.id} disabled`);
+            set(spec.id, null, { ready: false, source: "bitwarden", reason: "invalid-shape" });
+            log.error(`secrets: Bitwarden value for ${spec.nameEnv} has the wrong shape; ${spec.id} disabled`);
           } else {
-            set(spec.id, value, { ready: true, source: "1password", reason: "ok" });
+            set(spec.id, value, { ready: true, source: "bitwarden", reason: "ok" });
           }
         }
       })(),
@@ -265,11 +361,11 @@ export async function loadRuntimeSecrets(
     const why = err instanceof LookupError ? err.message : "sdk error";
     for (const spec of wanted) {
       if (!statuses.get(spec.id)?.ready) {
-        set(spec.id, null, { ready: false, source: "1password", reason: "lookup-failed" });
+        set(spec.id, null, { ready: false, source: "bitwarden", reason: "lookup-failed" });
       }
     }
     // Only our own lookup messages are logged; SDK errors are not echoed.
-    log.error(`secrets: could not load from 1Password (${why})`);
+    log.error(`secrets: could not load from Bitwarden (${why})`);
   }
 
   const ready = SECRET_SPECS.filter((s) => statuses.get(s.id)?.ready).map((s) => s.id);

@@ -4,7 +4,7 @@ import Stripe from "stripe";
 import { v } from "convex/values";
 import { internalAction } from "./lib/server";
 import { billingConfig, billingError, type BillingConfig } from "./lib/billingConfig";
-import { loadStripeSecrets } from "./lib/opSecrets";
+import { loadStripeSecrets } from "./lib/bwsSecrets";
 import { runCheckout, runPortal } from "./lib/checkout";
 import { runWebhook } from "./lib/webhook";
 import type { StripeLike } from "./lib/stripeLike";
@@ -12,7 +12,7 @@ import { refs } from "./lib/refs";
 
 /**
  * Node-runtime billing actions (internal; reached only through http.ts).
- * Stripe secrets are loaded from 1Password per lib/opSecrets.ts and kept in
+ * Stripe secrets are loaded from Bitwarden Secrets Manager per lib/bwsSecrets.ts and kept in
  * memory; the Stripe client is created from them on demand. No Stripe secret
  * is ever deployment env, a function argument, a return value or a log line.
  */
