@@ -48,7 +48,13 @@ services:
         - "**/*.test.mjs"
         - LICENSE
         - .env.example
-    buildCommand: pnpm install --frozen-lockfile && pnpm run deploy:build
+    # Free gate (2026-11-08): typecheck, lint and the node:test suites run
+    # before the build, so any failure fails the deploy and the live version
+    # keeps serving. `pnpm run gate` (package.json) is the whole list; nothing
+    # slow or browser-based belongs in it (Playwright stays out:
+    # docs/testing/browser-tests-plan.md). Staging only for now; production
+    # takes the same buildCommand at the next promotion to main.
+    buildCommand: pnpm install --frozen-lockfile && pnpm run gate && pnpm run deploy:build
     # Every staging deploy pushes the Convex functions to shiny-magpie-750 first,
     # with the deploy key read from Bitwarden Secrets Manager (project
     # "Cosmograph Staging"). Nobody runs `npx convex deploy` by hand
