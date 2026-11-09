@@ -5,12 +5,33 @@ import type { AddressInfo } from "node:net";
 import { clientIpFromForwarded, trustProxyHops } from "./trustProxy";
 
 test("parses TRUST_PROXY_HOPS with a fail-safe default of 1", () => {
-  assert.equal(trustProxyHops(undefined), 1);
-  assert.equal(trustProxyHops(""), 1);
-  assert.equal(trustProxyHops("3"), 3);
-  assert.equal(trustProxyHops("0"), 1);
-  assert.equal(trustProxyHops("abc"), 1);
-  assert.equal(trustProxyHops("2.5"), 1);
+  // trustProxyHops(undefined) falls back to process.env.TRUST_PROXY_HOPS, and
+  // the Render build (which runs this in `pnpm run gate`) has the service env,
+  // TRUST_PROXY_HOPS=2. Clear it so the fail-safe default is what's tested.
+  const saved = process.env["TRUST_PROXY_HOPS"];
+  delete process.env["TRUST_PROXY_HOPS"];
+  try {
+    assert.equal(trustProxyHops(undefined), 1);
+    assert.equal(trustProxyHops(""), 1);
+    assert.equal(trustProxyHops("3"), 3);
+    assert.equal(trustProxyHops("0"), 1);
+    assert.equal(trustProxyHops("abc"), 1);
+    assert.equal(trustProxyHops("2.5"), 1);
+  } finally {
+    if (saved === undefined) delete process.env["TRUST_PROXY_HOPS"];
+    else process.env["TRUST_PROXY_HOPS"] = saved;
+  }
+});
+
+test("reads TRUST_PROXY_HOPS from the environment when no value is passed", () => {
+  const saved = process.env["TRUST_PROXY_HOPS"];
+  process.env["TRUST_PROXY_HOPS"] = "2";
+  try {
+    assert.equal(trustProxyHops(), 2);
+  } finally {
+    if (saved === undefined) delete process.env["TRUST_PROXY_HOPS"];
+    else process.env["TRUST_PROXY_HOPS"] = saved;
+  }
 });
 
 test("Render chain: client is two hops back and a forged entry is ignored", () => {
