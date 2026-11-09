@@ -5,13 +5,17 @@ scaffold, schema and Exo Key on Convex Auth. Phase 2: account, researcher
 unlocks, ship unlocks and referrals ported from Express, with the SPA switched
 to the Convex client behind the `convex-account` release flag (default off).
 Phase 3: billing ($9.99/yr or $29.99 lifetime, absorbed from PR #12) with a
-signature-verified Stripe webhook, still behind the same flag.
-The Express API in `artifacts/api-server` keeps serving every build with the
-flag off, and stays until Phase 5.
+signature-verified Stripe webhook, behind the same flag. Since 3.44.0
+`convex-account` is released by date to the internal and friends-and-family
+channels (staging) and has no public date, so production stays off. A
+deployment with no `RELEASE_CHANNEL` is treated as `public`.
+Accounts, billing and Ask Cosmo have no Express fallback: the Express server in
+`artifacts/api-server` only serves the SPA, presence, feedback intake and GitHub
+stars, and goes away in Phase 5.
 
 | File | What it is |
 |---|---|
-| `schema.ts` | `users`, `researcherUnlocks`, `shipUnlocks`, mapped from `lib/db` (Postgres). Users are keyed by the Exo subject. |
+| `schema.ts` | `users`, `researcherUnlocks`, `shipUnlocks` (ported from the retired Postgres schema), plus billing and rate-limit tables. Users are keyed by the Exo subject. |
 | `auth.config.ts` | Exo ID as the only identity provider (`customJwt`, RS256, Exo's public JWKS). |
 | `lib/exoKey.ts` | Reads `EXO_ID_ISSUER`, `EXO_ID_AUDIENCE`, `EXO_ID_CLIENT_ID` (non-secret); identity helpers. |
 | `lib/server.ts` | Typed function builders (stand-in for `_generated/server` until codegen can run). |
@@ -19,7 +23,7 @@ flag off, and stays until Phase 5.
 | `account.ts` | `account.entitlement` (query): port of GET /me/entitlement. |
 | `billing.ts` | `billing.unlock` (mutation): port of POST /me/unlock. #12's model: members pin researchers with no add-on charge, up to `MEMBER_UNLOCK_LIMIT` (100, an abuse bound); non-members get `NOT_A_MEMBER` and the SPA starts membership checkout. |
 | `ship.ts` | `ship.get` / `ship.save` / `ship.claim`: ports of GET/PUT /me/ship and POST /me/ship/claim (`premium-ships` gated). Ships are included in membership (#12); a non-member's claim returns `checkoutRequired` and the SPA starts membership checkout carrying the hull. |
-| `http.ts` | HTTP routes: `POST/OPTIONS /billing/checkout`, `POST/OPTIONS /billing/portal`, `POST /stripe/webhook`. All 404 while `convex-account` is off. |
+| `http.ts` | HTTP routes: `POST/OPTIONS /billing/checkout`, `POST/OPTIONS /billing/portal`, `POST /stripe/webhook` (all 404 while `convex-account` is off), `POST/OPTIONS /ask/chat` and `GET /health`. Authorization matrix: `tests/convex/http-authz.test.ts`. |
 | `billingInternal.ts` | Internal only: `prepareCheckout` (entitlement check + budget), `setStripeCustomer`, `preparePortal`, `eventSeen`, `applyEvent` (the only writer of membership), `pruneRateCounters`. |
 | `stripeNode.ts` | `"use node"` internal actions: `createCheckout`, `createPortal`, `processWebhook`. Load Stripe secrets from Bitwarden Secrets Manager, call Stripe. |
 | `crons.ts` | Daily prune of expired rate counters. |
@@ -29,7 +33,7 @@ flag off, and stays until Phase 5.
 | `lib/httpBilling.ts` / `lib/rateLimit.ts` | HTTP edge (flag, Origin allowlist, Exo Key auth, bounded input) and the per-minute / daily per-client / global daily budget. |
 | `referral.ts` | `referral.mine` / `referral.ensure` / `referral.claim`: ports of GET /me/referral and POST /me/referral/claim (`referrals` gated, new-account-only attribution). |
 | `lib/account.ts` | Shared account helpers (find-or-create, unlock lists, sanitizers, constants). |
-| `lib/features.ts` | Release gates for Convex functions (RELEASE_CHANNEL / FEATURE_FLAG_OVERRIDES on the deployment), same contract as Express `requireFeature`. |
+| `lib/features.ts` | Release gates for Convex functions (RELEASE_CHANNEL / FEATURE_FLAG_OVERRIDES on the deployment; a missing channel means `public`), same contract as Express `requireFeature`. |
 
 Rules (exo#232): Convex only, Exo Key only, secrets only from the app's
 Bitwarden Secrets Manager project, delivery through Exo. No auth bypass; the

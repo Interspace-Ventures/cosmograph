@@ -1,5 +1,11 @@
 # Production cutover: Railway to Render
 
+> Done 2026-11-06: cosmograph.space serves from `cosmograph-production` on
+> Render. This file is the record of how the move
+> was made. For rolling back production today, use
+> [`runbooks/rollback.md`](runbooks/rollback.md); the old host is not a
+> rollback target.
+
 Moves cosmograph.space off Railway onto the Render service
 `cosmograph-production` defined in `render.yaml`. Every step below is a
 manual, approved action; nothing here runs from CI. Downtime of a few minutes
@@ -131,6 +137,6 @@ service account token (`OP_SERVICE_ACCOUNT_TOKEN`); nothing reads it.
 
 ## Rollback
 
-Before step 6: nothing public changed; fix forward on Render. After step 6:
-point Spaceship DNS back at Railway (keep Railway running until step 8), or
-roll back to a previous Render deploy.
+Use [`runbooks/rollback.md`](runbooks/rollback.md): a previous Render deploy
+for the app, and a redeploy of the last good commit for the Convex functions
+on `marvelous-grouse-975`.

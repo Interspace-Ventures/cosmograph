@@ -63,13 +63,31 @@ change is needed; the next deploy reads the new value.
 
 ## Production
 
-Not wired. `marvelous-grouse-975` is refused, before any secret is read,
-unless both `COSMOGRAPH_DEPLOYMENT_ENVIRONMENT=production` and
-`COSMOGRAPH_ALLOW_PROD_CONVEX_DEPLOY=1` are set, and then only with a
-`prod:marvelous-grouse-975|…` key. Wiring it needs Samir's yes and its own
-read-only token for "Cosmograph Production". Any manual production deploy
-names `--deployment production`, since the project's default production slot
-is staging.
+Wired in `render.yaml` (Samir approved, 2026-11-07): `cosmograph-production`
+runs the same pre-deploy with `COSMOGRAPH_DEPLOYMENT_ENVIRONMENT=production`
+and `COSMOGRAPH_ALLOW_PROD_CONVEX_DEPLOY=1`. `marvelous-grouse-975` is refused,
+before any secret is read, unless both are set, and then only with a
+`prod:marvelous-grouse-975|…` key from the "Cosmograph Production" Bitwarden
+project, read with that service's own read-only token. Any manual production
+deploy names `--deployment production`, since the project's default production
+slot is staging.
+
+## Current state (2026-11-08)
+
+- Staging: `cosmograph-staging` has no `BWS_ACCESS_TOKEN` yet, so the
+  pre-deploy logs one line and skips. `shiny-magpie-750` therefore has no HTTP
+  actions deployed (`/health`, `/ask/chat` and `/billing/*` answer Convex's
+  "does not have HTTP actions enabled" 404). It needs the "Cosmograph Staging"
+  Bitwarden project, its `CONVEX_DEPLOY_KEY`, and the machine-account token on
+  the service.
+- Production: the 3.43.4 deploy (`e780d94`) failed in the pre-deploy because
+  the "Cosmograph Production" project has no `CONVEX_DEPLOY_KEY`; `3576b2f`
+  keeps serving and `marvelous-grouse-975` has no HTTP actions deployed either.
+
+## Rollback
+
+Rolling back a Convex push is redeploying the last good commit through this
+same pre-deploy; see [rollback.md](rollback.md).
 
 ## Tests
 

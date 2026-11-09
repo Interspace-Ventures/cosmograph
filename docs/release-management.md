@@ -13,6 +13,7 @@ of exposing every feature at the first friends-and-family release.
 | 2026-08-20 | Live presence           | `live-presence` |
 | 2026-08-27 | Premium cosmonaut ships | `premium-ships` |
 | 2026-09-03 | Referral links          | `referrals`     |
+| 2026-11-08 | Account + billing on Convex (internal and F&F only) | `convex-account` |
 
 The canonical flag identifiers, descriptions, owners, and dates live in
 `lib/release-flags/src/index.ts`. This document is the human-readable release
@@ -64,8 +65,8 @@ Never use a client-side flag as authorization.
 1. Develop the feature behind its named flag and enforce server-side behavior
    where the feature creates cost, changes state, or exposes private data.
 2. Preview with the `internal` channel or a short-lived explicit override.
-3. Run `pnpm run release:check`, `pnpm run typecheck`, and the relevant focused
-   tests.
+3. Run `pnpm run gate` (typecheck, lint, the node:test suites and
+   `release:check`); the Render staging build runs the same gate.
 4. Merge through staging without changing the F&F or public release date.
 5. Confirm the F&F date and user-facing changelog entry in a separate,
    reviewable release change.
@@ -74,7 +75,14 @@ Never use a client-side flag as authorization.
 
 For an emergency rollback, set the flag to `off` on both surfaces, redeploy the
 configuration, verify the feature UI and APIs are unavailable, then record the
-reason in the changelog and roadmap.
+reason in the changelog and roadmap. Convex-served features (accounts, billing,
+Ask Cosmo) are switched off with `FEATURE_FLAG_OVERRIDES` on the Convex
+deployment, which takes effect without a deploy; the full procedure for the
+Render app and the Convex backend is [`runbooks/rollback.md`](runbooks/rollback.md).
+
+A Convex deployment with no `RELEASE_CHANNEL` is treated as `public`
+(`convex/lib/features.ts`), so a production deployment missing the variable
+never picks up internal or F&F dates.
 
 ## Adding a flag
 

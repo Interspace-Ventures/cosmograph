@@ -38,9 +38,10 @@ Disambiguate by research cluster (institution + co-author), **not** by year alon
 - `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
+- `pnpm run lint` — ESLint (flat config in `eslint.config.mjs`)
+- `pnpm run gate` — the Render build gate: typecheck, lint and the node:test suites (`test:convex`, `test:server`, `test:deploy`, `release:check`)
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- Data lives in Convex (`convex/`), not in a SQL database; the server needs no database URL. `lib/db` (Drizzle) is legacy and unused, pending removal.
 - Optional env: `GITHUB_REPO` — `owner/repo` for the footer star count (default `heyinterspace/cosmograph`)
 
 ## Realtime presence (api-server)
@@ -48,9 +49,9 @@ Disambiguate by research cluster (institution + co-author), **not** by year alon
 - `api-server` hosts an ephemeral multiplayer presence layer: a WebSocket at `/api/presence` (`src/presence/server.ts`) streams each visitor's camera position so others see faint "wisps" and a live headcount ("N cosmonauts streaming now"). Nothing is persisted — anonymous, in-memory only.
 - It also serves `/api/github/stars` (`src/routes/github.ts`), a 5-min TTL in-memory cache of the repo star count, so upstream GitHub is hit at most once per TTL regardless of traffic.
 - **Abuse/DDoS guards** (tune in `src/presence/server.ts`): total + per-IP connection caps, handshake-rate limit, 256-byte `maxPayload`, per-socket token bucket, heartbeat reaping, coordinate clamping, and a 10 Hz shared-snapshot broadcast capped at 60 render peers. REST has a 120 req/min/IP limiter (`app.ts`); `trust proxy` is `TRUST_PROXY_HOPS` (2 on Render: Cloudflare + Render's load balancer, measured against a forged X-Forwarded-For; code default 1 is fail-safe), shared with presence via `src/lib/trustProxy.ts`.
-- **Deployment:** Render runs the API and the built galaxy as ONE always-on web service (`render.yaml`, `pnpm deploy:build` / `deploy:start`, health `/cosmograph/api/health`). The health endpoint reports `RENDER_GIT_COMMIT` and `DEPLOY_ENVIRONMENT`. Presence and the Stripe webhook need a long-lived process; never move this to scale-to-zero.
+- **Deployment:** Render runs the API and the built galaxy as ONE always-on web service (`render.yaml`, `pnpm deploy:build` / `deploy:start`, health `/cosmograph/api/health`). The health endpoint reports `RENDER_GIT_COMMIT` and `DEPLOY_ENVIRONMENT`. Presence needs a long-lived process; never move this to scale-to-zero. The Stripe webhook, billing, accounts and Ask Cosmo are Convex HTTP actions (`convex/http.ts`), not Express routes. Rollback for both halves: `docs/runbooks/rollback.md`.
 
-## Ask the galaxy (chat) (api-server)
+## Ask the galaxy (chat) (Convex)
 
 - The Sidebar console's old Filter panel is now an **Ask** chat panel: the visitor asks a natural-language question about the scientist's work and matching papers light up in the galaxy.
 - **Ask Cosmo runs on Convex, not Express.** `POST <deployment>.convex.site/ask/chat` is a Convex HTTP action (`convex/http.ts` → `convex/lib/httpAsk.ts`) that streams Server-Sent Events. The model call (`openai/gpt-5-mini`, 900 output tokens, zero-data-retention routing) goes through the **Convex AI Gateway** (`convex/lib/aiGateway.ts`) with the OpenAI SDK, authenticated by a short-lived deployment token from `getServiceToken("ai-gateway")`. **No OpenAI key exists anywhere**: not on Render, not in Convex env, not in a vault. Guards, all fail-closed: the `ask-cosmo` release flag, the Origin allowlist (`PUBLIC_APP_ORIGINS`/`ALLOWED_ORIGINS`), a bounded and rebuilt request (`convex/lib/askRequest.ts`), and durable caps in the `rateCounters` table (12/min and 30/day per visitor keyed by a hash of the edge IP, 10,000/day globally; `convex/askInternal.ts`). The deployment's `GET /health` reports `askCosmo.ready` with a reason code (`gateway-disabled` on the Convex free plan). The Convex team must be on a paid plan (Starter or Professional).
@@ -70,11 +71,12 @@ initiating prompt in commits and use short-lived remote canary branches for revi
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
+- Backend: Convex (data, Exo Imprint auth via Exo Key, billing, Ask Cosmo on the Convex AI Gateway); deployments `shiny-magpie-750` (staging) and `marvelous-grouse-975` (production)
+- App server: Express 5 on Render, a thin layer that serves the SPA, presence, feedback intake and GitHub stars until it is retired
+- Validation: Zod 4
 - API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- Lint: ESLint 10 + typescript-eslint + react-hooks
+- Build: Vite (web), esbuild (server, ESM bundle)
 
 ## Where things live
 
@@ -102,7 +104,7 @@ initiating prompt in commits and use short-lived remote canary branches for revi
 ## Gotchas
 
 - **Presence wisps live inside the tilt frame.** Peers send camera positions in galaxy-*local* space (the broadcaster un-rotates by `-galaxyTilt` about X before sending), and `PresenceWisps` re-applies `rotation-x={galaxyTilt}` so wisps line up with the orbiting planets for each viewer. Skip either half and wisps drift off the disk.
-- **`api-server` must stay always-on** for presence and paid unlocks; the galaxy bundle degrades gracefully if it is down.
+- **`api-server` must stay always-on** for presence; paid unlocks are on Convex. The galaxy bundle degrades gracefully if either is down.
 - **One remaining `pnpm audit` LOW is intentional:** esbuild `0.27.3` (Windows-only dev-server file read, GHSA-g7r4-m6w7-qqqr). It's a build tool not shipped in production and bumping to 0.28.x risks a Vite↔esbuild range mismatch. Leave it pinned.
 
 ## Credits

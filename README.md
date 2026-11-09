@@ -73,8 +73,9 @@ pnpm run release:check # feature schedule and override behavior
 
 Cosmograph uses channel-aware, date-based feature flags to drip completed
 features to friends-and-family without treating that cohort as a public launch.
-The current weekly plan, operational overrides, and rollback procedure are in
-[`docs/release-management.md`](docs/release-management.md).
+The current weekly plan and operational overrides are in
+[`docs/release-management.md`](docs/release-management.md); rolling back the Render app and
+the Convex backend is [`docs/runbooks/rollback.md`](docs/runbooks/rollback.md).
 
 ## Make it for your own scientist
 
@@ -113,21 +114,22 @@ artifacts/
   cosmograph/        # The galaxy web app (React + Vite + React Three Fiber), served at /
     src/data/        #   galaxyData.json — the baked-in snapshot (source of truth)
     scripts/         #   fetch-galaxy.mjs — regenerates the snapshot from OpenAlex
-  api-server/        # Express API: realtime presence (WebSocket) + GitHub-stars cache
+  api-server/        # Express app server: serves the SPA, realtime presence (WebSocket), feedback intake, GitHub-stars cache
+convex/              # Convex backend: accounts, Exo Imprint sign-in, billing + Stripe webhook, Ask Cosmo
   trailer/           # ~45s launch trailer (motion-graphics video artifact), previewed at /trailer/
 lib/
   api-spec/          # OpenAPI spec — the source of truth for the API contract
   api-client-react/  # Generated React Query hooks (Orval)
   api-zod/           # Generated Zod schemas
-  db/                # PostgreSQL schema + Drizzle ORM
+  db/                # Legacy Drizzle schema from before Convex; unused, pending removal
   release-flags/     # Shared browser/server release registry and evaluator
 ```
 
 ## Tech stack
 
 - **Frontend:** React, Vite, React Three Fiber + drei + postprocessing, Framer Motion, Tailwind
-- **Backend:** Express 5 (Node.js 24, TypeScript 5.9)
-- **Data:** PostgreSQL + Drizzle ORM; OpenAlex for publication data
+- **Backend:** Convex (data, auth, billing, Ask Cosmo); Express 5 app server on Render (Node.js 24, TypeScript 5.9)
+- **Data:** Convex; OpenAlex for publication data (baked into a static snapshot)
 - **Contracts & validation:** OpenAPI → Orval codegen, Zod (`zod/v4`)
 - **Build:** Vite (web), esbuild (server)
 
