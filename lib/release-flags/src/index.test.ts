@@ -55,19 +55,45 @@ test("falls back when a release channel is invalid", () => {
   assert.equal(normalizeReleaseChannel("internal"), "internal");
 });
 
-test("the Convex account migration switch is off unless overridden", () => {
-  for (const channel of ["internal", "friends-and-family", "public"] as const) {
-    const decision = evaluateFeature("convex-account", {
+test("convex-account is released to internal and F&F on 2026-11-08, never public by date", () => {
+  for (const channel of ["internal", "friends-and-family"] as const) {
+    const before = evaluateFeature("convex-account", {
       channel,
-      now: new Date("2030-01-01T00:00:00.000Z"),
+      now: new Date("2026-11-07T23:59:59.999Z"),
     });
-    assert.equal(decision.enabled, false);
-    assert.equal(decision.reason, "unscheduled");
+    assert.equal(before.enabled, false, channel);
+    assert.equal(before.reason, "not-released", channel);
+    const on = evaluateFeature("convex-account", {
+      channel,
+      now: new Date("2026-11-08T00:00:00.000Z"),
+    });
+    assert.equal(on.enabled, true, channel);
+    assert.equal(on.reason, "scheduled", channel);
+    assert.equal(on.releaseAt, "2026-11-08", channel);
   }
+  const prod = evaluateFeature("convex-account", {
+    channel: "public",
+    now: new Date("2029-12-31T00:00:00.000Z"),
+  });
+  assert.equal(prod.enabled, false);
+  assert.equal(prod.reason, "unscheduled");
+  assert.equal(prod.releaseAt, null);
+});
+
+test("convex-account overrides still win on every channel", () => {
   assert.equal(
     evaluateFeature("convex-account", {
+      channel: "public",
       overrides: parseFeatureOverrides("convex-account=on"),
+    }).reason,
+    "override-on",
+  );
+  assert.equal(
+    evaluateFeature("convex-account", {
+      channel: "friends-and-family",
+      now: new Date("2026-12-01T00:00:00.000Z"),
+      overrides: parseFeatureOverrides("convex-account=off"),
     }).enabled,
-    true,
+    false,
   );
 });

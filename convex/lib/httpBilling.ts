@@ -161,7 +161,15 @@ async function gate(request: Request, deps: BillingHttpDeps): Promise<Gate> {
     return { ok: false, response: json(403, { code: "FORBIDDEN_ORIGIN", error: "Forbidden" }) };
   }
   const cors = corsHeaders(origin);
-  const who = await deps.identity();
+  // A missing token is a null identity. A token Convex Auth cannot verify
+  // (bad signature, wrong issuer or audience, expired) can surface as a
+  // throw; treat that as anonymous too, so it is a 401 rather than a 500.
+  let who: UserIdentity | null;
+  try {
+    who = await deps.identity();
+  } catch {
+    who = null;
+  }
   if (!who?.subject) {
     return {
       ok: false,

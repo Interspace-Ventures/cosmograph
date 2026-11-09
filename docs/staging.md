@@ -48,12 +48,14 @@ the caps, not the allowlist, are the spend ceiling.
 
 ## Host
 
-Render runs the Express API and the built SPA as one always-on web service:
-`pnpm install --frozen-lockfile && pnpm run deploy:build`, then
+Render runs the Express app server and the built SPA as one always-on web service (accounts, billing and Ask Cosmo are on Convex):
+`pnpm install --frozen-lockfile && pnpm run gate && pnpm run deploy:build`, then
 `pnpm run deploy:start`. Node comes from `.node-version`. All platform env is
 public configuration listed in `render.yaml`; the only secret on the host is
-one read-only Bitwarden `BWS_ACCESS_TOKEN`. Rollback is a previous Render
-deploy.
+one read-only Bitwarden `BWS_ACCESS_TOKEN`. The build runs `pnpm run gate`
+(typecheck, lint, node:test suites) before `deploy:build`, so a failing check
+fails the deploy and the live version keeps serving. Rollback covers both the
+Render deploy and the Convex functions and env: `docs/runbooks/rollback.md`.
 
 Between build and start, Render runs the pre-deploy command
 `node scripts/convex/deploy-from-bitwarden.mjs --pre-deploy`, which reads the

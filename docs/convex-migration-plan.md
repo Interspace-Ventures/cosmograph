@@ -1,6 +1,6 @@
 # Cosmograph: move to the approved Exo stack (Convex + Exo Key)
 
-Status: PLAN, draft for Samir's review. Nothing here is merged, deployed or deleted without his yes.
+Status (2026-11-08): approved 2026-10-24; phases 1 to 3 are in `staging` and Ask Cosmo is on Convex too. Postgres, Drizzle and Clerk are no longer used by any running code; the Express server remains only for the SPA, presence, feedback intake and GitHub stars. Phase 5 (deleting `lib/db` and the Express server) is still to do and needs Samir's yes. The rest of this file is the original plan.
 Driver: Exo contract (exo#232, report mode). The approved stack is mandatory with no waivers.
 Cosmograph's two violations: (1) data on Replit Postgres behind Express, (2) Clerk (PR #15 removes it).
 

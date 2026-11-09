@@ -17,6 +17,18 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.44.0",
+    codename: "Preflight Check",
+    date: "2026-11-08",
+    summary: "Every staging release now runs its safety checks before it can go live.",
+    changes: [
+      "Each staging release type-checks the app, runs a code-quality pass and runs the backend and deploy test suites first; if any check fails, the release stops and the current version keeps serving.",
+      "New tests confirm that membership checkout, the billing portal, the payment receiver and Ask Cosmo refuse callers that aren't signed in, come from another site, or send a payment notice that wasn't really signed by the payment provider.",
+      "Membership checkout on Cosmograph's own backend is now switched on for the internal and friends-and-family audiences by its release date instead of a hidden setting; the public site is unchanged.",
+      "The server's logging and the assistant's connection library moved up a major version each.",
+    ],
+  },
+  {
     version: "3.43.4",
     codename: "New Keyring",
     date: "2026-11-07",
