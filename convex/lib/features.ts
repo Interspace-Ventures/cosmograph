@@ -13,7 +13,12 @@ import {
  * the security or cost boundary.
  *
  * RELEASE_CHANNEL and FEATURE_FLAG_OVERRIDES are non-secret env on each Convex
- * deployment, set by Exo delivery like the Express server's.
+ * deployment (CONVEX_ENV_<NAME> in that environment's Bitwarden project, synced
+ * by the Render pre-deploy). A deployment with no valid RELEASE_CHANNEL is
+ * treated as `public`, the most closed audience, so a production deployment
+ * that is missing the variable can never pick up internal or F&F dates.
+ * (The shared normalizeReleaseChannel default is friends-and-family, which is
+ * right for the SPA and Express, where render.yaml always sets the channel.)
  */
 export function featureEnabled(
   id: FeatureId,
@@ -21,7 +26,7 @@ export function featureEnabled(
   now: Date = new Date(),
 ): boolean {
   return evaluateFeature(id, {
-    channel: normalizeReleaseChannel(env.RELEASE_CHANNEL),
+    channel: normalizeReleaseChannel(env.RELEASE_CHANNEL, "public"),
     overrides: parseFeatureOverrides(env.FEATURE_FLAG_OVERRIDES),
     now,
   }).enabled;

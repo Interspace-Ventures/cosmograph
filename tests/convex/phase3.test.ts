@@ -56,8 +56,9 @@ const PROJECT_ID = "22222222-2222-4222-8222-222222222222";
 const OTHER_PROJECT_ID = "33333333-3333-4333-8333-333333333333";
 
 const ENV: Record<string, string> = {
+  // convex-account is released to internal by date (lib/release-flags), so no
+  // FEATURE_FLAG_OVERRIDES is needed; "off" below means the public channel.
   RELEASE_CHANNEL: "internal",
-  FEATURE_FLAG_OVERRIDES: "convex-account=on",
   STRIPE_PRICE_ANNUAL: ANNUAL,
   STRIPE_PRICE_LIFETIME: LIFETIME,
   BWS_ORGANIZATION_ID: ORG_ID,
@@ -102,7 +103,7 @@ beforeEach(() => {
   clearPriceCache();
   clearStripeSecretCache();
   process.env.RELEASE_CHANNEL = "internal";
-  process.env.FEATURE_FLAG_OVERRIDES = "convex-account=on";
+  delete process.env.FEATURE_FLAG_OVERRIDES;
 });
 
 const fakeStripe: StripeLike = {
@@ -501,7 +502,7 @@ function httpDeps(over: Partial<BillingHttpDeps> = {}): BillingHttpDeps {
 test("checkout HTTP: flag, Origin allowlist and auth are enforced before any work", async () => {
   let invoked = 0;
   const counting = httpDeps({ checkout: async () => { invoked++; return { alreadyEntitled: false, url: "u" }; } });
-  const off = await handleCheckout(req("/billing/checkout", {}), { ...counting, env: { ...ENV, FEATURE_FLAG_OVERRIDES: "" } });
+  const off = await handleCheckout(req("/billing/checkout", {}), { ...counting, env: { ...ENV, RELEASE_CHANNEL: "public" } });
   assert.equal(off.status, 404);
   const noBilling = await handleCheckout(req("/billing/checkout", {}), { ...counting, env: { ...ENV, STRIPE_PRICE_ANNUAL: "" } });
   assert.equal(noBilling.status, 503);
@@ -566,7 +567,7 @@ test("webhook HTTP: signature header required, body bounded, flag enforced", asy
     new Request("https://deploy.convex.site/stripe/webhook", { method: "POST", headers, body });
   assert.equal((await handleWebhook(hook("{}"), deps)).status, 400);
   assert.equal((await handleWebhook(hook("x".repeat(600 * 1024), { "Stripe-Signature": "t=1,v1=a" }), deps)).status, 413);
-  assert.equal((await handleWebhook(hook("{}", { "Stripe-Signature": "t=1,v1=a" }), { ...deps, env: { ...ENV, FEATURE_FLAG_OVERRIDES: "" } })).status, 404);
+  assert.equal((await handleWebhook(hook("{}", { "Stripe-Signature": "t=1,v1=a" }), { ...deps, env: { ...ENV, RELEASE_CHANNEL: "public" } })).status, 404);
   assert.equal((await handleWebhook(hook("{}", { "Stripe-Signature": "t=1,v1=a" }), deps)).status, 200);
 });
 

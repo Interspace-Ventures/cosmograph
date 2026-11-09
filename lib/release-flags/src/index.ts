@@ -98,13 +98,15 @@ export const FEATURE_RELEASES: Record<FeatureId, FeatureRelease> = {
     description:
       "Exo Key sign-in, with account, researcher unlocks, ships and referrals served by Convex instead of Express (migration Phase 2).",
     owner: "platform",
-    // Unscheduled on every channel: a migration switch, enabled only by an
-    // explicit override (FEATURE_FLAG_OVERRIDES / VITE_FEATURE_FLAG_OVERRIDES
-    // "convex-account=on") once the Convex deployment for that environment is
-    // live. Default off everywhere.
+    // Billing, account and unlocks on Convex (convex/http.ts, convex/lib/
+    // httpBilling.ts). Released to internal and friends-and-family (staging)
+    // on 2026-11-08 so staging no longer depends on a hidden
+    // FEATURE_FLAG_OVERRIDES entry. Public stays null: production
+    // (RELEASE_CHANNEL=public) keeps billing off until Samir approves a
+    // public date in a separate release change.
     release: {
-      internal: null,
-      "friends-and-family": null,
+      internal: "2026-11-08",
+      "friends-and-family": "2026-11-08",
       public: null,
     },
   },

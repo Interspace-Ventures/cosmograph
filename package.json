@@ -18,7 +18,7 @@
     "lint": "eslint .",
     "deploy:convex": "node scripts/convex/deploy-from-bitwarden.mjs --pre-deploy",
     "test:deploy": "node --test scripts/convex/deploy-from-bitwarden.test.mjs",
-    "test:convex": "pnpm --filter @workspace/release-flags exec tsx --test ../../tests/convex/phase2.test.ts ../../tests/convex/phase3.test.ts ../../tests/convex/ask.test.ts ../../artifacts/cosmograph/src/lib/exoId.test.ts"
+    "test:convex": "pnpm --filter @workspace/release-flags exec tsx --test ../../tests/convex/phase2.test.ts ../../tests/convex/phase3.test.ts ../../tests/convex/ask.test.ts ../../tests/convex/http-authz.test.ts ../../artifacts/cosmograph/src/lib/exoId.test.ts"
   },
   "private": true,
   "devDependencies": {
