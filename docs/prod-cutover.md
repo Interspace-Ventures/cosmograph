@@ -20,8 +20,8 @@ Production contract: branch `main`, served at the root of
 ## 0. Before you start
 
 - This PR is merged into `staging` and reviewed at `staging.exo.now/cosmograph`.
-- Secrets live in Bitwarden Secrets Manager (moved from 1Password,
-  2026-11-05). Cosmograph's production project holds these secrets, looked
+- Secrets live in Bitwarden Secrets Manager (since 2026-11-05; 2026-11-13:
+  secrets provider changed to Bitwarden, the only provider). Cosmograph's production project holds these secrets, looked
   up by key name; each key name must be unique within the project:
   - `COSMOGRAPH_PROD_EXO_INTAKE_SECRET` (feedback intake HMAC, 32+ chars)
   - for the Convex billing actions: `COSMOGRAPH_PROD_STRIPE_SECRET_KEY` and
@@ -58,10 +58,10 @@ On `cosmograph-production` set the `sync: false` values:
 - `VITE_EXO_ID_CLIENT_ID`: the production client id from EXO (build-time;
   redeploy after setting it)
 
-Never set `EXO_INTAKE_SECRET` or any Stripe secret as Render env, and remove
-any leftover `OP_SERVICE_ACCOUNT_TOKEN` (the server logs a warning while it is
-set). Ask Cosmo needs no OpenAI key at all (it runs on the Convex AI Gateway);
-remove any leftover `OP_OPENAI_API_KEY_ITEM` / `BWS_OPENAI_API_KEY_NAME` /
+Never set `EXO_INTAKE_SECRET` or any Stripe secret as Render env. The only
+bootstrap token the host holds is `BWS_ACCESS_TOKEN`; remove any other token
+variable from earlier setups. Ask Cosmo needs no OpenAI key at all (it runs on
+the Convex AI Gateway); remove any leftover `BWS_OPENAI_API_KEY_NAME` /
 `AI_INTEGRATIONS_OPENAI_*` values. The server ignores them outside local dev and logs a
 warning naming the variable. Set `EXO_INTAKE_API_URL` (non-secret) once EXO
 gives the production intake URL; until then `/api/health` reports
@@ -132,8 +132,8 @@ remove the custom domains from the Railway service, then stop and delete the
 Railway production service and its variables (this also retires any secrets
 that lived there). Nothing in the repo references Railway any more.
 
-Once both hosts report `source: "bitwarden"`, revoke the old 1Password
-service account token (`OP_SERVICE_ACCOUNT_TOKEN`); nothing reads it.
+Once both hosts report `source: "bitwarden"`, revoke any bootstrap token from
+earlier setups that is still issued; nothing reads it.
 
 ## Rollback
 

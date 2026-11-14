@@ -112,7 +112,6 @@ test("retired OpenAI settings are never read, only named so they get removed", a
   await loadRuntimeSecrets({
     env: {
       ...HOSTED,
-      OP_OPENAI_API_KEY_ITEM: "Cosmograph production: OPENAI_API_KEY",
       AI_INTEGRATIONS_OPENAI_API_KEY: OPENAI,
       BWS_OPENAI_API_KEY_NAME: "COSMOGRAPH_PROD_OPENAI_API_KEY",
     },
@@ -127,7 +126,7 @@ test("retired OpenAI settings are never read, only named so they get removed", a
   });
   // Only the intake secret (s1) is fetched; the OpenAI secret (s0) is never read.
   assert.deepEqual(calls.gets, ["s1"]);
-  for (const name of ["OP_OPENAI_API_KEY_ITEM", "AI_INTEGRATIONS_OPENAI_API_KEY", "BWS_OPENAI_API_KEY_NAME"]) {
+  for (const name of ["AI_INTEGRATIONS_OPENAI_API_KEY", "BWS_OPENAI_API_KEY_NAME"]) {
     assert.ok(lines.some((l) => l.includes(`${name} is set but unused`)), name);
   }
   assertNoSecretsLogged(lines);
@@ -159,18 +158,6 @@ test("hosted: env secrets are ignored even when Bitwarden is configured", async 
   });
   assert.equal(runtimeSecret("exoIntakeSecret"), null);
   assert.equal(secretStatus("exoIntakeSecret").reason, "secret-not-found");
-});
-
-test("a leftover 1Password token is named in a warning and never used", async () => {
-  resetRuntimeSecrets();
-  const { log, lines } = capture();
-  await loadRuntimeSecrets({
-    env: { NODE_ENV: "production", OP_SERVICE_ACCOUNT_TOKEN: "ops_leftover" },
-    log,
-  });
-  assert.equal(secretStatus("exoIntakeSecret").reason, "bws-token-missing");
-  assert.ok(lines.some((l) => l.includes("OP_SERVICE_ACCOUNT_TOKEN is still set")));
-  assert.ok(!lines.some((l) => l.includes("ops_leftover")));
 });
 
 test("local dev: falls back to env only when no token is set", async () => {
