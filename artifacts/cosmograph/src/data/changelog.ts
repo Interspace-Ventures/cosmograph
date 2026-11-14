@@ -34,7 +34,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: "2026-11-07",
     summary: "Cosmograph's keys now live in Bitwarden Secrets Manager.",
     changes: [
-      "The feedback channel's signing key and the membership checkout keys now come from Cosmograph's Bitwarden Secrets Manager project, replacing 1Password.",
+      "The feedback channel's signing key and the membership checkout keys now come from Cosmograph's Bitwarden Secrets Manager project.",
       "Each host holds a single read-only access token and nothing else secret; if a key can't be loaded, that feature switches itself off and the health check says why.",
       "Cosmo still needs no assistant key anywhere: it keeps answering through the Convex AI Gateway.",
     ],
@@ -80,7 +80,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     summary: "Cosmograph is ready to move its public home to Render.",
     changes: [
       "A production station for cosmograph.space is defined alongside staging, so the live site can move off its old host in one clean cutover.",
-      "Cosmo's assistant key and the feedback channel's signing key now come from Cosmograph's 1Password vault when the server starts, never from the host's settings.",
+      "Cosmo's assistant key and the feedback channel's signing key now come from Cosmograph's own secrets vault when the server starts, never from the host's settings.",
       "If either key can't be loaded, that feature switches itself off and the health check says so, instead of running half-configured.",
     ],
   },
