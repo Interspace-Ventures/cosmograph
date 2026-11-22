@@ -8,7 +8,7 @@
 # Two services: cosmograph-staging (branch staging) and cosmograph-production
 # (branch main, cosmograph.space). The cutover runbook is docs/prod-cutover.md.
 #
-# Node: Render reads .node-version (24.22.1), the single source of truth shared
+# Node: Render reads .node-version (24.22.3), the single source of truth shared
 # with CI, so NODE_VERSION is deliberately not set here. pnpm: Render provides
 # pnpm for repos with pnpm-lock.yaml, and pnpm switches itself to the
 # packageManager version (pnpm@11.9.0) from package.json.

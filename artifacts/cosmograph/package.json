@@ -1,6 +1,6 @@
 {
   "name": "@workspace/cosmograph",
-  "version": "3.44.0",
+  "version": "3.44.1",
   "private": true,
   "type": "module",
   "scripts": {
@@ -19,7 +19,7 @@
     "@react-three/drei": "^10.7.9",
     "@react-three/fiber": "^9.8.2",
     "@react-three/postprocessing": "^3.2.2",
-    "@tailwindcss/typography": "^0.5.15",
+    "@tailwindcss/typography": "^0.5.20",
     "@tailwindcss/vite": "catalog:",
     "@tanstack/react-query": "catalog:",
     "@types/node": "catalog:",

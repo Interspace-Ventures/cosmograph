@@ -34,25 +34,25 @@ packages:
   - scripts
 
 catalog:
-  '@tailwindcss/vite': ^4.3.4
-  '@tanstack/react-query': ^5.106.1
-  '@types/node': ^25.3.3
+  '@tailwindcss/vite': ^4.3.5
+  '@tanstack/react-query': ^5.108.2
+  '@types/node': ^25.9.9
   '@types/react': ^19.3.0
   '@types/react-dom': ^19.3.0
-  '@vitejs/plugin-react': ^5.0.4
+  '@vitejs/plugin-react': ^5.2.0
   class-variance-authority: ^0.7.1
   clsx: ^2.1.1
   drizzle-orm: ^0.45.4
-  framer-motion: ^12.23.24
-  lucide-react: ^0.545.0
+  framer-motion: ^12.43.0
+  lucide-react: ^0.577.0
   # Must be this exact version because expo requires it
   react: 19.3.1
   # Must be this exact version because expo requires it
   react-dom: 19.3.1
-  tailwind-merge: ^3.7.0
-  tailwindcss: ^4.3.4
+  tailwind-merge: ^3.7.1
+  tailwindcss: ^4.3.5
   tsx: ^4.23.15
-  vite: ^7.3.7
+  vite: ^7.3.8
   wouter: ^3.13.0
   zod: ^4.6.7
 
@@ -153,7 +153,9 @@ overrides:
   "convex>@auth0/auth0-react": "-"
   # drizzle-kit uses esbuild internally on an older version that's vulnerable, this overrides it
   "@esbuild-kit/esm-loader": "npm:tsx@^4.21.0"
-  esbuild: "0.27.3"
+  # Nov 22 2026 sweep: 0.28.2 clears GHSA-g7r4-m6w7-qqqr (dev-server file read);
+  # matches the api-server pin, and Vite 7 accepts ^0.28.
+  esbuild: "0.28.2"
   # Security advisory patch bumps for transitive build/dev dependencies (all
   # same-major, non-breaking). Clears GHSA findings surfaced by the audit.
   "@babel/core": "^7.29.6"
@@ -177,3 +179,8 @@ overrides:
   "fflate@>=0.6.0 <0.7.0": "^0.6.11"
   "baseline-browser-mapping": "^2.11.0"
   "body-parser": "^2.3.0"
+  # Nov 22 2026 sweep (opt-out auto-update policy): GHSA-rj75-hqrm-r3gf
+  # (postcss-selector-parser, same-major) and GHSA-g3hv-75wg-m249 (minimatch,
+  # fixed only in 11.x; pulled in by eslint tooling, dev-only).
+  "postcss-selector-parser@<6.1.5": "^6.1.5"
+  "minimatch@>=10.0.0 <11.0.1": "^11.0.9"
