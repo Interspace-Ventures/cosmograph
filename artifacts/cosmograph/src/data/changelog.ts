@@ -17,6 +17,17 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "3.45.0",
+    codename: "Engine Swap",
+    date: "2026-11-22",
+    summary: "Cosmograph's build tools and several of its libraries moved up a major version each.",
+    changes: [
+      "The app is now built with Vite 8 and checked with TypeScript 6, so builds are faster and stricter about how raw bytes are handled.",
+      "The animation, icon, intro-animation and payment libraries each moved up a major version; the GitHub mark is now drawn by Cosmograph itself because the icon set dropped brand logos.",
+      "Membership payments use the newer version of the payment provider's library; checkout should look and behave the same.",
+    ],
+  },
+  {
     version: "3.44.1",
     codename: "Hull Sweep",
     date: "2026-11-22",
