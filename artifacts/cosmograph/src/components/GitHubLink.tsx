@@ -1,4 +1,5 @@
-import { Github, Star, ExternalLink } from "lucide-react";
+import { Star, ExternalLink } from "lucide-react";
+import { Github } from "./GithubIcon";
 import { SITE } from "@/config/site";
 import { useGithubStars, formatStars } from "@/lib/useGithubStars";
 

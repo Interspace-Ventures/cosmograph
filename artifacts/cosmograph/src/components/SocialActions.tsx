@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Heart, Github, Star, Share2 } from "lucide-react";
+import { Heart, Star, Share2 } from "lucide-react";
+import { Github } from "./GithubIcon";
 import { useGithubStars, formatStars } from "@/lib/useGithubStars";
 import { SITE } from "@/config/site";
 import { ShareModal } from "./ShareModal";
