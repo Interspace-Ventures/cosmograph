@@ -20,8 +20,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     version: "3.44.1",
     codename: "Hull Sweep",
     date: "2026-11-22",
-    summary:
-      "Every known security advisory in Cosmograph's dependencies is closed, and its libraries are on their newest compatible releases.",
+    summary: "Every known security advisory in Cosmograph's dependencies is closed, and its libraries are on their newest compatible releases.",
     changes: [
       "The server now runs on Node 24.22.3, the November security release that fixes several high-severity issues in secure connections and HTTP/2.",
       "Three remaining advisories in build and code-quality tools were closed, so the security scanners now report zero known vulnerabilities.",
@@ -32,8 +31,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     version: "3.44.0",
     codename: "Preflight Check",
     date: "2026-11-08",
-    summary:
-      "Every staging release now runs its safety checks before it can go live.",
+    summary: "Every staging release now runs its safety checks before it can go live.",
     changes: [
       "Each staging release type-checks the app, runs a code-quality pass and runs the backend and deploy test suites first; if any check fails, the release stops and the current version keeps serving.",
       "New tests confirm that membership checkout, the billing portal, the payment receiver and Ask Cosmo refuse callers that aren't signed in, come from another site, or send a payment notice that wasn't really signed by the payment provider.",
@@ -56,8 +54,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     version: "3.43.3",
     codename: "Hull Patch",
     date: "2026-11-07",
-    summary:
-      "Cosmograph's request checks move to a newer, patched validation library.",
+    summary: "Cosmograph's request checks move to a newer, patched validation library.",
     changes: [
       "The library that checks every request reaching Cosmograph's server was upgraded a full version, closing the last high-severity security advisory in the app's dependencies.",
       "The server's request and response rules were regenerated from the API's own definition rather than edited by hand, so they stay in step with what the app sends.",
@@ -79,8 +76,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     version: "3.43.0",
     codename: "Gateway Relay",
     date: "2026-11-06",
-    summary:
-      "Cosmo now answers through Convex's AI gateway, with no assistant key held anywhere.",
+    summary: "Cosmo now answers through Convex's AI gateway, with no assistant key held anywhere.",
     changes: [
       "Ask Cosmo moved off Cosmograph's own server onto its Convex backend, which reaches the model through the Convex AI Gateway with a short-lived token instead of a stored key.",
       "Prompts are routed only to providers that keep no copy of them and don't train on them.",
@@ -123,8 +119,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     version: "3.41.1",
     codename: "Home Fonts",
     date: "2026-10-30",
-    summary:
-      "Every typeface now ships from Cosmograph itself, with no calls to Google Fonts.",
+    summary: "Every typeface now ships from Cosmograph itself, with no calls to Google Fonts.",
     changes: [
       "Self-hosted Outfit, Archivo, Bricolage Grotesque and Space Mono through Fontsource, so visitors' browsers no longer contact a third-party font service.",
       "Dropped an unused Inter font request from the page shell.",
@@ -134,8 +129,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     version: "3.41.0",
     codename: "Own Keys",
     date: "2026-10-30",
-    summary:
-      "Sign-in is Exo Imprint only. Clerk and its hosted scripts are gone.",
+    summary: "Sign-in is Exo Imprint only. Clerk and its hosted scripts are gone.",
     changes: [
       "Removed Clerk from the web app and the server, so no third-party sign-in script ever loads in your browser.",
       "Your account, unlocks, ships, referrals and membership now live only on Convex, with sign-in through Exo Imprint.",
@@ -146,8 +140,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     version: "3.38.1",
     codename: "Hull Patch",
     date: "2026-10-22",
-    summary:
-      "Security maintenance: patched dependencies and a pinned Node runtime.",
+    summary: "Security maintenance: patched dependencies and a pinned Node runtime.",
     changes: [
       "Pinned the Node runtime to 24.22.1 and upgraded Vite and the API code generator to their patched releases.",
       "Cleared every known critical and high-severity dependency advisory except one with no upstream fix yet.",
@@ -169,9 +162,10 @@ export const CHANGELOG: ChangelogEntry[] = [
     version: "3.37.0",
     codename: "Opening Credits",
     date: "2026-07-05",
-    summary: "Watch the launch trailer straight from the title screen.",
+    summary:
+      "Watch the launch trailer straight from the title screen.",
     changes: [
-      'Added a "Watch the trailer" button on the opening title screen, right below "Ad Astra" — a quick flight through the galaxy before you dive in yourself.',
+      "Added a \"Watch the trailer\" button on the opening title screen, right below \"Ad Astra\" — a quick flight through the galaxy before you dive in yourself.",
     ],
   },
   {
@@ -181,9 +175,9 @@ export const CHANGELOG: ChangelogEntry[] = [
     summary:
       "The guided tour is calmer, clearer, and actually shows off Ask Cosmo.",
     changes: [
-      'The "Two ways to travel" stop now demonstrates both modes in one shot — starting in the overhead Orbit view, then dropping down into a first-person Fly glide so you can watch the switch happen.',
+      "The \"Two ways to travel\" stop now demonstrates both modes in one shot — starting in the overhead Orbit view, then dropping down into a first-person Fly glide so you can watch the switch happen.",
       "Steadied the tour camera: instead of drifting in a full circle, it now gently sways to show depth while keeping each subject centered and in focus.",
-      'The "Ask Cosmo" stop now pulls up a live preview of the Ask panel — showing the question and Cosmo\'s answer — while the matching papers light up behind it.',
+      "The \"Ask Cosmo\" stop now pulls up a live preview of the Ask panel — showing the question and Cosmo's answer — while the matching papers light up behind it.",
       "Tidied the tour card: the page dots now sit below the text instead of crowding it.",
     ],
   },
@@ -196,7 +190,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     changes: [
       "The tour now dips into Fly mode — dropping into the plane for a first-person glide through the brightest field — so you can see both ways to travel, not just the planetarium Orbit view.",
       "Each stop now slowly sweeps its camera angle, so the galaxy's real 3D depth reads instead of a flat straight-on shot.",
-      'New "Ask Cosmo" stop: a real plain-English question runs live and the matching papers light up while the rest fade — a taste of the query panel before you try it yourself.',
+      "New \"Ask Cosmo\" stop: a real plain-English question runs live and the matching papers light up while the rest fade — a taste of the query panel before you try it yourself.",
     ],
   },
   {
@@ -206,7 +200,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     summary:
       "Replay the opening flight any time, and the tour card clears the controls.",
     changes: [
-      'Added a "Replay intro" button in Info → About, so you can run the opening title sequence again — handy for showing someone the galaxy from the start.',
+      "Added a \"Replay intro\" button in Info → About, so you can run the opening title sequence again — handy for showing someone the galaxy from the start.",
       "The guided-tour card no longer tucks its bottom edge under the cockpit bar on desktop; it now floats cleanly above the controls.",
     ],
   },
@@ -228,7 +222,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     summary:
       "The paper card slims down, and your ship now holds formation with a selected planet.",
     changes: [
-      'Co-authors in the paper card now fit on a single line — the rest collapse into a "+N" chip you can tap to see everyone.',
+      "Co-authors in the paper card now fit on a single line — the rest collapse into a \"+N\" chip you can tap to see everyone.",
       "The paper card no longer hides under the header on desktop.",
       "Selecting a planet in Fly mode engages a tracking cam: the ship smoothly holds formation with the planet as it orbits, so you can read the card without chasing it.",
       "Touch the controls (keys or mouse-look) and the ship hands the stick back to you without snapping the view; click the planet again to re-engage tracking.",
@@ -238,8 +232,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     version: "3.32.0",
     codename: "Slipstream",
     date: "2026-07-02",
-    summary:
-      "A faster galaxy — the same view, drawn with a fraction of the work.",
+    summary: "A faster galaxy — the same view, drawn with a fraction of the work.",
     changes: [
       "Merged every solar system's orbit rings into a single draw call each (they used to be one per paper — hundreds per frame).",
       "Orbit rings no longer respond to the mouse, so moving the cursor doesn't hit-test hundreds of invisible lines anymore.",
@@ -252,24 +245,22 @@ export const CHANGELOG: ChangelogEntry[] = [
     version: "3.31.0",
     codename: "Target Lock",
     date: "2026-07-02",
-    summary:
-      "Fly mode gets a real targeting HUD, search finds the right scientist, and you can hop back to the last galaxy.",
+    summary: "Fly mode gets a real targeting HUD, search finds the right scientist, and you can hop back to the last galaxy.",
     changes: [
       "Planets and suns are now clickable while flying — a pulsing corner-bracket reticle locks onto your target and tracks it through the canopy, with its name underneath.",
       "Dragging to look around no longer counts as a click, so steering the ship won't select planets or drop your target lock.",
-      'Personalize search now matches on the scientist\'s name only — searching "Albert Einstein" no longer surfaces researchers who merely work at an institute named after him.',
-      'After exploring a new scientist, a "Return to …" button in Personalize jumps you straight back to the previous galaxy — instantly, no re-download.',
+      "Personalize search now matches on the scientist's name only — searching \"Albert Einstein\" no longer surfaces researchers who merely work at an institute named after him.",
+      "After exploring a new scientist, a \"Return to …\" button in Personalize jumps you straight back to the previous galaxy — instantly, no re-download.",
     ],
   },
   {
     version: "3.30.0",
     codename: "Sliding Hatch",
     date: "2026-07-02",
-    summary:
-      "Signing in stays in the galaxy, and the Tour sits with the other ways to fly.",
+    summary: "Signing in stays in the galaxy, and the Tour sits with the other ways to fly.",
     changes: [
       "Sign In / Sign Up now rise as a dismissible cockpit panel — like Info, Ask, and Personalize — instead of taking over the whole screen.",
-      'The auth form blends straight into the panel (no box-in-a-box), and the copy is on-theme: "Become a cosmonaut" / "Welcome back, cosmonaut".',
+      "The auth form blends straight into the panel (no box-in-a-box), and the copy is on-theme: \"Become a cosmonaut\" / \"Welcome back, cosmonaut\".",
       "Moved the Tour button next to the Orbit/Fly switch, grouping all the ways to explore the galaxy together.",
     ],
   },
@@ -277,8 +268,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     version: "3.29.0",
     codename: "Afterburner",
     date: "2026-07-01",
-    summary:
-      "Real rocket fire out the back — the engines now burn like a true spaceship.",
+    summary: "Real rocket fire out the back — the engines now burn like a true spaceship.",
     changes: [
       "Replaced the soft blue engine orb with a proper fiery exhaust: a white-hot core inside an orange plume.",
       "The flame flickers like live combustion and stretches longer the harder you throttle.",
@@ -289,8 +279,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     version: "3.28.1",
     codename: "Welcome Back",
     date: "2026-06-30",
-    summary:
-      "The cockpit now remembers returning pilots and their usual login.",
+    summary: "The cockpit now remembers returning pilots and their usual login.",
     changes: [
       "First-time visitors see Sign Up; if you've signed in before on this device, it greets you with Sign In instead.",
       "If you last logged in with a service like Google or GitHub, the button now names it — one click back in.",
@@ -321,8 +310,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     version: "3.27.0",
     codename: "True North",
     date: "2026-06-30",
-    summary:
-      "Fly controls now track the ship 1:1, and engines glow when you move.",
+    summary: "Fly controls now track the ship 1:1, and engines glow when you move.",
     changes: [
       "Fixed Fly steering so the ship pitches and turns to match your controls — pressing up now tilts the nose up instead of rolling sideways.",
       "Replaced the nose beacon with twin rear thrusters that glow brighter the faster you fly.",
