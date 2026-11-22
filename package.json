@@ -38,6 +38,6 @@
     "@bitwarden/sdk-wasm": "0.1.0",
     "convex": "^1.51.0",
     "openai": "^7.62.0",
-    "stripe": "^22.6.2"
+    "stripe": "^23.2.0"
   }
 }
