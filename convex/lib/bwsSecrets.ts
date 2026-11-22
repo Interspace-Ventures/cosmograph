@@ -195,11 +195,6 @@ export async function loadStripeSecrets(
     );
     throw unavailable();
   }
-  if ((env.OP_SERVICE_ACCOUNT_TOKEN ?? "").trim() !== "") {
-    console.warn(
-      "billing: OP_SERVICE_ACCOUNT_TOKEN is still set but 1Password is no longer read; remove it",
-    );
-  }
   const token = env.BWS_ACCESS_TOKEN?.trim();
   if (!token) {
     console.error("billing: BWS_ACCESS_TOKEN is not set");

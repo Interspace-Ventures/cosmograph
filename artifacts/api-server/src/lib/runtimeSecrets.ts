@@ -66,7 +66,6 @@ export const SECRET_SPECS: readonly SecretSpec[] = [
 export const RETIRED_ENV = [
   "AI_INTEGRATIONS_OPENAI_API_KEY",
   "AI_INTEGRATIONS_OPENAI_BASE_URL",
-  "OP_OPENAI_API_KEY_ITEM",
   "BWS_OPENAI_API_KEY_NAME",
 ] as const;
 
@@ -267,11 +266,6 @@ export async function loadRuntimeSecrets(
         );
       }
     }
-  }
-  if ((env["OP_SERVICE_ACCOUNT_TOKEN"] ?? "").trim() !== "") {
-    log.warn(
-      "secrets: OP_SERVICE_ACCOUNT_TOKEN is still set but 1Password is no longer read; remove it",
-    );
   }
 
   if (!token) {
