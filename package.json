@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "packageManager": "pnpm@11.9.0",
   "engines": {
-    "node": "24.22.1"
+    "node": "24.22.3"
   },
   "license": "MIT",
   "scripts": {
@@ -26,18 +26,18 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "catalog:",
-    "eslint": "^10.14.0",
+    "eslint": "^10.15.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.14.0",
-    "prettier": "^3.9.10",
-    "typescript": "~5.9.3",
-    "typescript-eslint": "^8.72.1"
+    "prettier": "^3.10.1",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.73.0"
   },
   "description": "**A scientist's life's work, rendered as a galaxy you can fly through.**",
   "dependencies": {
     "@bitwarden/sdk-wasm": "0.1.0",
-    "convex": "^1.49.0",
-    "openai": "^7.52.0",
-    "stripe": "^22.2.2"
+    "convex": "^1.51.0",
+    "openai": "^7.62.0",
+    "stripe": "^23.2.0"
   }
 }
