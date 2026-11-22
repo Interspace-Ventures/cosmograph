@@ -190,7 +190,7 @@ export function base64UrlEncode(bytes: Uint8Array) {
   return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-export type RandomSource = (bytes: Uint8Array) => Uint8Array;
+export type RandomSource = (bytes: Uint8Array<ArrayBuffer>) => Uint8Array;
 
 const defaultRandom: RandomSource = (bytes) =>
   globalThis.crypto.getRandomValues(bytes);

@@ -36,7 +36,7 @@ const CODE_PATTERN = /^[A-Za-z0-9]{4,16}$/;
 /** Ceiling on the referred-count scan; far above any real tally. */
 const MAX_COUNTED_REFERRALS = 10_000;
 
-type Random = (bytes: Uint8Array) => Uint8Array;
+type Random = (bytes: Uint8Array<ArrayBuffer>) => Uint8Array;
 
 export const referralView = v.object({
   code: v.string(),
